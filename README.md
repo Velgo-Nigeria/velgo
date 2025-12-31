@@ -11,7 +11,7 @@ Click the **"Save to GitHub"** button at the top right of your editor to save th
 ### Step 2: Deploy to Vercel
 1. Log in to [Vercel](https://vercel.com).
 2. Click **Add New...** > **Project**.
-3. Select the `velgo-nigeria` repository you just created.
+3. Select the `velgo` repository you just created.
 4. **Important**: Under **Environment Variables**, add the following keys matching your project settings:
 
 | Variable Name | Description |
