@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../types';
@@ -58,12 +59,14 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (result.error) {
             console.error("Admin Fetch Error:", result.error);
             // Handle missing tables/columns gracefully
-            if (result.error.code === '42P01' || result.error.message?.includes('relation')) {
+            if (result.error.code === '42P01' || (result.error.message && result.error.message.includes('relation'))) {
                setErrorMsg("Database Setup Required: Missing tables. Please run the provided SQL script.");
             } else if (result.error.code === '42501') {
                setErrorMsg("Permission Denied: You may not be an admin, or RLS policies need updating via SQL.");
             } else {
-               setErrorMsg(`Data Error: ${result.error.message}`);
+               // Fix for [object Object] error: properly extract message or stringify the object
+               const msg = result.error.message || result.error.details || JSON.stringify(result.error);
+               setErrorMsg(`Data Error: ${msg}`);
             }
         }
 

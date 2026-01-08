@@ -152,10 +152,12 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]); 
 
+  // REALTIME NOTIFICATIONS
   useEffect(() => {
     if (!session?.user?.id) return;
 
     const channel = supabase.channel('realtime_notifications')
+        // Chat Messages
         .on(
             'postgres_changes', 
             { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${session.user.id}` }, 
@@ -164,18 +166,17 @@ const App: React.FC = () => {
                 setToast({ msg: 'New Message Received', type: 'info' });
             }
         )
-        // Notify Client when Worker applies
+        // Client: Worker applied to my job
         .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` },
             (payload) => {
-               // Only notify if user is the client (double check)
                if (payload.new.client_id === session.user.id) {
                    setToast({ msg: 'New Job Request!', type: 'success' });
                }
             }
         )
-        // Notify Client when Worker Accepts a direct request
+        // Client: Worker Accepted my Direct Request
         .on(
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` },
@@ -183,15 +184,18 @@ const App: React.FC = () => {
                 if (payload.new.status === 'accepted') setToast({ msg: 'Worker Accepted Your Job!', type: 'success' });
             }
         )
-        // Notify Worker when Client Accepts or Declines their application
+        // Worker: Application Status Updates (Accepted or Declined)
         .on(
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `worker_id=eq.${session.user.id}` },
             (payload) => {
                 const status = payload.new.status;
-                if (status === 'accepted') setToast({ msg: 'Hooray! Application Accepted.', type: 'success' });
-                // 'cancelled' is the status used when a client declines/cancels a request
-                if (status === 'cancelled') setToast({ msg: 'Update: Application Declined.', type: 'alert' });
+                if (status === 'accepted') {
+                  setToast({ msg: 'Hooray! Application Accepted.', type: 'success' });
+                } else if (status === 'cancelled') {
+                  // 'cancelled' usually means Declined by client in this context
+                  setToast({ msg: 'Update: Application Declined.', type: 'alert' });
+                }
             }
         )
         .subscribe();
