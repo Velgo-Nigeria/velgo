@@ -20,6 +20,7 @@ import CompleteProfile from './pages/CompleteProfile';
 import Legal from './pages/Legal';
 import Safety from './pages/Safety';
 import AdminDashboard from './pages/AdminDashboard';
+import About from './pages/About';
 import { ShieldIcon, VelgoLogo } from './components/Brand';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { InstallPWA } from './components/InstallPWA';
@@ -163,16 +164,34 @@ const App: React.FC = () => {
                 setToast({ msg: 'New Message Received', type: 'info' });
             }
         )
+        // Notify Client when Worker applies
         .on(
             'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'bookings', filter: `worker_id=eq.${session.user.id}` },
-            () => setToast({ msg: 'New Job Request!', type: 'success' })
+            { event: 'INSERT', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` },
+            (payload) => {
+               // Only notify if user is the client (double check)
+               if (payload.new.client_id === session.user.id) {
+                   setToast({ msg: 'New Job Request!', type: 'success' });
+               }
+            }
         )
+        // Notify Client when Worker Accepts a direct request
         .on(
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` },
             (payload) => {
                 if (payload.new.status === 'accepted') setToast({ msg: 'Worker Accepted Your Job!', type: 'success' });
+            }
+        )
+        // Notify Worker when Client Accepts or Declines their application
+        .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `worker_id=eq.${session.user.id}` },
+            (payload) => {
+                const status = payload.new.status;
+                if (status === 'accepted') setToast({ msg: 'Hooray! Application Accepted.', type: 'success' });
+                // 'cancelled' is the status used when a client declines/cancels a request
+                if (status === 'cancelled') setToast({ msg: 'Update: Application Declined.', type: 'alert' });
             }
         )
         .subscribe();
@@ -223,7 +242,8 @@ const App: React.FC = () => {
         case 'signup': return <SignUp onToggle={() => setView('login')} initialRole={viewData || 'client'} />;
         case 'reset-password': return <ResetPassword onSuccess={() => setView('login')} />;
         case 'legal': return <Legal initialTab={viewData} onBack={() => setView('landing')} />;
-        default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => setView('login')} onViewLegal={(tab) => navigate('legal', tab)} />;
+        case 'about': return <About onBack={() => setView('landing')} />;
+        default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => setView('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => setView('about')} />;
       }
     }
 
@@ -245,6 +265,7 @@ const App: React.FC = () => {
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => setView('home')} onUpgrade={() => setView('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => setView('settings')} />;
       case 'safety': return <Safety profile={profile} onBack={() => setView('settings')} />;
+      case 'about': return <About onBack={() => setView('settings')} />;
       case 'admin': return <AdminDashboard onBack={() => setView('settings')} />;
       case 'change-password': return <ResetPassword onSuccess={() => { alert('Password Updated'); setView('settings'); }} />;
       case 'reset-password': return <ResetPassword onSuccess={() => { alert('Password Updated. Please log in.'); setView('login'); }} />;
@@ -273,7 +294,7 @@ const App: React.FC = () => {
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => setView('home')} />
                     <SidebarItem icon="fa-bolt-lightning" label="My Gigs" active={view === 'activity'} onClick={() => setView('activity')} />
                     <SidebarItem icon="fa-comments" label="Messages" active={['messages', 'chat'].includes(view)} onClick={() => setView('messages')} />
-                    <SidebarItem icon="fa-user-ninja" label="Profile & Settings" active={['profile', 'subscription', 'settings', 'legal', 'safety'].includes(view)} onClick={() => setView('profile')} />
+                    <SidebarItem icon="fa-user-ninja" label="Profile & Settings" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about'].includes(view)} onClick={() => setView('profile')} />
                 </nav>
                 <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-3">
@@ -314,7 +335,7 @@ const App: React.FC = () => {
               <i className="fa-solid fa-comments text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Chats</span>
             </button>
-            <button onClick={() => setView('profile')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => setView('profile')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-user-ninja text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Profile</span>
             </button>

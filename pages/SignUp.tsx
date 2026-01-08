@@ -83,26 +83,28 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white py-12 animate-fadeIn">
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white dark:bg-gray-900 py-12 animate-fadeIn transition-colors duration-200">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center justify-between">
-            <button onClick={onToggle} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"><i className="fa-solid fa-chevron-left"></i></button>
+            <button onClick={onToggle} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <i className="fa-solid fa-chevron-left"></i>
+            </button>
             <VelgoLogo className="h-8" />
             <div className="w-10"></div>
         </div>
 
         <div className="text-center">
-            <h1 className="text-2xl font-black text-gray-900">Create Account</h1>
-            <p className="text-sm text-gray-500 font-medium mt-1">Join Nigeria's fastest gig marketplace.</p>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white">Create Account</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Join Nigeria's fastest gig marketplace.</p>
         </div>
 
         <form onSubmit={handleSignUp} className="space-y-4">
           {error && <div className="p-4 bg-red-50 text-red-500 text-xs font-bold rounded-2xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{error}</span></div>}
 
           {/* Role Selection */}
-          <div className="bg-gray-50 p-1.5 rounded-2xl border border-gray-100 grid grid-cols-2 gap-2">
-             <button type="button" onClick={() => setRole('client')} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${role === 'client' ? 'bg-white text-brand shadow-sm scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}>Hire Help</button>
-             <button type="button" onClick={() => setRole('worker')} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${role === 'worker' ? 'bg-white text-brand shadow-sm scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}>Earn Money</button>
+          <div className="bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-2">
+             <button type="button" onClick={() => setRole('client')} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${role === 'client' ? 'bg-white text-brand shadow-sm scale-[1.02]' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>Hire Help</button>
+             <button type="button" onClick={() => setRole('worker')} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${role === 'worker' ? 'bg-white text-brand shadow-sm scale-[1.02]' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>Earn Money</button>
           </div>
 
           {/* Client Type */}
@@ -110,11 +112,11 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
              <div className="flex justify-center gap-6 py-1 animate-fadeIn">
                  <label className="flex items-center gap-2 cursor-pointer opacity-80 hover:opacity-100">
                      <input type="radio" checked={clientType === 'personal'} onChange={() => setClientType('personal')} className="accent-brand" />
-                     <span className="text-xs font-bold text-gray-700">Personal</span>
+                     <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Personal</span>
                  </label>
                  <label className="flex items-center gap-2 cursor-pointer opacity-80 hover:opacity-100">
                      <input type="radio" checked={clientType === 'enterprise'} onChange={() => setClientType('enterprise')} className="accent-brand" />
-                     <span className="text-xs font-bold text-gray-700">Business</span>
+                     <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Business</span>
                  </label>
              </div>
           )}
@@ -126,7 +128,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
             value={fullName} 
             onChange={e => setFullName(e.target.value)} 
             placeholder={role === 'client' && clientType === 'enterprise' ? "Business Name" : "Full Name"}
-            className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
+            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
           />
           
           <input 
@@ -135,7 +137,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
             value={phone} 
             onChange={e => setPhone(e.target.value)} 
             placeholder="Phone Number (e.g. 08012345678)"
-            className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
+            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
           />
 
           <input 
@@ -144,7 +146,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
             value={email} 
             onChange={e => setEmail(e.target.value)} 
             placeholder="Email Address"
-            className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
+            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
           />
 
           <div className="relative">
@@ -154,9 +156,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
                 placeholder="Password (Min 6 chars)"
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all pr-12"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all pr-12"
              />
-             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
           </div>
 
           <div className="relative">
@@ -166,9 +168,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
                 value={confirmPassword} 
                 onChange={e => setConfirmPassword(e.target.value)} 
                 placeholder="Confirm Password"
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all pr-12"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all pr-12"
              />
-             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"><i className={`fa-solid ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
           </div>
 
           <button 

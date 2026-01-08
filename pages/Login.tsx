@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { VelgoLogo } from '../components/Brand';
@@ -65,24 +66,31 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
   // Reset Password View
   if (isResetting) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white animate-fadeIn">
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white dark:bg-gray-900 animate-fadeIn transition-colors duration-200">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
             <VelgoLogo className="h-10 mx-auto mb-4" />
-            <h2 className="text-xl font-black text-gray-900">Reset Password</h2>
+            <h2 className="text-xl font-black text-gray-900 dark:text-white">Reset Password</h2>
           </div>
 
           {resetSent ? (
-            <div className="bg-green-50 p-6 rounded-[24px] text-center">
-              <i className="fa-solid fa-check-circle text-3xl text-green-600 mb-2"></i>
-              <p className="text-sm text-gray-700 font-bold">Recovery link sent to {email}</p>
+            <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-[24px] text-center border border-green-100 dark:border-green-800">
+              <i className="fa-solid fa-check-circle text-3xl text-green-600 dark:text-green-400 mb-2"></i>
+              <p className="text-sm text-gray-700 dark:text-gray-200 font-bold">Recovery link sent to {email}</p>
               <button onClick={() => { setIsResetting(false); setResetSent(false); }} className="mt-4 text-xs font-black text-brand uppercase">Back to Login</button>
             </div>
           ) : (
             <form onSubmit={handleResetPassword} className="space-y-4">
               {error && <div className="p-3 bg-red-50 text-red-500 text-xs rounded-xl font-bold">{error}</div>}
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none border border-gray-100" placeholder="Enter your email" />
-              <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest">{loading ? 'Sending...' : 'Send Link'}</button>
+              <input 
+                type="email" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                className="w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl text-sm font-bold outline-none border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400" 
+                placeholder="Enter your email" 
+              />
+              <button type="submit" disabled={loading} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest">{loading ? 'Sending...' : 'Send Link'}</button>
               <button type="button" onClick={() => setIsResetting(false)} className="w-full py-4 text-xs font-bold text-gray-400 uppercase">Cancel</button>
             </form>
           )}
@@ -92,12 +100,12 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white animate-fadeIn">
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white dark:bg-gray-900 animate-fadeIn transition-colors duration-200">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
           <VelgoLogo className="h-12 mx-auto mb-6" />
-          <h1 className="text-2xl font-black text-gray-900">Welcome Back</h1>
-          <p className="text-sm text-gray-500 font-medium mt-2">Sign in to your account.</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Welcome Back</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-2">Sign in to your account.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -110,7 +118,7 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
               required 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
               placeholder="e.g. name@example.com"
             />
           </div>
@@ -126,7 +134,7 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
                 required 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
                 placeholder="••••••••"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
@@ -143,7 +151,7 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
         </form>
 
         <div className="text-center pt-4">
-          <p className="text-xs text-gray-500 font-medium">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
             New to Velgo? <button onClick={onToggle} className="text-brand font-black uppercase ml-1">Create Account</button>
           </p>
         </div>

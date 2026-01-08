@@ -42,19 +42,19 @@ const SubscriptionCard: React.FC<{
   };
 
   return (
-    <div className={`p-6 rounded-[32px] border ${isActive ? 'border-brand bg-brand/5' : 'border-gray-100 bg-white'} shadow-sm space-y-4 relative overflow-hidden transition-all duration-300`}>
+    <div className={`p-6 rounded-[32px] border ${isActive ? 'border-brand bg-brand/5 dark:bg-brand/10' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'} shadow-sm space-y-4 relative overflow-hidden transition-all duration-300`}>
       {isActive && <div className="absolute top-0 right-0 bg-brand text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl">Current Plan</div>}
       
       <div className="flex justify-between items-start">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{tier.name}</span>
-          <h3 className="text-2xl font-black pt-1">₦{tier.price.toLocaleString()} <span className="text-sm font-medium text-gray-400">/mo</span></h3>
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400">{tier.name}</span>
+          <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{tier.price.toLocaleString()} <span className="text-sm font-medium text-gray-400 dark:text-gray-500">/mo</span></h3>
         </div>
       </div>
 
       <ul className="space-y-2">
         {tier.features.map((f, i) => (
-          <li key={i} className="flex items-center gap-2 text-xs font-bold text-gray-600">
+          <li key={i} className="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
             <i className="fa-solid fa-check text-brand text-[10px]"></i> {f}
           </li>
         ))}
@@ -62,7 +62,7 @@ const SubscriptionCard: React.FC<{
 
       <button 
         onClick={handleUpgrade}
-        className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all ${isActive ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-brand text-white shadow-lg active:scale-95'}`}
+        className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all ${isActive ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'bg-brand text-white shadow-lg active:scale-95'}`}
       >
         {isActive ? 'Active Plan' : (tier.price === 0 ? 'Downgrade to Basic' : 'Upgrade Now')}
       </button>
@@ -103,12 +103,12 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
   const userEmail = sessionEmail || (profile?.email) || `${profile?.id}@velgo.ng`;
 
   return (
-    <div className="p-4 space-y-6 pb-24 bg-white min-h-screen">
+    <div className="p-4 space-y-6 pb-24 bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
       <div className="flex items-center gap-4 py-4">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-            <i className="fa-solid fa-chevron-left text-gray-500"></i>
+        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center transition-colors">
+            <i className="fa-solid fa-chevron-left text-gray-500 dark:text-gray-400"></i>
         </button>
-        <h1 className="text-2xl font-black">Choose Plan</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Choose Plan</h1>
       </div>
       
       {TIERS.map(t => (
@@ -122,9 +122,9 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
         />
       ))}
 
-      <div className="bg-gray-50 p-4 rounded-2xl text-center">
+      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl text-center transition-colors">
           <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Secure Payment</p>
-          <div className="flex justify-center gap-2 text-gray-300 text-xl">
+          <div className="flex justify-center gap-2 text-gray-300 dark:text-gray-600 text-xl">
               <i className="fa-brands fa-cc-visa"></i>
               <i className="fa-brands fa-cc-mastercard"></i>
               <i className="fa-solid fa-lock"></i>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, NotificationPreferences } from '../types';
@@ -30,6 +31,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null); // New state for inline errors
   const [isVerified, setIsVerified] = useState(false);
 
   // Editable Fields
@@ -100,11 +102,12 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const handleReAuth = async () => {
     if (!profile?.id) return;
     setAuthLoading(true);
+    setAuthError(null);
     
     try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !user.email) {
-            alert("Could not verify user identity. Please relogin.");
+            setAuthError("Could not verify user identity. Please relogin.");
             setAuthLoading(false);
             return;
         }
@@ -115,14 +118,14 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
         });
 
         if (error) {
-            alert("Incorrect password. Please try again.");
+            setAuthError("Incorrect password. Please try again.");
             setAuthLoading(false);
         } else {
             setIsVerified(true);
             setAuthLoading(false);
         }
     } catch (e) {
-        alert("Verification failed due to network error.");
+        setAuthError("Verification failed due to network error.");
         setAuthLoading(false);
     }
   };
@@ -211,7 +214,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                 </button>
                 
                 {profile?.role === 'worker' && (
-                    <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
+                    <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); setAuthError(null); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-solid fa-building-columns text-xs"></i></div>
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Bank Details</span>
@@ -312,7 +315,47 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
              </div>
         </section>
 
-        {/* RESTORED: Sign Out Button */}
+        {/* About & Community */}
+        <section>
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Community</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-5 space-y-4">
+                 <div className="text-center pb-4 border-b border-gray-50 dark:border-gray-700">
+                     <p className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
+                         Velgo empowers Nigerian workers. Follow us for updates, grants, and community stories.
+                     </p>
+                 </div>
+
+                 {/* Social Media Links */}
+                 <div className="flex justify-around mb-4">
+                     <a href="https://instagram.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center"><i className="fa-brands fa-instagram"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Insta</span>
+                     </a>
+                     <a href="https://twitter.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-400 flex items-center justify-center"><i className="fa-brands fa-twitter"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Twitter</span>
+                     </a>
+                     <a href="https://facebook.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center"><i className="fa-brands fa-facebook-f"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Facebook</span>
+                     </a>
+                 </div>
+
+                 {/* New About Button */}
+                 <button onClick={() => onNavigate('about')} className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl flex items-center justify-between active:scale-95 transition-transform">
+                     <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center"><i className="fa-solid fa-circle-info text-gray-500 dark:text-gray-300"></i></div>
+                         <div className="text-left">
+                             <p className="text-xs font-black uppercase text-gray-900 dark:text-white">About Velgo</p>
+                             <p className="text-[9px] text-gray-400">Our Story & FAQ</p>
+                         </div>
+                     </div>
+                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                 </button>
+            </div>
+        </section>
+
+        {/* Sign Out Button */}
         <button 
             onClick={handleSignOut} 
             disabled={signingOut} 
@@ -336,7 +379,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
               <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-4">
                   <div className="flex justify-between items-center">
                       <h3 className="text-lg font-black text-gray-900 dark:text-white">Bank Details</h3>
-                      <button onClick={() => { setReAuthMode(null); setPassword(''); }} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
+                      <button onClick={() => { setReAuthMode(null); setPassword(''); setAuthError(null); }} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
                   </div>
 
                   {!isVerified ? (
@@ -344,14 +387,20 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl">
                               <i className="fa-solid fa-lock mr-2"></i>Security Check Required
                           </p>
-                          <input 
-                              type={showPassword ? "text" : "password"} 
-                              value={password} 
-                              onChange={e => setPassword(e.target.value)} 
-                              placeholder="Enter Password to Edit" 
-                              className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" 
-                          />
-                           <button onClick={() => setShowPassword(!showPassword)} className="text-[10px] font-black uppercase text-gray-400">{showPassword ? 'Hide' : 'Show'} Password</button>
+                          
+                          {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{authError}</span></div>}
+
+                          <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                value={password} 
+                                onChange={e => setPassword(e.target.value)} 
+                                placeholder="Enter Password" 
+                                className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400 pr-12" 
+                            />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                          </div>
+                          
                           <button 
                               onClick={handleReAuth} 
                               disabled={authLoading || !password} 
@@ -363,9 +412,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                   ) : (
                       <div className="space-y-3">
                           <p className="text-[10px] font-black text-green-500 uppercase tracking-widest text-center mb-2">Identity Verified</p>
-                          <input value={newBankName} onChange={e => setNewBankName(e.target.value)} placeholder="Bank Name (e.g. GTBank)" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <input value={newAccountNum} onChange={e => setNewAccountNum(e.target.value)} placeholder="Account Number" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <input value={newAccountName} onChange={e => setNewAccountName(e.target.value)} placeholder="Account Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
+                          <input value={newBankName} onChange={e => setNewBankName(e.target.value)} placeholder="Bank Name (e.g. GTBank)" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
+                          <input value={newAccountNum} onChange={e => setNewAccountNum(e.target.value)} placeholder="Account Number" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
+                          <input value={newAccountName} onChange={e => setNewAccountName(e.target.value)} placeholder="Account Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
                           <button 
                               onClick={saveBankDetails} 
                               disabled={bankSaving} 

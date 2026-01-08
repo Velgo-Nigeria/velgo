@@ -8,9 +8,10 @@ interface LandingProps {
   onGetStarted: (role: UserRole) => void;
   onLogin: () => void;
   onViewLegal: (tab: string) => void;
+  onViewAbout: () => void;
 }
 
-const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal }) => {
+const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout }) => {
   const [reviews, setReviews] = useState<any[]>([]);
   
   // Review Form State
@@ -116,7 +117,24 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal })
          </div>
       </div>
 
-      {/* Rate Us Section (MOVED UP) */}
+      {/* About Us Section */}
+      <div className="py-12 px-6 bg-white border-b border-gray-50">
+           <div className="max-w-2xl mx-auto text-center space-y-4">
+              <div className="w-12 h-12 bg-gray-900 text-white rounded-full flex items-center justify-center mx-auto mb-2"><i className="fa-solid fa-quote-left"></i></div>
+              <h2 className="text-2xl font-black text-gray-900">About Velgo</h2>
+              <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                 Velgo is Nigeria's premier zero-commission gig marketplace. Born in Edo State, our mission is to empower local artisans and professionals by connecting them directly with clients—no middleman, no hidden fees. We believe in the dignity of labour and the power of technology to bridge the gap.
+              </p>
+              <button 
+                  onClick={onViewAbout} 
+                  className="inline-block mt-2 text-xs font-black text-brand uppercase tracking-widest border-b-2 border-brand/20 pb-1 hover:border-brand transition-colors"
+              >
+                  Read Our Story & FAQs
+              </button>
+           </div>
+      </div>
+
+      {/* Rate Us Section */}
       <div className="bg-gray-900 text-white py-12 px-6">
         <div className="max-w-sm mx-auto space-y-6">
             <div className="text-center">
@@ -173,7 +191,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal })
         </div>
       </div>
 
-      {/* Community Reviews (MOVED DOWN) */}
+      {/* Community Reviews */}
       <div className="py-12 px-6 bg-white space-y-6">
         <div className="text-center">
              <h2 className="text-2xl font-black text-gray-900">Naija Loves Velgo</h2>
@@ -199,9 +217,17 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal })
         </div>
       </div>
 
-      {/* Footer / Copyright (Separated) */}
-      <div className="bg-gray-50 border-t border-gray-100 py-8 text-center space-y-3 mt-auto">
-          <VelgoLogo className="h-6 mx-auto opacity-30 grayscale mb-2" />
+      {/* Footer / Copyright */}
+      <div className="bg-gray-50 border-t border-gray-100 py-10 text-center space-y-6 mt-auto">
+          <VelgoLogo className="h-6 mx-auto opacity-30 grayscale" />
+          
+          <div className="flex justify-center gap-6">
+             <a href="https://facebook.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-600 transition-all"><i className="fa-brands fa-facebook-f"></i></a>
+             <a href="https://twitter.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-400 hover:border-blue-400 transition-all"><i className="fa-brands fa-twitter"></i></a>
+             <a href="https://instagram.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-pink-600 hover:border-pink-600 transition-all"><i className="fa-brands fa-instagram"></i></a>
+             <a href="https://linkedin.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-700 hover:border-blue-700 transition-all"><i className="fa-brands fa-linkedin-in"></i></a>
+          </div>
+
           <div className="flex justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase">
               <button onClick={() => onViewLegal('tos')}>Terms</button>
               <button onClick={() => onViewLegal('privacy')}>Privacy</button>

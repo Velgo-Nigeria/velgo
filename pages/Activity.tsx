@@ -18,6 +18,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [ratingBooking, setRatingBooking] = useState<any>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // New State for Details Modal
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<any>(null);
 
   const fetchActivity = useCallback(async () => {
     if (!profile) return;
@@ -26,7 +29,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     const partnerColumn = profile.role === 'client' ? 'worker_id' : 'client_id';
     const { data: bookingsData } = await safeFetch<any[]>(async () => 
       await supabase.from('bookings')
-        .select(`*, profiles:${partnerColumn}(*, subscription_tier, task_count), posted_tasks:task_id(title)`)
+        .select(`*, profiles:${partnerColumn}(*, subscription_tier, task_count), posted_tasks:task_id(title, description, budget)`)
         .eq(profile.role === 'client' ? 'client_id' : 'worker_id', profile.id)
         .order('created_at', { ascending: false })
     );
@@ -101,6 +104,69 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
   const showInvoiceGenerator = profile && ['standard', 'pro', 'enterprise'].includes(profile.subscription_tier || '');
 
+  const HistoryModal = () => {
+    if (!viewingHistoryItem) return null;
+    const item = viewingHistoryItem;
+    const isTaskObject = !!item.title && !item.task_id;
+    const partnerName = isTaskObject ? (item.profiles?.full_name || 'Unassigned') : (item.profiles?.full_name || 'User');
+    const title = isTaskObject ? item.title : (item.posted_tasks?.title || 'Direct Hire');
+    const price = isTaskObject ? item.budget : (item.quote_price || item.profiles?.starting_price || 0);
+    const date = new Date(item.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const description = isTaskObject ? item.description : item.posted_tasks?.description || 'Direct Service Request';
+
+    return (
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-[32px] p-6 w-full max-w-sm space-y-6 max-h-[80vh] overflow-y-auto">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Job Receipt</p>
+                        <h3 className="text-xl font-black text-gray-900 mt-1">{title}</h3>
+                    </div>
+                    <button onClick={() => setViewingHistoryItem(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-500">Status</span>
+                        <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${item.status === 'completed' ? 'bg-green-100 text-green-700' : item.status === 'cancelled' ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-600'}`}>
+                            {item.status}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-500">Date</span>
+                        <span className="text-xs font-bold text-gray-900">{date}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-gray-200 pt-2 mt-2">
+                        <span className="text-xs font-bold text-gray-500">Total Price</span>
+                        <span className="text-lg font-black text-brand">₦{price.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Other Party</p>
+                    <div className="flex items-center gap-3">
+                         <img src={isTaskObject ? item.profiles?.avatar_url : item.profiles?.avatar_url} className="w-10 h-10 rounded-full bg-gray-200" />
+                         <span className="font-bold text-sm text-gray-900">{partnerName}</span>
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Job Description</p>
+                    <p className="text-xs text-gray-600 leading-relaxed font-medium bg-gray-50 p-3 rounded-xl">
+                        {description}
+                    </p>
+                </div>
+
+                {item.status === 'cancelled' && (
+                    <div className="bg-red-50 p-3 rounded-xl text-center">
+                         <p className="text-xs text-red-600 font-bold">This job was declined or cancelled.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+  };
+
   const RatingModal = () => {
     const [stars, setStars] = useState(0);
     const [text, setText] = useState('');
@@ -150,6 +216,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
   return (
     <div className="bg-white min-h-screen">
+      {viewingHistoryItem && <HistoryModal />}
       {selectedPayout && (
           <div className="fixed inset-0 bg-white z-[100] p-6 flex flex-col safe-bottom overflow-y-auto animate-fadeIn">
               <h2 className="text-3xl font-black text-gray-900 uppercase text-center mt-10">Payment Required</h2>
@@ -221,7 +288,11 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 let price = isTaskObject ? item.budget : (item.quote_price || item.profiles?.starting_price || 0);
 
                 return (
-                <div key={item.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4 relative overflow-hidden animate-fadeIn h-full">
+                <div 
+                    key={item.id} 
+                    onClick={() => setViewingHistoryItem(item)}
+                    className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4 relative overflow-hidden animate-fadeIn h-full active:scale-[0.98] transition-all cursor-pointer"
+                >
                     <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase ${isTaskObject ? 'bg-gray-900 text-white' : 'bg-brand/10 text-brand'}`}>{isTaskObject ? 'Your Post' : (isApplication ? 'Application' : 'Direct Request')}</div>
                     <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl border bg-gray-50 flex items-center justify-center text-gray-300 font-bold text-xl">{partnerName[0]}</div>
@@ -233,20 +304,20 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
                     {!isTaskObject && item.status === 'pending' && (
                         <div className="flex gap-2 w-full">
-                            <button onClick={() => updateBookingStatus(item, 'cancelled')} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-black text-xs">DECLINE</button>
-                            {profile?.role === 'worker' && !isApplication && <button onClick={() => updateBookingStatus(item, 'accepted')} className="flex-1 bg-brand text-white py-3 rounded-xl font-black text-xs">ACCEPT</button>}
-                            {profile?.role === 'client' && <button onClick={() => updateBookingStatus(item, 'accepted')} className="flex-1 bg-brand text-white py-3 rounded-xl font-black text-xs">ACCEPT</button>}
+                            <button onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-black text-xs">DECLINE</button>
+                            {profile?.role === 'worker' && !isApplication && <button onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} className="flex-1 bg-brand text-white py-3 rounded-xl font-black text-xs">ACCEPT</button>}
+                            {profile?.role === 'client' && <button onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} className="flex-1 bg-brand text-white py-3 rounded-xl font-black text-xs">ACCEPT</button>}
                             {profile?.role === 'worker' && isApplication && <div className="flex-1 bg-gray-50 py-3 rounded-xl text-center text-[10px] text-gray-400 font-bold uppercase">Pending...</div>}
                         </div>
                     )}
                     {!isTaskObject && ['accepted'].includes(item.status) && (
                         <div className="flex gap-2">
-                            <button onClick={() => onOpenChat(profile?.role === 'client' ? item.worker_id : item.client_id)} className="flex-1 bg-gray-900 text-white py-3 rounded-xl font-black text-xs">CHAT</button>
-                            {profile?.role === 'client' && <button onClick={() => updateBookingStatus(item, 'completed')} className="flex-1 border-2 border-brand text-brand py-3 rounded-xl font-black text-xs uppercase">COMPLETE</button>}
+                            <button onClick={(e) => { e.stopPropagation(); onOpenChat(profile?.role === 'client' ? item.worker_id : item.client_id); }} className="flex-1 bg-gray-900 text-white py-3 rounded-xl font-black text-xs">CHAT</button>
+                            {profile?.role === 'client' && <button onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'completed'); }} className="flex-1 border-2 border-brand text-brand py-3 rounded-xl font-black text-xs uppercase">COMPLETE</button>}
                         </div>
                     )}
                     {activeTab === 'history' && !isTaskObject && item.status === 'completed' && (!item.rating && !item.client_rating) && (
-                        <button onClick={() => setRatingBooking(item)} className="w-full bg-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-md animate-pulse">Rate User</button>
+                        <button onClick={(e) => { e.stopPropagation(); setRatingBooking(item); }} className="w-full bg-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-md animate-pulse">Rate User</button>
                     )}
                 </div>
                 );
