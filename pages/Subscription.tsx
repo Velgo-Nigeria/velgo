@@ -20,13 +20,16 @@ const SubscriptionCard: React.FC<{
     reference: (new Date()).getTime().toString(),
     email: email,
     amount: tier.price * 100, // Paystack expects amount in kobo
-    publicKey: publicKey,
+    publicKey: publicKey.trim(), // Ensure no whitespace
   };
 
   // Initialize the hook at the top level of this sub-component
   const initializePayment = usePaystackPayment(config);
 
   const handleUpgrade = () => {
+    console.log("Upgrade button clicked for tier:", tier.id);
+    console.log("Using Public Key:", publicKey);
+    
     if (isActive) return;
     
     // If it's the free tier, just run success logic immediately
@@ -34,10 +37,18 @@ const SubscriptionCard: React.FC<{
       onSuccess('basic');
     } else {
       // Trigger Paystack Modal
-      initializePayment({ 
-        onSuccess: () => onSuccess(tier.id), 
-        onClose: () => console.log("Payment closed") 
-      });
+      try {
+        initializePayment(
+          () => {
+            console.log("Payment success");
+            onSuccess(tier.id);
+          }, 
+          () => console.log("Payment closed")
+        );
+      } catch (err) {
+        console.error("Paystack initialization failed:", err);
+        alert("Payment system could not start. Please check console for details.");
+      }
     }
   };
 
@@ -61,6 +72,7 @@ const SubscriptionCard: React.FC<{
       </ul>
 
       <button 
+        type="button"
         onClick={handleUpgrade}
         className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all ${isActive ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'bg-brand text-white shadow-lg active:scale-95'}`}
       >
@@ -93,14 +105,11 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
     onBack();
   }, [profile, onRefreshProfile, onBack]);
 
-  // Use Env Var or Fallback to the provided Live Key
-  // PRIORITY: Import Meta (Vite) -> Process Env (Fallback) -> Hardcoded Fallback
-  const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || 
-                    (typeof process !== 'undefined' ? process.env.VITE_PAYSTACK_PUBLIC_KEY : '') || 
-                    'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';
+  // Use the verified key provided by user
+  const publicKey = 'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';
 
-  // Fallback email logic
-  const userEmail = sessionEmail || (profile?.email) || `${profile?.id}@velgo.ng`;
+  // Robust Fallback email logic
+  const userEmail = sessionEmail || (profile?.email) || (profile?.id ? `${profile.id}@velgo.ng` : 'guest@velgo.ng');
 
   return (
     <div className="p-4 space-y-6 pb-24 bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
