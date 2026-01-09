@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, PostedTask } from '../types';
@@ -225,22 +226,27 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
       {/* Header / Map Placeholder */}
       <div className="relative h-[35vh] bg-gray-900 overflow-hidden">
         <div className="absolute inset-0 opacity-40">
-            {/* Abstract Pattern or Map Placeholder */}
-            <div className="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            {task.image_url ? (
+               <img src={task.image_url} className="w-full h-full object-cover opacity-80" />
+            ) : (
+               <div className="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            )}
         </div>
         <button onClick={onBack} className="absolute top-6 left-6 z-20 bg-white/20 backdrop-blur-xl text-white p-4 rounded-2xl active:scale-95 transition-transform">
             <i className="fa-solid fa-chevron-left"></i>
         </button>
         
-        <div className="absolute bottom-6 left-6 right-6 text-white">
+        <div className="absolute bottom-6 left-6 right-6 text-white z-20">
             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${task.urgency === 'emergency' ? 'bg-red-500' : 'bg-brand'}`}>
                 {task.urgency}
             </span>
-            <h1 className="text-3xl font-black mt-3 leading-tight shadow-sm">{task.title}</h1>
+            <h1 className="text-3xl font-black mt-3 leading-tight shadow-sm drop-shadow-md">{task.title}</h1>
             <div className="flex items-center gap-2 mt-2 opacity-90 text-sm font-bold">
                 <i className="fa-solid fa-location-dot text-brand-light"></i> {task.location}
             </div>
         </div>
+        {/* Gradient Overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
       </div>
 
       <div className="px-6 -mt-6 relative z-10">

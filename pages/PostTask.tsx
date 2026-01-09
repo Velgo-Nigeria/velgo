@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../types';
@@ -16,6 +17,11 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [urgency, setUrgency] = useState('normal');
   const [loading, setLoading] = useState(false);
   
+  // Image State
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Location Logic
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
@@ -41,6 +47,24 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
     }
   }, [selectedState]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size too large. Max 5MB.");
+        return;
+      }
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -53,29 +77,54 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
     }
 
     setLoading(true);
+    let imageUrl = null;
 
-    const fullLocation = `${selectedLGA}, ${selectedState}`;
+    try {
+      // 1. Upload Image if exists
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `task-${profile.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('task-images')
+          .upload(fileName, imageFile);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('task-images')
+          .getPublicUrl(fileName);
+          
+        imageUrl = publicUrl;
+      }
 
-    const { error } = await supabase.from('posted_tasks').insert([{
-      client_id: profile.id,
-      title,
-      description,
-      budget: parseInt(budget) || 0,
-      location: fullLocation,
-      category,
-      subcategory,
-      urgency
-    }]);
+      const fullLocation = `${selectedLGA}, ${selectedState}`;
 
-    if (!error) {
+      // 2. Insert Task
+      const { error } = await supabase.from('posted_tasks').insert([{
+        client_id: profile.id,
+        title,
+        description,
+        budget: parseInt(budget) || 0,
+        location: fullLocation,
+        category,
+        subcategory,
+        urgency,
+        image_url: imageUrl
+      }]);
+
+      if (error) throw error;
+
       // Database Trigger automatically increments 'task_count' on insert.
       onRefreshProfile();
       alert("Job Posted Successfully!");
       onBack();
-    } else {
-      alert(error.message);
+
+    } catch (error: any) {
+      alert("Error posting job: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAiEnhance = async () => {
@@ -250,6 +299,25 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Job Title</label>
           <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+        </div>
+
+        {/* Image Upload */}
+        <div>
+           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Photo (Optional)</label>
+           {previewUrl ? (
+             <div className="relative w-full h-48 rounded-2xl overflow-hidden group">
+               <img src={previewUrl} className="w-full h-full object-cover" />
+               <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md active:scale-95">
+                 <i className="fa-solid fa-xmark"></i>
+               </button>
+             </div>
+           ) : (
+             <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-all">
+               <i className="fa-solid fa-camera text-2xl text-gray-300 mb-2"></i>
+               <p className="text-xs font-bold text-gray-400">Tap to add photo</p>
+               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+             </div>
+           )}
         </div>
 
         <div>

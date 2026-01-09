@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'client' | 'worker' | 'admin';
 export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
 export type ClientType = 'personal' | 'enterprise';
@@ -65,6 +66,7 @@ export interface PostedTask {
   category: string;
   subcategory?: string;
   created_at: string;
+  image_url?: string; // New: Task Image
 }
 
 export interface Booking {
