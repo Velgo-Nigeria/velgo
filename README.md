@@ -1,50 +1,32 @@
-
 # Velgo Nigeria
 
-The trusted app bridging the gap between verified local Workers and Clients in Nigeria. Platform ensures 100% of service fees go directly to the worker.
+The trusted app bridging the gap between verified local Workers and Clients in Nigeria.
 
 ## 🚀 Deployment Guide
 
-### Step 1: Push to GitHub
-Click the **"Save to GitHub"** button at the top right of your editor to save this project to your GitHub account.
-
-### Step 2: Database Setup (Crucial!)
+### Step 1: Database Setup
 1. Go to your [Supabase Dashboard](https://supabase.com/dashboard).
-2. Create a new project.
-3. Once ready, go to the **SQL Editor** tab in the sidebar.
-4. Click **"New Query"**.
-5. Copy the entire content of `fix_database.sql` from this project.
-6. Paste it into the SQL Editor and click **"Run"**.
-   - *This will create all the necessary tables, security policies, and automation triggers for the app to work.*
+2. Go to **SQL Editor** > **New Query**.
+3. Copy the entire content of **`fix_database.sql`** from this project.
+4. Paste and click **Run**.
 
-### Step 3: Deploy to Vercel
-1. Log in to [Vercel](https://vercel.com).
-2. Click **Add New...** > **Project**.
-3. Select the `velgo` repository you just created.
-4. **Important**: Under **Environment Variables**, add the following keys matching your project settings:
-
-| Variable Name | Description |
-|---------------|-------------|
-| `VITE_SUPABASE_URL` | Your Supabase Project URL |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase Anon/Public Key |
-| `VITE_PAYSTACK_PUBLIC_KEY` | Your Paystack Public Key (starts with `pk_live_` or `pk_test_`) |
-| `GEMINI_API_KEY` | Your Google Gemini API Key |
-
-5. Click **Deploy**.
+### Step 2: Environment Variables
+The `.env` file has been created with your keys. 
+- **Local:** No action needed, `npm run dev` will pick it up.
+- **Vercel:** Add these to your Project Settings > Environment Variables:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+  - `VITE_PAYSTACK_PUBLIC_KEY`
+  - `GEMINI_API_KEY`
 
 ## ✨ Features
-- **0% Commission Model**: Workers keep 100% of their earnings.
-- **Verification System**: Visual badges for verified IDs.
-- **AI Integration**: Text translation (English ↔ Pidgin) and Voice-to-Job posting.
-- **PWA Ready**: Installable on mobile devices.
+- **0% Commission Model**
+- **Verification System**
+- **AI Integration (Gemini)**
+- **PWA Ready**
 
-## 🛠️ Local Development
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Create a `.env` file with the variables listed above.
-3. Run the app:
-   ```bash
-   npm run dev
-   ```
+## 🛠️ Run Locally
+```bash
+npm install
+npm run dev
+```

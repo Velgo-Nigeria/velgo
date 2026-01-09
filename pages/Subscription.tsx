@@ -28,7 +28,6 @@ const SubscriptionCard: React.FC<{
 
   const handleUpgrade = () => {
     console.log("Upgrade button clicked for tier:", tier.id);
-    console.log("Using Public Key:", publicKey);
     
     if (isActive) return;
     
@@ -38,12 +37,15 @@ const SubscriptionCard: React.FC<{
     } else {
       // Trigger Paystack Modal
       try {
-        initializePayment(
+        // Fix: initializePayment expects a single callback in some type definitions
+        (initializePayment as any)(
           () => {
             console.log("Payment success");
             onSuccess(tier.id);
-          }, 
-          () => console.log("Payment closed")
+          },
+          () => {
+             console.log("Payment closed");
+          }
         );
       } catch (err) {
         console.error("Paystack initialization failed:", err);
@@ -105,8 +107,8 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
     onBack();
   }, [profile, onRefreshProfile, onBack]);
 
-  // Use the verified key provided by user
-  const publicKey = 'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';
+  // Use Env Var if available, otherwise use the Verified Hardcoded Key
+  const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';
 
   // Robust Fallback email logic
   const userEmail = sessionEmail || (profile?.email) || (profile?.id ? `${profile.id}@velgo.ng` : 'guest@velgo.ng');
