@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
-import { Profile } from '../types';
+import { Profile, SubscriptionTier } from '../types';
+import { TIERS } from '../lib/constants';
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'verify'>('verify');
@@ -58,13 +59,11 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
         if (result.error) {
             console.error("Admin Fetch Error:", result.error);
-            // Handle missing tables/columns gracefully
             if (result.error.code === '42P01' || (result.error.message && result.error.message.includes('relation'))) {
                setErrorMsg("Database Setup Required: Missing tables. Please run the provided SQL script.");
             } else if (result.error.code === '42501') {
                setErrorMsg("Permission Denied: You may not be an admin, or RLS policies need updating via SQL.");
             } else {
-               // Fix for [object Object] error: properly extract message or stringify the object
                const msg = result.error.message || result.error.details || JSON.stringify(result.error);
                setErrorMsg(`Data Error: ${msg}`);
             }
@@ -84,40 +83,68 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleVerify = async (e: React.MouseEvent, id: string, approve: boolean) => {
       e.preventDefault();
       e.stopPropagation(); 
-      
       if (processingId) return;
       
       const confirmMsg = approve ? "Approve this user?" : "Reject verification?";
       if(!window.confirm(confirmMsg)) return;
       
       setProcessingId(id);
-      
       try {
           const updates = approve ? { is_verified: true, nin_image_url: null } : { nin_image_url: null };
-          
           const { error } = await supabase.from('profiles').update(updates).eq('id', id); 
-          
           if (error) throw error;
           
           setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
           alert(approve ? "User Approved!" : "User Rejected.");
       } catch (err: any) {
-          if (err.code === '42501') alert("Error: Admin policies not set. Run the SQL script.");
-          else alert("Action failed: " + err.message);
+          alert("Action failed: " + err.message);
       } finally {
           setProcessingId(null);
       }
   };
 
+  const handleManualTierUpdate = async (userId: string, newTier: SubscriptionTier) => {
+      // 1. Optimistic Update: Change UI immediately to reflect choice
+      const previousUsers = [...users];
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription_tier: newTier } : u));
+      
+      // 2. Lock to prevent double submission
+      setProcessingId(userId);
+
+      // Set expiry to 30 days from now
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+
+      // 3. Perform actual update
+      const { data, error } = await supabase.from('profiles').update({
+          subscription_tier: newTier,
+          subscription_end_date: endDate.toISOString(),
+          task_count: 0 // Reset their count so they can work
+      }).eq('id', userId).select();
+
+      setProcessingId(null);
+
+      // 4. Handle Failure (Revert UI)
+      if (error || !data || data.length === 0) {
+          setUsers(previousUsers); // Revert
+          console.error("Update failed:", error);
+          
+          if (error?.message?.includes('policy') || error?.code === '42501') {
+             alert("Database Policy Error: Infinite recursion detected. \n\nPlease run the new 'admin_fix_v2.sql' script to fix the security policies.");
+          } else if (!data || data.length === 0) {
+             alert("Update Blocked: The database silently rejected the update. \n\nPlease run the 'admin_fix_v2.sql' script to fix RLS.");
+          } else {
+             alert("Failed to update tier: " + error?.message);
+          }
+      } 
+      // Success is silent because UI already updated optimistically
+  };
+
   const handleSafetyAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
       const status = action === 'resolve' ? 'resolved' : 'dismissed';
       const { error } = await supabase.from('safety_reports').update({ status }).eq('id', reportId);
-      if (error) {
-           if (error.code === '42501') alert("Error: Admin policies not set. Run the SQL script.");
-           else alert("Failed: " + error.message);
-      } else {
-          fetchData();
-      }
+      if (error) alert("Failed: " + error.message);
+      else fetchData();
   };
 
   const openSupportChatFromSafety = (user: any) => {
@@ -246,16 +273,27 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 ) : <span className="text-gray-400">No phone</span>}
                             </div>
 
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-50">
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'worker' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {user.role}
                                 </span>
-                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.subscription_tier === 'basic' ? 'bg-gray-100 text-gray-500' : 'bg-brand/10 text-brand'}`}>
-                                    {user.subscription_tier} Plan
-                                </span>
-                                <span className="text-[9px] text-gray-400 font-bold ml-auto">
-                                    {new Date(user.last_reset_date || Date.now()).toLocaleDateString()}
-                                </span>
+                                
+                                {/* Manual Tier Adjustment */}
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[9px] font-bold text-gray-400">Plan:</span>
+                                    <div className="relative">
+                                        <select 
+                                            value={user.subscription_tier || 'basic'} 
+                                            onChange={(e) => handleManualTierUpdate(user.id, e.target.value as SubscriptionTier)}
+                                            disabled={processingId === user.id}
+                                            className="bg-gray-100 text-xs font-bold py-1 pl-2 pr-6 rounded-lg border-none outline-none focus:ring-1 focus:ring-brand disabled:opacity-50 appearance-none text-gray-900"
+                                        >
+                                            {TIERS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        </select>
+                                        <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                    {processingId === user.id && <i className="fa-solid fa-circle-notch animate-spin text-gray-400 text-xs"></i>}
+                                </div>
                             </div>
                         </div>
                     ))}
