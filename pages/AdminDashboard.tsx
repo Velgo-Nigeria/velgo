@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, SubscriptionTier } from '../types';
@@ -48,7 +47,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         } else if (activeTab === 'safety') {
             result = await safeFetch(() => supabase
                 .from('safety_reports')
-                .select('*, profiles(full_name, phone_number, id)')
+                .select('*, profiles(full_name, phone_number, id, email, avatar_url)')
                 .order('created_at', { ascending: false }));
         } else {
             result = await safeFetch(() => supabase
@@ -58,13 +57,27 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         }
 
         if (result.error) {
-            console.error("Admin Fetch Error:", result.error);
-            if (result.error.code === '42P01' || (result.error.message && result.error.message.includes('relation'))) {
+            console.error("Admin Fetch Error:", JSON.stringify(result.error, null, 2));
+            const err = result.error;
+            
+            if (err.code === '42P01' || (err.message && typeof err.message === 'string' && err.message.includes('relation'))) {
                setErrorMsg("Database Setup Required: Missing tables. Please run the provided SQL script.");
-            } else if (result.error.code === '42501') {
-               setErrorMsg("Permission Denied: You may not be an admin, or RLS policies need updating via SQL.");
+            } else if (err.code === '42501') {
+               setErrorMsg("Permission Denied: Run 'admin_permissions.sql' to give Admins access to Safety/Support tables.");
             } else {
-               const msg = result.error.message || result.error.details || JSON.stringify(result.error);
+               let msg = 'Unknown error';
+               if (typeof err === 'string') msg = err;
+               else if (err.message && typeof err.message === 'string') msg = err.message;
+               else if (err.details && typeof err.details === 'string') msg = err.details;
+               else if (err.error_description && typeof err.error_description === 'string') msg = err.error_description;
+               else {
+                   try {
+                       msg = JSON.stringify(err);
+                       if (msg === '{}') msg = 'Check console for error details';
+                   } catch {
+                       msg = 'Non-serializable error';
+                   }
+               }
                setErrorMsg(`Data Error: ${msg}`);
             }
         }
@@ -74,6 +87,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else setSupportMessages(result.data || []);
 
     } catch (err: any) {
+        console.error("System Error:", err);
         setErrorMsg(err.message || "Unknown system error occurred.");
     } finally {
         setLoading(false);
@@ -104,40 +118,33 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const handleManualTierUpdate = async (userId: string, newTier: SubscriptionTier) => {
-      // 1. Optimistic Update: Change UI immediately to reflect choice
       const previousUsers = [...users];
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription_tier: newTier } : u));
-      
-      // 2. Lock to prevent double submission
       setProcessingId(userId);
 
-      // Set expiry to 30 days from now
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 30);
+      try {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
 
-      // 3. Perform actual update
-      const { data, error } = await supabase.from('profiles').update({
-          subscription_tier: newTier,
-          subscription_end_date: endDate.toISOString(),
-          task_count: 0 // Reset their count so they can work
-      }).eq('id', userId).select();
+        const { error } = await supabase.from('profiles').update({
+            subscription_tier: newTier,
+            subscription_end_date: endDate.toISOString(),
+            task_count: 0 
+        }).eq('id', userId);
 
-      setProcessingId(null);
+        if (error) throw error;
 
-      // 4. Handle Failure (Revert UI)
-      if (error || !data || data.length === 0) {
+      } catch (error: any) {
           setUsers(previousUsers); // Revert
           console.error("Update failed:", error);
-          
           if (error?.message?.includes('policy') || error?.code === '42501') {
-             alert("Database Policy Error: Infinite recursion detected. \n\nPlease run the new 'admin_fix_v2.sql' script to fix the security policies.");
-          } else if (!data || data.length === 0) {
-             alert("Update Blocked: The database silently rejected the update. \n\nPlease run the 'admin_fix_v2.sql' script to fix RLS.");
+             alert("Database Policy Error: Infinite recursion or permission denied. \n\nPlease run the 'admin_permissions.sql' script.");
           } else {
              alert("Failed to update tier: " + error?.message);
           }
-      } 
-      // Success is silent because UI already updated optimistically
+      } finally {
+        setProcessingId(null);
+      }
   };
 
   const handleSafetyAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
@@ -148,6 +155,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const openSupportChatFromSafety = (user: any) => {
+      if (!user) {
+          alert("User profile not found for this report.");
+          return;
+      }
       setActiveTab('support');
       setSelectedTicketUser(user);
   };
@@ -164,7 +175,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       if (!error) {
           setAdminReply('');
-          fetchData();
+          fetchData(); // This will refresh the chat
       } else {
           alert("Failed to send: " + error.message);
       }
@@ -314,7 +325,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <p className="text-sm font-bold text-gray-900">Reporter: {report.profiles?.full_name || 'Unknown'}</p>
                             <a href={`tel:${report.profiles?.phone_number}`} className="text-xs text-blue-600 font-bold underline">{report.profiles?.phone_number}</a>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                        <div className="bg-gray-50 p-4 rounded-xl mb-4 whitespace-pre-wrap">
                              <p className="text-xs text-gray-700 leading-relaxed font-medium">{report.details}</p>
                         </div>
                         <div className="flex gap-2">
@@ -338,13 +349,19 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                          <span className="text-xs text-gray-500">{selectedTicketUser.email}</span>
                      </div>
                      <div className="flex-1 overflow-y-auto space-y-3 p-2">
-                         {groupedSupport[selectedTicketUser.id]?.messages.map((msg: any) => (
-                             <div key={msg.id} className={`flex ${msg.admin_reply ? 'justify-end' : 'justify-start'}`}>
-                                 <div className={`max-w-[80%] p-3 rounded-2xl text-xs ${msg.admin_reply ? 'bg-gray-900 text-white rounded-br-none' : 'bg-white border text-gray-700 rounded-bl-none'}`}>
-                                     {msg.content}
+                         {groupedSupport[selectedTicketUser.id] ? (
+                             groupedSupport[selectedTicketUser.id].messages.map((msg: any) => (
+                                 <div key={msg.id} className={`flex ${msg.admin_reply ? 'justify-end' : 'justify-start'}`}>
+                                     <div className={`max-w-[80%] p-3 rounded-2xl text-xs ${msg.admin_reply ? 'bg-gray-900 text-white rounded-br-none' : 'bg-white border text-gray-700 rounded-bl-none'}`}>
+                                         {msg.content}
+                                     </div>
                                  </div>
+                             ))
+                         ) : (
+                             <div className="text-center text-gray-400 text-xs py-10 font-bold bg-gray-100 rounded-2xl mx-4">
+                                 No history found. Start a new conversation below.
                              </div>
-                         ))}
+                         )}
                          <div ref={chatScrollRef} />
                      </div>
                      <div className="mt-2 flex gap-2 pt-2 border-t">
@@ -357,7 +374,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                      {sortedSupportTickets.length === 0 ? <div className="text-center py-20 text-gray-400 text-sm font-bold">No active tickets.</div> :
                       sortedSupportTickets.map((ticket: any) => (
                          <div key={ticket.user.id} onClick={() => setSelectedTicketUser(ticket.user)} className="bg-white p-4 rounded-xl shadow-sm flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform">
-                             <div className="w-10 h-10 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold">{ticket.user.full_name[0]}</div>
+                             <div className="w-10 h-10 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold overflow-hidden">
+                                {ticket.user.avatar_url ? <img src={ticket.user.avatar_url} className="w-full h-full object-cover" /> : ticket.user.full_name[0]}
+                             </div>
                              <div className="flex-1 min-w-0">
                                  <div className="flex justify-between">
                                      <h4 className="font-bold text-sm text-gray-900 truncate">{ticket.user.full_name}</h4>

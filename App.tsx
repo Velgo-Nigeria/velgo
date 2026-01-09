@@ -68,6 +68,52 @@ const App: React.FC = () => {
     }
   }, [profile?.theme_mode]);
 
+  // BROWSER HISTORY & BACK BUTTON LOGIC
+  useEffect(() => {
+    // 1. Set initial history state on load
+    if (!window.history.state) {
+        window.history.replaceState({ view: 'landing', data: null }, '', '');
+    }
+
+    // 2. Listen for Back Button (PopState)
+    const handlePopState = (event: PopStateEvent) => {
+        if (event.state && event.state.view) {
+            // Internal state update without pushing new history
+            setView(event.state.view);
+            setViewData(event.state.data);
+        } else {
+            // Fallback if state is missing
+            setView('landing');
+        }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Update navigate to push history state
+  const navigate = (newView: string, data: any = null) => {
+    window.history.pushState({ view: newView, data }, '', '');
+    setView(newView);
+    setViewData(data);
+    window.scrollTo(0, 0);
+  };
+
+  // Helper for UI "Back" buttons to behave naturally
+  const handleBackNavigation = (fallbackView: string) => {
+     // If we have history to go back to, use it. Otherwise, force a view change.
+     // Checking history.length is unreliable, so we rely on the fact that if we are here, we likely pushed state.
+     // For safety in this specific app structure, we can check if we are deep in navigation.
+     if (window.history.state && view !== 'home' && view !== 'landing') {
+         window.history.back();
+     } else {
+         // Fallback replace (don't push to avoid stack loops on home)
+         setView(fallbackView);
+         window.history.replaceState({ view: fallbackView, data: null }, '', '');
+     }
+  };
+
+
   const fetchProfile = useCallback(async (uid: string, retries = 3) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
     
@@ -113,8 +159,10 @@ const App: React.FC = () => {
         
         if (initialSession) {
           fetchProfile(initialSession.user.id);
+          // If at auth screens, redirect to home and replace history so back button doesn't go to login
           if (['landing', 'login', 'signup'].includes(viewRef.current)) {
               setView('home');
+              window.history.replaceState({ view: 'home', data: null }, '', '');
           }
         }
       } catch (err) {
@@ -130,13 +178,15 @@ const App: React.FC = () => {
       setSession(currentSession);
       
       if (event === 'PASSWORD_RECOVERY') {
-         setView('reset-password');
+         navigate('reset-password');
       }
       else if (currentSession) {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
            fetchProfile(currentSession.user.id, 3);
            if (viewRef.current === 'landing' || viewRef.current === 'login' || viewRef.current === 'signup') {
+              // Replace history to prevent backing into login
               setView('home');
+              window.history.replaceState({ view: 'home', data: null }, '', '');
            }
         }
       } else {
@@ -145,6 +195,7 @@ const App: React.FC = () => {
         setSystemError(null);
         if (viewRef.current !== 'reset-password') {
             setView('landing');
+            window.history.replaceState({ view: 'landing', data: null }, '', '');
         }
       }
     });
@@ -169,7 +220,7 @@ const App: React.FC = () => {
         // Client: Worker applied to my job
         .on(
             'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` },
+            { event: 'INSERT', schema: 'public', table: 'bookings', filter: `client_id=eq.${session.user.id}` }, 
             (payload) => {
                if (payload.new.client_id === session.user.id) {
                    setToast({ msg: 'New Job Request!', type: 'success' });
@@ -233,21 +284,15 @@ const App: React.FC = () => {
       );
   }
 
-  const navigate = (newView: string, data: any = null) => {
-    setView(newView);
-    setViewData(data);
-    window.scrollTo(0, 0);
-  };
-
   const renderContent = () => {
     if (!session) {
       switch (view) {
-        case 'login': return <Login onToggle={() => setView('signup')} />;
-        case 'signup': return <SignUp onToggle={() => setView('login')} initialRole={viewData || 'client'} />;
-        case 'reset-password': return <ResetPassword onSuccess={() => setView('login')} />;
-        case 'legal': return <Legal initialTab={viewData} onBack={() => setView('landing')} />;
-        case 'about': return <About onBack={() => setView('landing')} />;
-        default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => setView('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => setView('about')} />;
+        case 'login': return <Login onToggle={() => navigate('signup')} />;
+        case 'signup': return <SignUp onToggle={() => navigate('login')} initialRole={viewData || 'client'} />;
+        case 'reset-password': return <ResetPassword onSuccess={() => navigate('login')} />;
+        case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} />;
+        case 'about': return <About onBack={() => handleBackNavigation('landing')} />;
+        default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
       }
     }
 
@@ -257,23 +302,23 @@ const App: React.FC = () => {
     }
 
     switch (view) {
-      case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => setView('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
-      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => setView('subscription')} />;
+      case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
+      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'messages': return <Messages profile={profile} onOpenChat={(id) => navigate('chat', id)} />;
-      case 'profile': return <ProfilePage profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onSubscription={() => setView('subscription')} onSettings={() => setView('settings')} />;
-      case 'subscription': return <Subscription profile={profile} sessionEmail={session?.user?.email} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => setView('profile')} />;
-      case 'chat': return <Chat profile={profile} partnerId={viewData} onBack={() => setView('messages')} />;
-      case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => setView('home')} onBook={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => setView('subscription')} />;
-      case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => setView('home')} onUpgrade={() => setView('subscription')} />;
-      case 'settings': return <Settings profile={profile} onBack={() => setView('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id)} />;
-      case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => setView('home')} onUpgrade={() => setView('subscription')} />;
-      case 'legal': return <Legal initialTab={viewData} onBack={() => setView('settings')} />;
-      case 'safety': return <Safety profile={profile} onBack={() => setView('settings')} />;
-      case 'about': return <About onBack={() => setView('settings')} />;
-      case 'admin': return <AdminDashboard onBack={() => setView('settings')} />;
-      case 'change-password': return <ResetPassword onSuccess={() => { alert('Password Updated'); setView('settings'); }} />;
-      case 'reset-password': return <ResetPassword onSuccess={() => { alert('Password Updated. Please log in.'); setView('login'); }} />;
-      default: return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => setView('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
+      case 'profile': return <ProfilePage profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onSubscription={() => navigate('subscription')} onSettings={() => navigate('settings')} />;
+      case 'subscription': return <Subscription profile={profile} sessionEmail={session?.user?.email} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('profile')} />;
+      case 'chat': return <Chat profile={profile} partnerId={viewData} onBack={() => handleBackNavigation('messages')} />;
+      case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
+      case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
+      case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id)} />;
+      case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
+      case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
+      case 'safety': return <Safety profile={profile} onBack={() => handleBackNavigation('settings')} />;
+      case 'about': return <About onBack={() => handleBackNavigation('settings')} />;
+      case 'admin': return <AdminDashboard onBack={() => handleBackNavigation('settings')} />;
+      case 'change-password': return <ResetPassword onSuccess={() => { alert('Password Updated'); navigate('settings'); }} />;
+      case 'reset-password': return <ResetPassword onSuccess={() => { alert('Password Updated. Please log in.'); navigate('login'); }} />;
+      default: return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
     }
   };
 
@@ -283,6 +328,14 @@ const App: React.FC = () => {
          <span className={`font-bold text-sm ${active ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>{label}</span>
      </button>
   );
+
+  // Helper for Sidebar navigation (replaces history if switching main tabs to keep stack clean, optional preference)
+  const navToTab = (tab: string) => {
+      // If we are already on a main tab, we can push. 
+      // Or we can replaceState to treat tabs as parallel roots. 
+      // Let's use pushState for simplicity so back button works across tabs.
+      navigate(tab);
+  };
 
   return (
     <ErrorBoundary>
@@ -295,10 +348,10 @@ const App: React.FC = () => {
                     <VelgoLogo />
                 </div>
                 <nav className="space-y-3 flex-1">
-                    <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => setView('home')} />
-                    <SidebarItem icon="fa-bolt-lightning" label="My Gigs" active={view === 'activity'} onClick={() => setView('activity')} />
-                    <SidebarItem icon="fa-comments" label="Messages" active={['messages', 'chat'].includes(view)} onClick={() => setView('messages')} />
-                    <SidebarItem icon="fa-user-ninja" label="Profile & Settings" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about'].includes(view)} onClick={() => setView('profile')} />
+                    <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navToTab('home')} />
+                    <SidebarItem icon="fa-bolt-lightning" label="My Gigs" active={view === 'activity'} onClick={() => navToTab('activity')} />
+                    <SidebarItem icon="fa-comments" label="Messages" active={['messages', 'chat'].includes(view)} onClick={() => navToTab('messages')} />
+                    <SidebarItem icon="fa-user-ninja" label="Profile & Settings" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about'].includes(view)} onClick={() => navToTab('profile')} />
                 </nav>
                 <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-3">
@@ -327,19 +380,19 @@ const App: React.FC = () => {
         {/* MOBILE BOTTOM NAV */}
         {session && profile && view !== 'admin' && view !== 'chat' && view !== 'reset-password' && (
           <nav className="md:hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 flex justify-around items-center h-20 safe-bottom z-50 transition-colors duration-200 shadow-lg">
-            <button onClick={() => setView('home')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['home', 'worker-detail', 'task-detail', 'post-task'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => navToTab('home')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['home', 'worker-detail', 'task-detail', 'post-task'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-house-chimney text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Market</span>
             </button>
-            <button onClick={() => setView('activity')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['activity'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => navToTab('activity')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['activity'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-bolt-lightning text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Gigs</span>
             </button>
-             <button onClick={() => setView('messages')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['messages', 'chat'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+             <button onClick={() => navToTab('messages')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['messages', 'chat'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-comments text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Chats</span>
             </button>
-            <button onClick={() => setView('profile')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => navToTab('profile')} className={`flex flex-col items-center flex-1 transition-all active:scale-90 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-user-ninja text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Profile</span>
             </button>

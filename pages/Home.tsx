@@ -11,6 +11,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [items, setItems] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
   
   // Location States
@@ -48,6 +49,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       }
   }, []);
 
+  // Debounce Search Input
+  useEffect(() => {
+      const timer = setTimeout(() => setDebouncedSearch(search), 500);
+      return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchData = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
@@ -55,70 +62,101 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
     const isFetchingWorkers = profile.role === 'client' || (profile.role === 'worker' && workerViewMode === 'market');
 
-    if (isFetchingWorkers) {
-        let query = supabase.from('profiles').select('*').eq('role', 'worker');
-        if (profile.role === 'worker') query = query.neq('id', profile.id);
-        if (category !== 'All') query = query.eq('category', category);
-        const { data } = await safeFetch<Profile[]>(async () => await query.limit(50));
-        
-        let workers = data || [];
-        if (userLat && userLng) {
-            workers = workers.sort((a, b) => {
-                const distA = a.latitude ? Math.hypot(a.latitude - userLat, a.longitude! - userLng) : 999;
-                const distB = b.latitude ? Math.hypot(b.latitude - userLat, b.longitude! - userLng) : 999;
-                return distA - distB;
-            });
-        }
-        setItems(workers);
+    try {
+        if (isFetchingWorkers) {
+            let query = supabase.from('profiles').select('*').eq('role', 'worker');
+            
+            // Server-Side Filters
+            if (profile.role === 'worker') query = query.neq('id', profile.id);
+            if (category !== 'All') query = query.eq('category', category);
+            
+            if (selectedState !== 'All Nigeria') {
+                query = query.eq('state', selectedState);
+                if (selectedLGA) query = query.eq('lga', selectedLGA);
+            }
 
-        const workerIds = workers.map(w => w.id);
-        if (workerIds.length > 0) {
-            const { data: ratingData } = await supabase.from('bookings').select('worker_id, rating').in('worker_id', workerIds).not('rating', 'is', null);
-            const wMap: Record<string, {total: number, count: number}> = {};
-            ratingData?.forEach((r: any) => {
-                if (!wMap[r.worker_id]) wMap[r.worker_id] = { total: 0, count: 0 };
-                wMap[r.worker_id].total += r.rating;
-                wMap[r.worker_id].count += 1;
-            });
-            const finalWMap: Record<string, {avg: number, count: number}> = {};
-            workerIds.forEach(id => {
-                if (wMap[id]) finalWMap[id] = { avg: parseFloat((wMap[id].total / wMap[id].count).toFixed(1)), count: wMap[id].count };
-            });
-            setWorkerRatings(finalWMap);
-        }
+            if (debouncedSearch) {
+                // Search name, category, or subcategory
+                query = query.or(`full_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%,subcategory.ilike.%${debouncedSearch}%`);
+            }
 
-    } else {
-        let query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
-        if (category !== 'All') query = query.eq('category', category);
-        const { data } = await safeFetch<PostedTask[]>(async () => await query);
-        let tasks = data || [];
-        
-        setItems(tasks);
+            const { data } = await safeFetch<Profile[]>(async () => await query.limit(50));
+            
+            let workers = data || [];
+            if (userLat && userLng) {
+                workers = workers.sort((a, b) => {
+                    const distA = a.latitude ? Math.hypot(a.latitude - userLat, a.longitude! - userLng) : 999;
+                    const distB = b.latitude ? Math.hypot(b.latitude - userLat, b.longitude! - userLng) : 999;
+                    return distA - distB;
+                });
+            }
+            setItems(workers);
 
-        if (profile.role === 'worker') {
-            const { data: apps } = await supabase.from('bookings').select('task_id').eq('worker_id', profile.id).not('task_id', 'is', null);
-            if (apps) setMyApplications(new Set(apps.map((a: any) => a.task_id)));
-        }
+            const workerIds = workers.map(w => w.id);
+            if (workerIds.length > 0) {
+                const { data: ratingData } = await supabase.from('bookings').select('worker_id, rating').in('worker_id', workerIds).not('rating', 'is', null);
+                const wMap: Record<string, {total: number, count: number}> = {};
+                ratingData?.forEach((r: any) => {
+                    if (!wMap[r.worker_id]) wMap[r.worker_id] = { total: 0, count: 0 };
+                    wMap[r.worker_id].total += r.rating;
+                    wMap[r.worker_id].count += 1;
+                });
+                const finalWMap: Record<string, {avg: number, count: number}> = {};
+                workerIds.forEach(id => {
+                    if (wMap[id]) finalWMap[id] = { avg: parseFloat((wMap[id].total / wMap[id].count).toFixed(1)), count: wMap[id].count };
+                });
+                setWorkerRatings(finalWMap);
+            }
 
-        const clientIds = Array.from(new Set(tasks.map((t: any) => t.client_id)));
-        if (clientIds.length > 0) {
-            const { data: ratingsData } = await supabase.from('bookings').select('client_id, client_rating').in('client_id', clientIds).not('client_rating', 'is', null);
-            const ratingsMap: Record<string, number> = {};
-            const countsMap: Record<string, number> = {};
-            ratingsData?.forEach((r: any) => {
-                if (!ratingsMap[r.client_id]) { ratingsMap[r.client_id] = 0; countsMap[r.client_id] = 0; }
-                ratingsMap[r.client_id] += r.client_rating;
-                countsMap[r.client_id] += 1;
-            });
-            const finalRatings: Record<string, number> = {};
-            clientIds.forEach((id: string) => {
-                if (countsMap[id]) finalRatings[id] = parseFloat((ratingsMap[id] / countsMap[id]).toFixed(1));
-            });
-            setClientRatings(finalRatings);
+        } else {
+            let query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
+            
+            // Server-Side Filters
+            if (category !== 'All') query = query.eq('category', category);
+            
+            if (selectedState !== 'All Nigeria') {
+                // For Tasks, location is often stored as "LGA, State" string
+                query = query.ilike('location', `%${selectedState}%`);
+                if (selectedLGA) query = query.ilike('location', `%${selectedLGA}%`);
+            }
+
+            if (debouncedSearch) {
+                query = query.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
+            }
+
+            const { data } = await safeFetch<PostedTask[]>(async () => await query.limit(50));
+            let tasks = data || [];
+            
+            setItems(tasks);
+
+            if (profile.role === 'worker') {
+                const { data: apps } = await supabase.from('bookings').select('task_id').eq('worker_id', profile.id).not('task_id', 'is', null);
+                if (apps) setMyApplications(new Set(apps.map((a: any) => a.task_id)));
+            }
+
+            const clientIds = Array.from(new Set(tasks.map((t: any) => t.client_id)));
+            if (clientIds.length > 0) {
+                const { data: ratingsData } = await supabase.from('bookings').select('client_id, client_rating').in('client_id', clientIds).not('client_rating', 'is', null);
+                const ratingsMap: Record<string, number> = {};
+                const countsMap: Record<string, number> = {};
+                ratingsData?.forEach((r: any) => {
+                    if (!ratingsMap[r.client_id]) { ratingsMap[r.client_id] = 0; countsMap[r.client_id] = 0; }
+                    ratingsMap[r.client_id] += r.client_rating;
+                    countsMap[r.client_id] += 1;
+                });
+                const finalRatings: Record<string, number> = {};
+                clientIds.forEach((id: string) => {
+                    if (countsMap[id]) finalRatings[id] = parseFloat((ratingsMap[id] / countsMap[id]).toFixed(1));
+                });
+                setClientRatings(finalRatings);
+            }
         }
+    } catch (e) {
+        console.error("Home Fetch Error:", e);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
-  }, [category, profile, workerViewMode, userLat, userLng]);
+  }, [category, profile, workerViewMode, userLat, userLng, debouncedSearch, selectedState, selectedLGA]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -169,28 +207,8 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       setTranslatingId(null);
   };
 
-  const filteredItems = items.filter(item => {
-    const isWorkerItem = 'full_name' in item;
-    let locationString = isWorkerItem ? `${(item as Profile).address || ''} ${(item as Profile).lga || ''} ${(item as Profile).state || ''}` : (item as any).location || '';
-    
-    let matchesLocation = true;
-    if (selectedState !== 'All Nigeria') {
-        if (!locationString.toLowerCase().includes(selectedState.toLowerCase())) matchesLocation = false;
-        if (matchesLocation && selectedLGA) {
-             if (!locationString.toLowerCase().includes(selectedLGA.toLowerCase())) matchesLocation = false;
-        }
-    }
-
-    if (isWorkerItem) {
-        const w = item as Profile;
-        const matchesSearch = w.full_name.toLowerCase().includes(search.toLowerCase()) || w.subcategory?.toLowerCase().includes(search.toLowerCase()) || w.category?.toLowerCase().includes(search.toLowerCase());
-        return matchesSearch && matchesLocation;
-    } else {
-        const t = item as any;
-        const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase());
-        return matchesSearch && matchesLocation;
-    }
-  });
+  // We are now filtering on the server, so we just render 'items' directly
+  const displayItems = items; 
 
   const handleWorkerClick = (workerId: string) => onViewWorker(workerId);
 
@@ -316,9 +334,9 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         {/* RESPONSIVE GRID LAYOUT: 1 col mobile, 2 cols tablet, 3 cols desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
           {loading ? [1, 2, 3].map(i => <div key={i} className="h-28 bg-gray-50 rounded-[32px] animate-pulse" />) : 
-            filteredItems.length === 0 ? <div className="col-span-full text-center py-10 text-gray-400 font-medium text-sm">No results found in this area.</div> :
+            displayItems.length === 0 ? <div className="col-span-full text-center py-10 text-gray-400 font-medium text-sm">No results found in this area.</div> :
             (profile?.role === 'client' || workerViewMode === 'market') ? (
-              filteredItems.map(item => {
+              displayItems.map(item => {
                   const worker = item as Profile;
                   const stats = workerRatings[worker.id];
                   return (
@@ -335,7 +353,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                   );
               })
             ) : (
-               filteredItems.map(item => {
+               displayItems.map(item => {
                    const task = item as any;
                    const rating = clientRatings[task.client_id];
                    const hasApplied = myApplications.has(task.id);
