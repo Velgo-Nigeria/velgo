@@ -339,6 +339,10 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center"><i className="fa-brands fa-facebook-f"></i></div>
                          <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Facebook</span>
                      </a>
+                     <a href="https://whatsapp.com/channel/0029Vb6sLaWGOj9upwLX6s2v" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-brands fa-whatsapp"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">WhatsApp</span>
+                     </a>
                  </div>
 
                  {/* New About Button */}

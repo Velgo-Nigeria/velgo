@@ -225,7 +225,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
              <a href="https://facebook.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-600 transition-all"><i className="fa-brands fa-facebook-f"></i></a>
              <a href="https://twitter.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-400 hover:border-blue-400 transition-all"><i className="fa-brands fa-twitter"></i></a>
              <a href="https://instagram.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-pink-600 hover:border-pink-600 transition-all"><i className="fa-brands fa-instagram"></i></a>
-             <a href="https://linkedin.com" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-700 hover:border-blue-700 transition-all"><i className="fa-brands fa-linkedin-in"></i></a>
+             <a href="https://whatsapp.com/channel/0029Vb6sLaWGOj9upwLX6s2v" target="_blank" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-600 transition-all"><i className="fa-brands fa-whatsapp"></i></a>
           </div>
 
           <div className="flex justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase">
