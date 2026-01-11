@@ -1,8 +1,9 @@
+
 {
   "name": "Velgo Nigeria",
   "short_name": "Velgo",
   "description": "The Naija Gig Marketplace",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#008000",

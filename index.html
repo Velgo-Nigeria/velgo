@@ -30,7 +30,7 @@
     <meta property="twitter:description" content="The trusted zero-commission gig marketplace connecting verified local workers and clients in Nigeria.">
     <meta property="twitter:image" content="https://ui-avatars.com/api/?name=V&background=008000&color=fff&size=512">
     
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -70,11 +70,16 @@
     <script type="module" src="/index.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        // Resolve sw.js relative to the current window location to ensure same-origin
-        // This prevents errors if a <base> tag points to a different origin (e.g. ai.studio)
-        const swUrl = new URL('sw.js', window.location.href).href;
-        navigator.serviceWorker.register(swUrl)
-          .catch(err => console.error('Service Worker registration failed:', err));
+        window.addEventListener('load', () => {
+          // Robust registration to avoid origin mismatch errors in preview environments
+          const swPath = new URL('/sw.js', window.location.origin).href;
+          navigator.serviceWorker.register(swPath)
+            .then(reg => console.log('Velgo Service Worker registered successfully on origin:', window.location.origin))
+            .catch(err => {
+              // We only log a warning here as the app will still function without the SW
+              console.warn('Service Worker registration skipped or failed. (This is normal in some preview environments):', err.message);
+            });
+        });
       }
     </script>
 </body>

@@ -26,6 +26,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { InstallPWA } from './components/InstallPWA';
 import { NotificationToast } from './components/NotificationToast';
 import { UserGuide } from './components/UserGuide';
+import { subscribeToPush } from './lib/pushManager';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -159,6 +160,14 @@ const App: React.FC = () => {
         
         if (initialSession) {
           fetchProfile(initialSession.user.id);
+          
+          // --- PUSH NOTIFICATION INIT ---
+          // If permission is already granted (user previously accepted), sync the subscription
+          // This ensures if the SW changes or keys rotate, we stay in sync.
+          if (Notification.permission === 'granted') {
+             subscribeToPush(initialSession.user.id);
+          }
+
           // If at auth screens, redirect to home and replace history so back button doesn't go to login
           if (['landing', 'login', 'signup'].includes(viewRef.current)) {
               setView('home');
@@ -183,6 +192,12 @@ const App: React.FC = () => {
       else if (currentSession) {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
            fetchProfile(currentSession.user.id, 3);
+           
+           // Also attempt push sync on sign-in
+           if (Notification.permission === 'granted') {
+             subscribeToPush(currentSession.user.id);
+           }
+
            if (viewRef.current === 'landing' || viewRef.current === 'login' || viewRef.current === 'signup') {
               // Replace history to prevent backing into login
               setView('home');

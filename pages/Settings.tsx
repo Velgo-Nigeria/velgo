@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, NotificationPreferences } from '../types';
+import { subscribeToPush } from '../lib/pushManager';
 
 interface SettingsProps { 
   profile: Profile | null; 
@@ -97,6 +98,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       const updated = { ...notifications, [key]: !notifications[key] };
       setNotifications(updated);
       updatePreference({ notification_preferences: updated });
+  };
+  
+  const handleEnablePush = async () => {
+      if (!profile) return;
+      const success = await subscribeToPush(profile.id);
+      if (success) {
+          alert("Success! You will now receive alerts even when the app is closed.");
+      } else {
+          alert("Could not enable notifications. Please check your browser settings or ensure you installed the app.");
+      }
   };
 
   const handleReAuth = async () => {
@@ -286,6 +297,20 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                      <button onClick={() => toggleNotif('jobAlerts')} className={`w-10 h-6 rounded-full transition-colors relative ${notifications.jobAlerts ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'}`}>
                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${notifications.jobAlerts ? 'left-5' : 'left-1'}`} />
                      </button>
+                </div>
+                
+                {/* Push Notification Toggle */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <i className="fa-solid fa-mobile-screen text-gray-400"></i>
+                        <div>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 block leading-none">Push Notifications</span>
+                            <span className="text-[9px] text-gray-400">Get alerts on your phone</span>
+                        </div>
+                    </div>
+                    <button onClick={handleEnablePush} className="text-[10px] font-black uppercase text-brand bg-brand/10 px-3 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors">
+                        Enable
+                    </button>
                 </div>
 
                  <div className="flex items-center justify-between">
