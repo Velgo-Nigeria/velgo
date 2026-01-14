@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole } from '../types';
 import { VelgoLogo } from '../components/Brand';
@@ -13,6 +13,7 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout }) => {
   const [reviews, setReviews] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   
   // Review Form State
   const [reviewName, setReviewName] = useState('');
@@ -21,14 +22,58 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Auto-play timer ref
+  // FIX: Using any instead of NodeJS.Timeout to avoid namespace errors in browser environment
+  const timerRef = useRef<any>(null);
+
   useEffect(() => {
     fetchReviews();
   }, []);
 
   const fetchReviews = async () => {
-    const { data } = await supabase.from('app_reviews').select('*').order('created_at', { ascending: false }).limit(10);
-    if (data) setReviews(data);
+    const { data } = await supabase.from('app_reviews').select('*').order('created_at', { ascending: false }).limit(6);
+    if (data && data.length > 0) {
+      setReviews(data);
+    }
   };
+
+  // Carousel Navigation
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % reviews.length);
+    resetTimer();
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
+    resetTimer();
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentIndex(index);
+    resetTimer();
+  };
+
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    startTimer();
+  };
+
+  const startTimer = () => {
+    timerRef.current = setInterval(() => {
+      if (reviews.length > 0) {
+        setCurrentIndex((prev) => (prev + 1) % reviews.length);
+      }
+    }, 5000);
+  };
+
+  useEffect(() => {
+    if (reviews.length > 0) {
+      startTimer();
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [reviews]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,85 +179,151 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
            </div>
       </div>
 
+      {/* Community Reviews Carousel */}
+      <div className="py-16 px-6 bg-white overflow-hidden">
+        <div className="max-w-xl mx-auto text-center space-y-8">
+             <div className="space-y-1">
+                <h2 className="text-3xl font-black text-gray-900">Naija Loves Velgo</h2>
+                <p className="text-sm text-gray-500 font-medium">Voices from our growing marketplace.</p>
+             </div>
+             
+             {reviews.length > 0 ? (
+                <div className="relative group">
+                    {/* Carousel Container */}
+                    <div className="relative overflow-hidden rounded-[40px] border border-gray-100 bg-gray-50 shadow-sm">
+                        <div 
+                            className="flex transition-transform duration-500 ease-in-out" 
+                            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                        >
+                            {reviews.map((r, i) => (
+                                <div key={r.id} className="min-w-full p-8 md:p-12 flex flex-col items-center justify-center text-center space-y-6">
+                                    <div className="relative">
+                                        <div className="w-20 h-20 rounded-full bg-brand-light flex items-center justify-center border-4 border-white shadow-lg overflow-hidden">
+                                            <img 
+                                                src={`https://ui-avatars.com/api/?name=${r.user_name}&background=008000&color=fff&size=128`} 
+                                                className="w-full h-full object-cover" 
+                                                alt={r.user_name}
+                                            />
+                                        </div>
+                                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-white w-8 h-8 rounded-full border-4 border-white flex items-center justify-center text-[10px]">
+                                            <i className="fa-solid fa-star"></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <p className="text-lg md:text-xl font-medium text-gray-800 italic leading-relaxed">
+                                            "{r.comment}"
+                                        </p>
+                                        <div className="space-y-1">
+                                            <h4 className="font-black text-gray-900 text-base">{r.user_name}</h4>
+                                            <span className="inline-block px-3 py-1 bg-brand/10 text-brand text-[9px] font-black uppercase tracking-widest rounded-full">
+                                                Community Member
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div className="absolute inset-y-0 -left-4 md:-left-8 flex items-center">
+                        <button 
+                            onClick={prevSlide}
+                            className="w-10 h-10 rounded-full shadow-lg border border-gray-50 text-gray-400 hover:text-brand transition-all active:scale-90 flex items-center justify-center"
+                        >
+                            <i className="fa-solid fa-chevron-left"></i>
+                        </button>
+                    </div>
+                    <div className="absolute inset-y-0 -right-4 md:-right-8 flex items-center">
+                        <button 
+                            onClick={nextSlide}
+                            className="w-10 h-10 rounded-full shadow-lg border border-gray-50 text-gray-400 hover:text-brand transition-all active:scale-90 flex items-center justify-center"
+                        >
+                            <i className="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    {/* Indicator Dots */}
+                    <div className="flex justify-center gap-3 mt-8">
+                        {reviews.map((_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => goToSlide(i)}
+                                className={`h-2 rounded-full transition-all duration-300 ${i === currentIndex ? 'w-8 bg-brand' : 'w-2 bg-gray-200 hover:bg-gray-300'}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+             ) : (
+                <div className="py-20 text-gray-300 text-sm font-bold uppercase tracking-widest">
+                    No reviews yet. Be the first to share!
+                </div>
+             )}
+        </div>
+      </div>
+
       {/* Rate Us Section */}
-      <div className="bg-gray-900 text-white py-12 px-6">
-        <div className="max-w-sm mx-auto space-y-6">
+      <div className="bg-gray-900 text-white py-16 px-6">
+        <div className="max-w-sm mx-auto space-y-8">
             <div className="text-center">
-                <h3 className="text-xl font-black">Rate Your Experience</h3>
-                <p className="text-xs text-gray-400">Help us make Velgo better for Nigeria.</p>
+                <h3 className="text-2xl font-black">Rate Your Experience</h3>
+                <p className="text-xs text-gray-400 mt-1">Help us build the most trusted gig app in Naija.</p>
             </div>
 
             {submitted ? (
-                <div className="bg-green-500/20 p-6 rounded-2xl text-center border border-green-500/30">
-                    <i className="fa-solid fa-heart text-3xl text-brand mb-2"></i>
-                    <p className="font-black text-brand-light">Thank you for the love!</p>
+                <div className="bg-brand/10 p-8 rounded-[32px] text-center border border-brand/20 animate-fadeIn">
+                    <div className="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-brand/30">
+                        <i className="fa-solid fa-heart text-2xl"></i>
+                    </div>
+                    <p className="font-black text-brand-light uppercase tracking-widest text-sm">Thank you for the love!</p>
                 </div>
             ) : (
                 <form onSubmit={handleSubmitReview} className="space-y-4">
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-3 mb-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <button 
                                 key={star} 
                                 type="button"
                                 onClick={() => setReviewRating(star)}
-                                className={`text-3xl transition-transform active:scale-125 ${star <= reviewRating ? 'text-yellow-400' : 'text-gray-700'}`}
+                                className={`text-3xl transition-all duration-200 active:scale-125 ${star <= reviewRating ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-700 hover:text-gray-600'}`}
                             >
                                 <i className="fa-solid fa-star"></i>
                             </button>
                         ))}
                     </div>
                     
-                    <input 
-                        value={reviewName}
-                        onChange={(e) => setReviewName(e.target.value)}
-                        placeholder="Your Name"
-                        className="w-full bg-white/10 border border-white/10 rounded-xl p-4 text-sm font-bold text-white placeholder-gray-500 outline-none focus:border-brand transition-colors"
-                        required
-                    />
-                    
-                    <textarea 
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        placeholder="What do you think about Velgo?"
-                        rows={3}
-                        className="w-full bg-white/10 border border-white/10 rounded-xl p-4 text-sm font-medium text-white placeholder-gray-500 outline-none focus:border-brand transition-colors resize-none"
-                        required
-                    />
+                    <div className="space-y-3">
+                        <input 
+                            value={reviewName}
+                            onChange={(e) => setReviewName(e.target.value)}
+                            placeholder="Your Name"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white placeholder-gray-500 outline-none focus:border-brand focus:bg-white/10 transition-all"
+                            required
+                        />
+                        
+                        <textarea 
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            placeholder="What do you think about Velgo?"
+                            rows={3}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-medium text-white placeholder-gray-500 outline-none focus:border-brand focus:bg-white/10 transition-all resize-none"
+                            required
+                        />
+                    </div>
 
                     <button 
                         type="submit" 
                         disabled={submitting}
-                        className="w-full bg-brand text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                        className="w-full bg-brand text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-brand/10 hover:bg-brand-dark active:scale-95 transition-all"
                     >
-                        {submitting ? 'Posting...' : 'Submit Review'}
+                        {submitting ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <i className="fa-solid fa-circle-notch animate-spin"></i> Posting...
+                            </span>
+                        ) : 'Submit Review'}
                     </button>
                 </form>
-            )}
-        </div>
-      </div>
-
-      {/* Community Reviews */}
-      <div className="py-12 px-6 bg-white space-y-6">
-        <div className="text-center">
-             <h2 className="text-2xl font-black text-gray-900">Naija Loves Velgo</h2>
-             <p className="text-sm text-gray-500">See what the community is saying.</p>
-        </div>
-        
-        <div className="space-y-4">
-            {reviews.length === 0 ? (
-                <div className="text-center text-gray-300 text-sm py-4">Be the first to review!</div>
-            ) : (
-                reviews.map((r) => (
-                    <div key={r.id} className="bg-gray-50 p-5 rounded-[24px] border border-gray-100">
-                        <div className="flex justify-between items-start mb-2">
-                             <span className="font-bold text-gray-900 text-sm">{r.user_name}</span>
-                             <div className="flex text-yellow-400 text-xs gap-0.5">
-                                {Array(r.rating).fill(0).map((_,i) => <i key={i} className="fa-solid fa-star"></i>)}
-                             </div>
-                        </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">"{r.comment}"</p>
-                    </div>
-                ))
             )}
         </div>
       </div>
