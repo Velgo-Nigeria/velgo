@@ -151,7 +151,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             <input 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name or keyword..."
+              placeholder={profile?.role === 'client' || workerViewMode === 'market' ? "Find verified workers..." : "Search for jobs..."}
               className="w-full bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand/30 py-5 px-14 rounded-3xl text-sm font-bold dark:text-white outline-none transition-all shadow-sm"
             />
             <i className="fa-solid fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -164,7 +164,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         {profile?.role === 'worker' && (
              <div className="bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl flex text-[10px] font-black uppercase tracking-widest max-w-sm mx-auto shadow-inner transition-colors duration-200">
                  <button onClick={() => setWorkerViewMode('jobs')} className={`flex-1 py-3 rounded-xl transition-all ${workerViewMode === 'jobs' ? 'bg-white dark:bg-slate-700 text-brand shadow-lg' : 'text-gray-400'}`}>View Jobs</button>
-                 <button onClick={() => setWorkerViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${workerViewMode === 'market' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>Competitors</button>
+                 <button onClick={() => setWorkerViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${workerViewMode === 'market' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>Market Hub</button>
              </div>
         )}
 
@@ -175,12 +175,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
             {profile?.role === 'client' ? (
                 <button onClick={onPostTask} className="bg-brand text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all">Post a Job Request</button>
-            ) : <p className="text-xs font-medium text-gray-400">Ready to crush your next gig?</p>}
+            ) : <p className="text-xs font-medium text-gray-400">Ready for your next gig?</p>}
         </div>
 
-        {/* Location Filters Header */}
-        <div className="flex justify-between items-end px-2">
-            <p className="text-[9px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[3px]">Filter by Location</p>
+        {/* Filters Clear All Header */}
+        <div className="flex justify-between items-center px-2">
+            <p className="text-[9px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[3px]">Navigation Filters</p>
             {isFilterActive && (
                 <button onClick={clearFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity">
                     <i className="fa-solid fa-trash-can"></i> Clear All
@@ -188,52 +188,48 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             )}
         </div>
 
-        {/* Location Filters Inputs */}
-        <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-                <select 
-                value={selectedState} 
-                onChange={(e) => handleStateChange(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-wider border-2 border-transparent focus:border-brand/30 outline-none appearance-none transition-all shadow-sm"
-                >
-                <option value="All">All States</option>
-                {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <i className="fa-solid fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-            </div>
-
-            <div className="relative">
-                <select 
-                value={selectedLGA} 
-                onChange={(e) => setSelectedLGA(e.target.value)}
-                disabled={selectedState === 'All'}
-                className={`w-full bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-wider border-2 border-transparent focus:border-brand/30 outline-none appearance-none transition-all shadow-sm ${selectedState === 'All' ? 'opacity-50' : 'opacity-100'}`}
-                >
-                <option value="All">All LGAs</option>
-                {selectedState !== 'All' && NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <i className="fa-solid fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-            </div>
+        {/* States Chips Scroll */}
+        <div className="space-y-3">
+          <p className="text-[8px] font-black text-brand/60 uppercase tracking-[2px] ml-2">States</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
+            <button onClick={() => handleStateChange('All')} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedState === 'All' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400'}`}>All Nigeria</button>
+            {NIGERIA_STATES.map(s => (
+              <button key={s} onClick={() => handleStateChange(s)} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedState === s ? 'bg-emerald-600 text-white shadow-lg' : 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400'}`}>{s}</button>
+            ))}
+          </div>
         </div>
 
-        {/* Category Scroll */}
-        <div className="space-y-4">
-           <p className="text-[9px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[3px] ml-2">Industries</p>
-           <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
-            <button onClick={() => handleCategoryChange('All')} className={`whitespace-nowrap px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${category === 'All' ? 'bg-brand text-white shadow-xl scale-105' : 'bg-gray-50 dark:bg-slate-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}>All</button>
+        {/* LGA Chips Scroll - Only if State is selected */}
+        {selectedState !== 'All' && NIGERIA_LGAS[selectedState] && (
+            <div className="animate-fadeIn space-y-3">
+                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-[2px] ml-2">LGAs in {selectedState}</p>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
+                    <button onClick={() => setSelectedLGA('All')} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedLGA === 'All' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50/50 dark:bg-emerald-900/5 text-emerald-600'}`}>Everywhere</button>
+                    {NIGERIA_LGAS[selectedState].map(l => (
+                        <button key={l} onClick={() => setSelectedLGA(l)} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedLGA === l ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50/50 dark:bg-emerald-900/5 text-emerald-600'}`}>{l}</button>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Category Chips Scroll */}
+        <div className="space-y-3 border-t border-gray-50 dark:border-slate-800 pt-6">
+           <p className="text-[8px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[2px] ml-2">Industries</p>
+           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
+            <button onClick={() => handleCategoryChange('All')} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${category === 'All' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'bg-gray-50 dark:bg-slate-800 text-gray-400'}`}>All</button>
             {Object.keys(CATEGORY_MAP).map(cat => (
-              <button key={cat} onClick={() => handleCategoryChange(cat)} className={`whitespace-nowrap px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${category === cat ? 'bg-brand text-white shadow-xl scale-105' : 'bg-gray-50 dark:bg-slate-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}>{cat}</button>
+              <button key={cat} onClick={() => handleCategoryChange(cat)} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${category === cat ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'bg-gray-50 dark:bg-slate-800 text-gray-400'}`}>{cat}</button>
             ))}
           </div>
 
-          {/* Subcategory Scroll - Appears only when a category is selected */}
+          {/* Subcategory Chips Scroll - Appears only when a category is selected */}
           {category !== 'All' && CATEGORY_MAP[category] && (
             <div className="animate-fadeIn space-y-2">
-                <p className="text-[8px] font-black text-brand/60 uppercase tracking-[2px] ml-2">Specific Services</p>
-                <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
-                    <button onClick={() => setSubcategory('All')} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${subcategory === 'All' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md' : 'bg-gray-50 dark:bg-slate-800/50 text-gray-400 border border-gray-100 dark:border-slate-700'}`}>All {category}</button>
+                <p className="text-[8px] font-black text-brand/60 uppercase tracking-[2px] ml-2">Sub-Services</p>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
+                    <button onClick={() => setSubcategory('All')} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${subcategory === 'All' ? 'bg-brand text-white shadow-md' : 'bg-gray-50 dark:bg-slate-800 text-gray-400 border border-gray-100 dark:border-slate-700'}`}>All {category}</button>
                     {CATEGORY_MAP[category].map(sub => (
-                    <button key={sub} onClick={() => setSubcategory(sub)} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${subcategory === sub ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md' : 'bg-gray-50 dark:bg-slate-800/50 text-gray-400 border border-gray-100 dark:border-slate-700'}`}>{sub}</button>
+                    <button key={sub} onClick={() => setSubcategory(sub)} className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${subcategory === sub ? 'bg-brand text-white shadow-md' : 'bg-gray-50 dark:bg-slate-800 text-gray-400 border border-gray-100 dark:border-slate-700'}`}>{sub}</button>
                     ))}
                 </div>
             </div>
@@ -241,10 +237,10 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         </div>
 
         {/* Results List */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-6 pt-4">
           <div className="flex justify-between items-center px-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {loading ? 'Searching...' : `${items.length} ${items.length === 1 ? 'result' : 'results'} found`}
+                  {loading ? 'Searching Hub...' : `${items.length} ${items.length === 1 ? 'match' : 'matches'} found`}
               </p>
           </div>
 
@@ -254,8 +250,8 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                     <div className="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-200 dark:text-slate-700">
                         <i className="fa-solid fa-magnifying-glass text-2xl"></i>
                     </div>
-                    <p className="text-gray-300 dark:text-slate-700 font-black uppercase text-[10px] tracking-[5px]">No results match your search</p>
-                    <button onClick={clearFilters} className="mt-4 text-brand font-black uppercase text-[10px] tracking-widest underline">Reset All Filters</button>
+                    <p className="text-gray-300 dark:text-slate-700 font-black uppercase text-[10px] tracking-[5px]">No matches found</p>
+                    <button onClick={clearFilters} className="mt-4 text-brand font-black uppercase text-[10px] tracking-widest underline">Reset Hub</button>
                 </div>
             ) :
             items.map(item => (
@@ -265,7 +261,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                   </div>
                   <div className="flex-1 min-w-0">
                       <h4 className="font-black text-gray-900 dark:text-white text-[18px] tracking-tight truncate">{(item.full_name || item.title)}</h4>
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1 truncate">{(item.subcategory || item.category || 'Artisan')}</p>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1 truncate">{(item.subcategory || item.category || 'Professional')}</p>
                       <div className="mt-3 flex items-center gap-3">
                           <span className="text-brand font-black text-lg tracking-tighter">₦{(item.starting_price || item.budget)?.toLocaleString()}</span>
                           <span className="text-gray-200 dark:text-slate-700 text-xs">|</span>
