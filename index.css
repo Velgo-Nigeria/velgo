@@ -4,69 +4,27 @@
 
 @layer base {
   body {
-    @apply bg-white text-gray-900 transition-colors duration-300;
+    @apply bg-white text-gray-900 transition-colors duration-300 antialiased;
+    -webkit-tap-highlight-color: transparent;
   }
   .dark body {
-    @apply bg-gray-900 text-gray-100;
+    @apply bg-[#0f172a] text-gray-100;
   }
 }
 
-@layer components {
-  /* Premium Dark Theme for Auth */
-  .auth-bg {
-    @apply min-h-screen w-full bg-[#0f172a] flex flex-col items-center justify-center relative overflow-hidden;
-    background-image: 
-      radial-gradient(circle at 0% 0%, rgba(0, 128, 0, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, rgba(0, 128, 0, 0.1) 0%, transparent 50%);
-  }
+.auth-gradient {
+  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 45%),
+              radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.08), transparent 45%);
+}
 
-  .auth-input-group {
-    @apply relative w-full mb-6;
-  }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-  .auth-input-field {
-    @apply w-full bg-[#1e293b] border-2 border-transparent rounded-[28px] py-5 px-8 text-white font-bold text-sm outline-none transition-all placeholder-transparent focus:border-brand focus:bg-[#0f172a] focus:ring-4 focus:ring-brand/10;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .auth-label {
-    @apply absolute left-8 top-1/2 -translate-y-1/2 text-gray-500 font-black text-[10px] uppercase tracking-widest pointer-events-none transition-all;
-  }
-
-  .auth-input-field:focus ~ .auth-label,
-  .auth-input-field:not(:placeholder-shown) ~ .auth-label {
-    @apply -top-2 left-6 bg-[#0f172a] px-3 text-brand text-[9px] translate-y-0;
-  }
-
-  .auth-btn-primary {
-    @apply w-full bg-brand text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-[3px] shadow-2xl shadow-brand/30 hover:bg-brand-dark active:scale-95 transition-all;
-  }
-
-  .auth-toggle-container {
-    @apply bg-white/5 p-1.5 rounded-[32px] border border-white/10 grid grid-cols-2 gap-2 mb-8;
-  }
-
-  .auth-toggle-btn {
-    @apply py-4 rounded-[24px] text-[10px] font-black uppercase tracking-widest transition-all;
-  }
-
-  .auth-toggle-btn-active {
-    @apply bg-white text-brand shadow-xl scale-[1.02];
-  }
-
-  .auth-toggle-btn-inactive {
-    @apply text-gray-500 hover:text-white;
-  }
-
-  .velgo-glass {
-    @apply bg-white/10 backdrop-blur-xl border border-white/10;
-  }
-
-  .animate-fadeIn {
-    animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

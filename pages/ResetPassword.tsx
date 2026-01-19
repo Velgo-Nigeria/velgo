@@ -17,20 +17,11 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onBack }) => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
 
     setLoading(true);
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    
     if (updateError) {
       setError(updateError.message);
       setLoading(false);
@@ -40,70 +31,56 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onBack }) => {
   };
 
   return (
-    <div className="auth-bg px-8 py-12 flex flex-col justify-center items-center relative">
+    <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12 relative">
       {onBack && (
         <button 
           onClick={onBack} 
-          className="absolute top-10 left-8 text-gray-500 hover:text-white transition-all w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5"
+          className="absolute top-10 left-8 text-gray-500 hover:text-white transition-all w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/5"
         >
           <i className="fa-solid fa-chevron-left"></i>
         </button>
       )}
 
-      <div className="w-full max-w-sm space-y-10">
-        <div className="text-center animate-fadeIn">
-          <VelgoLogo variant="light" className="h-12 mx-auto mb-6" />
-          <h2 className="text-[32px] font-black text-white uppercase tracking-tighter leading-none">Security</h2>
-          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[2px] mt-3 opacity-80">Update Your Access Token</p>
+      <div className="w-full max-w-sm space-y-10 animate-fadeIn">
+        <div className="text-center">
+          <VelgoLogo variant="light" className="h-12 mx-auto mb-8" />
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Security</h2>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[3px] mt-3 opacity-80">Update Your Token</p>
         </div>
 
         <form className="space-y-6" onSubmit={handleUpdate}>
           {error && (
-            <div className="p-4 bg-red-500/10 text-red-400 text-[11px] font-bold rounded-2xl border border-red-500/20 animate-fadeIn flex items-center gap-2">
+            <div className="p-4 bg-red-500/10 text-red-400 text-xs font-bold rounded-2xl border border-red-500/20 flex items-center gap-3">
               <i className="fa-solid fa-circle-exclamation"></i>
               {error}
             </div>
           )}
 
-          <div className="auth-input-group">
-               <input 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  placeholder=" "
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  className="auth-input-field" 
-               />
-               <label className="auth-label">New Password</label>
-               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
-                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-               </button>
-          </div>
+          <div className="space-y-4">
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} 
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
+                placeholder="New Password"
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-400">
+                <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+            </div>
 
-          <div className="auth-input-group">
-               <input 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  placeholder=" "
-                  value={confirmPassword} 
-                  onChange={e => setConfirmPassword(e.target.value)} 
-                  className="auth-input-field" 
-               />
-               <label className="auth-label">Confirm New Password</label>
+            <input 
+              type={showPassword ? "text" : "password"} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} 
+              className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
+              placeholder="Confirm New Password"
+            />
           </div>
           
-          <button type="submit" disabled={loading} className="auth-btn-primary">
-            {loading ? 'Processing...' : 'UPDATE SECURELY'}
+          <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all">
+            {loading ? 'Processing...' : 'Update Securely'}
           </button>
 
           {onBack && (
-            <button 
-              type="button" 
-              onClick={onBack} 
-              className="w-full text-center text-gray-500 font-black text-[11px] uppercase tracking-widest mt-4 opacity-40 hover:opacity-100 transition-opacity"
-            >
-              Cancel
-            </button>
+            <button type="button" onClick={onBack} className="w-full text-center text-gray-500 font-black text-[10px] uppercase tracking-widest mt-4 opacity-40 hover:opacity-100 transition-opacity">Cancel</button>
           )}
         </form>
       </div>
