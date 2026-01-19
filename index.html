@@ -6,9 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#008000">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="xtU-miJkUKjZXJE53tQJVEaIGOwGXzC1X5lLzo6fv9Q" />
+    
+    <!-- App Icons -->
+    <link rel="icon" type="image/png" href="https://img.icons8.com/ios-filled/32/008000/shield.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/ios-filled/180/008000/shield.png">
     
     <!-- SEO Meta Tags -->
     <title>Velgo Nigeria | Local Gig Platform</title>
@@ -21,14 +26,14 @@
     <meta property="og:url" content="https://velgo.vercel.app/">
     <meta property="og:title" content="Velgo Nigeria | Local Gig Platform">
     <meta property="og:description" content="The trusted zero-commission gig marketplace connecting verified local workers and clients in Nigeria.">
-    <meta property="og:image" content="https://ui-avatars.com/api/?name=V&background=008000&color=fff&size=512">
+    <meta property="og:image" content="https://img.icons8.com/ios-filled/512/008000/shield.png">
 
     <!-- Twitter Card -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://velgo.vercel.app/">
     <meta property="twitter:title" content="Velgo Nigeria | Local Gig Platform">
     <meta property="twitter:description" content="The trusted zero-commission gig marketplace connecting verified local workers and clients in Nigeria.">
-    <meta property="twitter:image" content="https://ui-avatars.com/api/?name=V&background=008000&color=fff&size=512">
+    <meta property="twitter:image" content="https://img.icons8.com/ios-filled/512/008000/shield.png">
     
     <link rel="manifest" href="/manifest.json">
     
@@ -71,13 +76,11 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Robust registration to avoid origin mismatch errors in preview environments
           const swPath = new URL('/sw.js', window.location.origin).href;
           navigator.serviceWorker.register(swPath)
-            .then(reg => console.log('Velgo Service Worker registered successfully on origin:', window.location.origin))
+            .then(reg => console.log('Velgo Service Worker registered successfully'))
             .catch(err => {
-              // We only log a warning here as the app will still function without the SW
-              console.warn('Service Worker registration skipped or failed. (This is normal in some preview environments):', err.message);
+              console.warn('Service Worker registration skipped or failed:', err.message);
             });
         });
       }

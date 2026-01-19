@@ -1,8 +1,8 @@
 
-const CACHE_NAME = 'velgo-v1.0.4';
+const CACHE_NAME = 'velgo-v1.0.5';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 
-// Assets to pre-cache immediately - DO NOT cache source files like .tsx
+// Assets to pre-cache immediately
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -32,14 +32,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-
-  // Security Check: Only handle requests that are same-origin or authorized external (Supabase)
   const isSameOrigin = url.origin === self.location.origin;
   const isSupabase = url.href.includes('supabase.co');
 
   if (!isSameOrigin && !isSupabase) return;
 
-  // Strategy 1: Network First, Fallback to Cache for Supabase API GET requests
   if (isSupabase && event.request.method === 'GET' && !url.href.includes('/auth/v1/')) {
       event.respondWith(
           fetch(event.request).then((networkResponse) => {
@@ -59,7 +56,6 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  // Strategy 2: Network First, Fallback to Cache for document/HTML (Navigation)
   if (event.request.mode === 'navigate' && isSameOrigin) {
       event.respondWith(
           fetch(event.request).catch(() => {
@@ -69,7 +65,6 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  // Strategy 3: Cache First, Fallback to Network for same-origin static assets
   if (event.request.method === 'GET' && isSameOrigin) {
       event.respondWith(
           caches.match(event.request).then((response) => {
@@ -89,7 +84,6 @@ self.addEventListener('fetch', (event) => {
 });
 
 // --- PUSH NOTIFICATION HANDLERS ---
-
 self.addEventListener('push', function(event) {
   if (event.data) {
     let data = { title: 'Velgo', body: 'New Activity', url: '/' };
@@ -101,8 +95,8 @@ self.addEventListener('push', function(event) {
 
     const options = {
       body: data.body,
-      icon: 'https://ui-avatars.com/api/?name=V&background=008000&color=fff&size=192',
-      badge: 'https://ui-avatars.com/api/?name=V&background=008000&color=fff&size=96',
+      icon: 'https://img.icons8.com/ios-filled/192/008000/shield.png',
+      badge: 'https://img.icons8.com/ios-filled/96/008000/shield.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
