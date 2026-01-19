@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Profile } from '../types';
+import { Profile } from '../lib/types';
 import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { GoogleGenAI, Type } from "@google/genai";
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
@@ -17,19 +17,15 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [urgency, setUrgency] = useState('normal');
   const [loading, setLoading] = useState(false);
   
-  // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Location Logic
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
   
-  // Limit Modal State
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  // AI States
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [processingAudio, setProcessingAudio] = useState(false);
@@ -37,7 +33,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    // Reset LGA when State changes
     if (NIGERIA_LGAS[selectedState]) {
         if (!NIGERIA_LGAS[selectedState].includes(selectedLGA)) {
              setSelectedLGA(NIGERIA_LGAS[selectedState][0] || '');
@@ -69,7 +64,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
     e.preventDefault();
     if (!profile) return;
     
-    // Check Client Limit
     const limit = getTierLimit(profile.subscription_tier);
     if (profile.task_count >= limit) {
       setShowUpgradeModal(true);
@@ -80,7 +74,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
     let imageUrl = null;
 
     try {
-      // 1. Upload Image if exists
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `task-${profile.id}-${Date.now()}.${fileExt}`;
@@ -100,7 +93,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
       const fullLocation = `${selectedLGA}, ${selectedState}`;
 
-      // 2. Insert Task
       const { error } = await supabase.from('posted_tasks').insert([{
         client_id: profile.id,
         title,
@@ -115,7 +107,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
       if (error) throw error;
 
-      // Database Trigger automatically increments 'task_count' on insert.
       onRefreshProfile();
       alert("Job Posted Successfully!");
       onBack();
@@ -184,7 +175,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
               const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
               
-              // Correct Model: gemini-3-flash-preview supports audio in generateContent
               const response = await ai.models.generateContent({
                   model: "gemini-3-flash-preview",
                   contents: {
@@ -217,7 +207,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   if (data.budget) setBudget(data.budget.toString());
                   if (data.urgency && ['normal', 'urgent', 'emergency'].includes(data.urgency.toLowerCase())) setUrgency(data.urgency.toLowerCase());
                   
-                  // Intelligent Mapping
                   if (data.category && CATEGORY_MAP[data.category]) {
                       setCategory(data.category);
                   }
@@ -239,7 +228,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
       }
   };
 
-  // Limit Modal Component
   const UpgradeModal = () => (
     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
@@ -301,7 +289,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
           <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
         </div>
 
-        {/* Image Upload */}
         <div>
            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Photo (Optional)</label>
            {previewUrl ? (

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
-import { Profile, SubscriptionTier } from '../types';
+import { Profile, SubscriptionTier } from '../lib/types';
 import { TIERS } from '../lib/constants';
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -12,10 +13,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Action States
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Support Chat State
   const [selectedTicketUser, setSelectedTicketUser] = useState<any>(null);
   const [adminReply, setAdminReply] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -59,27 +58,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (result.error) {
             console.error("Admin Fetch Error:", JSON.stringify(result.error, null, 2));
             const err = result.error;
-            
-            if (err.code === '42P01' || (err.message && typeof err.message === 'string' && err.message.includes('relation'))) {
-               setErrorMsg("Database Setup Required: Missing tables. Please run the provided SQL script.");
-            } else if (err.code === '42501') {
-               setErrorMsg("Permission Denied: Run 'admin_permissions.sql' to give Admins access to Safety/Support tables.");
-            } else {
-               let msg = 'Unknown error';
-               if (typeof err === 'string') msg = err;
-               else if (err.message && typeof err.message === 'string') msg = err.message;
-               else if (err.details && typeof err.details === 'string') msg = err.details;
-               else if (err.error_description && typeof err.error_description === 'string') msg = err.error_description;
-               else {
-                   try {
-                       msg = JSON.stringify(err);
-                       if (msg === '{}') msg = 'Check console for error details';
-                   } catch {
-                       msg = 'Non-serializable error';
-                   }
-               }
-               setErrorMsg(`Data Error: ${msg}`);
-            }
+            setErrorMsg(`Data Error: ${err.message || 'Check console'}`);
         }
 
         if (activeTab === 'users' || activeTab === 'verify') setUsers(result.data || []);
@@ -135,13 +114,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (error) throw error;
 
       } catch (error: any) {
-          setUsers(previousUsers); // Revert
-          console.error("Update failed:", error);
-          if (error?.message?.includes('policy') || error?.code === '42501') {
-             alert("Database Policy Error: Infinite recursion or permission denied. \n\nPlease run the 'admin_permissions.sql' script.");
-          } else {
-             alert("Failed to update tier: " + error?.message);
-          }
+          setUsers(previousUsers);
+          alert("Failed to update tier: " + error?.message);
       } finally {
         setProcessingId(null);
       }
@@ -175,7 +149,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       if (!error) {
           setAdminReply('');
-          fetchData(); // This will refresh the chat
+          fetchData();
       } else {
           alert("Failed to send: " + error.message);
       }
@@ -263,7 +237,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
          
          activeTab === 'users' ? (
             <div className="space-y-4">
-                <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search users by name or email..." className="w-full p-3 rounded-xl border outline-none focus:border-brand" />
+                <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search users..." className="w-full p-3 rounded-xl border outline-none focus:border-brand" />
                 <div className="space-y-3">
                     {filteredUsers.map(user => (
                         <div key={user.id} className="bg-white p-4 rounded-xl shadow-sm flex flex-col gap-3">
@@ -275,21 +249,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 {user.is_verified && <i className="fa-solid fa-check-circle text-blue-500 text-lg"></i>}
                             </div>
                             
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                <i className="fa-solid fa-phone w-4"></i>
-                                {user.phone_number ? (
-                                    <a href={`tel:${user.phone_number}`} className="font-bold text-blue-600 underline decoration-blue-200 decoration-2 underline-offset-2">
-                                        {user.phone_number}
-                                    </a>
-                                ) : <span className="text-gray-400">No phone</span>}
-                            </div>
-
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'worker' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {user.role}
                                 </span>
-                                
-                                {/* Manual Tier Adjustment */}
                                 <div className="flex items-center gap-1">
                                     <span className="text-[9px] font-bold text-gray-400">Plan:</span>
                                     <div className="relative">
@@ -303,7 +266,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                         </select>
                                         <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
                                     </div>
-                                    {processingId === user.id && <i className="fa-solid fa-circle-notch animate-spin text-gray-400 text-xs"></i>}
                                 </div>
                             </div>
                         </div>
@@ -314,8 +276,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
          
          activeTab === 'safety' ? (
             <div className="space-y-4">
-                {safetyReports.length === 0 ? <div className="text-center py-20 text-gray-400 text-sm font-bold">No safety reports found.</div> : 
-                 safetyReports.map(report => (
+                {safetyReports.map(report => (
                     <div key={report.id} className="bg-white p-5 rounded-2xl shadow-sm border border-red-50">
                         <div className="flex justify-between items-start mb-2">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${report.status === 'resolved' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{report.status || 'pending'}</span>
@@ -325,9 +286,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <p className="text-sm font-bold text-gray-900">Reporter: {report.profiles?.full_name || 'Unknown'}</p>
                             <a href={`tel:${report.profiles?.phone_number}`} className="text-xs text-blue-600 font-bold underline">{report.profiles?.phone_number}</a>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl mb-4 whitespace-pre-wrap">
-                             <p className="text-xs text-gray-700 leading-relaxed font-medium">{report.details}</p>
-                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl mb-4 whitespace-pre-wrap text-xs text-gray-700 leading-relaxed">{report.details}</div>
                         <div className="flex gap-2">
                             <button onClick={() => openSupportChatFromSafety(report.profiles)} className="flex-1 bg-gray-900 text-white py-3 rounded-xl font-black text-[10px] uppercase">Message</button>
                             {report.status !== 'resolved' && (
@@ -346,22 +305,15 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                      <div className="flex items-center gap-3 bg-white p-4 rounded-t-2xl border-b mb-2">
                          <button onClick={() => setSelectedTicketUser(null)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i className="fa-solid fa-arrow-left"></i></button>
                          <h3 className="font-bold text-gray-900">{selectedTicketUser.full_name}</h3>
-                         <span className="text-xs text-gray-500">{selectedTicketUser.email}</span>
                      </div>
                      <div className="flex-1 overflow-y-auto space-y-3 p-2">
-                         {groupedSupport[selectedTicketUser.id] ? (
-                             groupedSupport[selectedTicketUser.id].messages.map((msg: any) => (
+                         {groupedSupport[selectedTicketUser.id]?.messages.map((msg: any) => (
                                  <div key={msg.id} className={`flex ${msg.admin_reply ? 'justify-end' : 'justify-start'}`}>
                                      <div className={`max-w-[80%] p-3 rounded-2xl text-xs ${msg.admin_reply ? 'bg-gray-900 text-white rounded-br-none' : 'bg-white border text-gray-700 rounded-bl-none'}`}>
                                          {msg.content}
                                      </div>
                                  </div>
-                             ))
-                         ) : (
-                             <div className="text-center text-gray-400 text-xs py-10 font-bold bg-gray-100 rounded-2xl mx-4">
-                                 No history found. Start a new conversation below.
-                             </div>
-                         )}
+                         ))}
                          <div ref={chatScrollRef} />
                      </div>
                      <div className="mt-2 flex gap-2 pt-2 border-t">
@@ -371,9 +323,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                  </div>
              ) : (
                  <div className="space-y-3">
-                     {sortedSupportTickets.length === 0 ? <div className="text-center py-20 text-gray-400 text-sm font-bold">No active tickets.</div> :
-                      sortedSupportTickets.map((ticket: any) => (
-                         <div key={ticket.user.id} onClick={() => setSelectedTicketUser(ticket.user)} className="bg-white p-4 rounded-xl shadow-sm flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform">
+                     {sortedSupportTickets.map((ticket: any) => (
+                         <div key={ticket.user.id} onClick={() => setSelectedTicketUser(ticket.user)} className="bg-white p-4 rounded-xl shadow-sm flex items-center gap-4 cursor-pointer">
                              <div className="w-10 h-10 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold overflow-hidden">
                                 {ticket.user.avatar_url ? <img src={ticket.user.avatar_url} className="w-full h-full object-cover" /> : ticket.user.full_name[0]}
                              </div>
@@ -382,9 +333,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                      <h4 className="font-bold text-sm text-gray-900 truncate">{ticket.user.full_name}</h4>
                                      <span className="text-[9px] text-gray-400 font-bold">{new Date(ticket.lastMsg.created_at).toLocaleDateString()}</span>
                                  </div>
-                                 <p className="text-xs text-gray-500 truncate mt-1">
-                                     {ticket.lastMsg.admin_reply ? <span className="text-brand font-bold">You: </span> : ''} {ticket.lastMsg.content}
-                                 </p>
+                                 <p className="text-xs text-gray-500 truncate mt-1">{ticket.lastMsg.content}</p>
                              </div>
                          </div>
                       ))

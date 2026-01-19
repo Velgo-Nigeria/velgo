@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
-import { Profile } from '../types';
+import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
@@ -10,18 +10,14 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [worker, setWorker] = useState<Profile | null>(null);
   const [rating, setRating] = useState<number>(5.0);
   const [reviewCount, setReviewCount] = useState(0);
-  const [reviews, setReviews] = useState<any[]>([]); // New state for reviews
+  const [reviews, setReviews] = useState<any[]>([]);
   
-  // New: Limit Modal State
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
-    // Fetch Profile
-    safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single()).then(({data}) => setWorker(data));
+    safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any).then(({data}) => setWorker(data));
     
-    // Fetch Rating Stats & Written Reviews
     const fetchRating = async () => {
-        // Get aggregated stats
         const { data: ratingData } = await supabase.from('bookings').select('rating').eq('worker_id', workerId).not('rating', 'is', null);
         if (ratingData && ratingData.length > 0) {
             const total = ratingData.reduce((sum, item) => sum + (item.rating || 0), 0);
@@ -29,13 +25,12 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
             setReviewCount(ratingData.length);
         }
 
-        // Get detailed written reviews (Limit to latest 10)
         const { data: reviewsData } = await supabase
             .from('bookings')
             .select('rating, review, created_at, profiles:client_id(full_name, avatar_url)')
             .eq('worker_id', workerId)
-            .not('review', 'is', null) // Only where text exists
-            .neq('review', '') // Ensure not empty string
+            .not('review', 'is', null)
+            .neq('review', '')
             .order('created_at', { ascending: false })
             .limit(10);
             
@@ -47,7 +42,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const handleBooking = async () => {
     if (!profile) return;
 
-    // Client Limit Check
     if (profile.role === 'client') {
        const limit = getTierLimit(profile.subscription_tier);
        if (profile.task_count >= limit) {
@@ -59,7 +53,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     const { error } = await safeFetch(async () => await supabase.from('bookings').insert([{ client_id: profile.id, worker_id: workerId, status: 'pending' }]));
     
     if (!error) { 
-      // Database Trigger automatically increments client's 'task_count' on insert for Direct Hires.
       if (profile.role === 'client') {
         if (onRefreshProfile) onRefreshProfile();
       }
@@ -68,7 +61,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     }
   };
 
-  // Limit Modal Component
   const UpgradeModal = () => (
     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
@@ -115,7 +107,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
           </div>
           <p className="text-sm text-gray-500 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory} available in ${worker?.address}.`}</p>
           
-          {/* Reviews Section */}
           <div className="space-y-4">
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide">Recent Reviews</h3>
               {reviews.length === 0 ? (

@@ -1,5 +1,4 @@
-
-import { SubscriptionTier } from './types';
+import { SubscriptionTier } from '../types';
 
 export const TIERS: { id: SubscriptionTier; name: string; price: number; limit: number; features: string[] }[] = [
   { id: 'basic', name: 'Basic / Trial', price: 0, limit: 2, features: ['2 Jobs Limit', 'Basic Profile', 'Standard Support'] },

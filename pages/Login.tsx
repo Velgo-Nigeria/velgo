@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { VelgoLogo } from '../components/Brand';
@@ -23,7 +22,7 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
@@ -37,7 +36,6 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
           setError(error.message);
         }
       }
-      // Success is handled by App.tsx subscription
     } catch (err: any) {
       setError('Network connection error.');
     } finally {
@@ -63,35 +61,40 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
     }
   };
 
-  // Reset Password View
   if (isResetting) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white dark:bg-gray-900 animate-fadeIn transition-colors duration-200">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center">
-            <VelgoLogo className="h-10 mx-auto mb-4" />
-            <h2 className="text-xl font-black text-gray-900 dark:text-white">Reset Password</h2>
+      <div className="auth-bg px-8 py-12 flex flex-col justify-center items-center">
+        <div className="w-full max-w-sm space-y-10">
+          <div className="text-center animate-fadeIn">
+            <VelgoLogo variant="light" className="h-12 mx-auto mb-6" />
+            <h2 className="text-[32px] font-black text-white uppercase tracking-tighter leading-none">Reset</h2>
+            <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[2px] mt-3 opacity-80">Security Protocol Alpha</p>
           </div>
 
           {resetSent ? (
-            <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-[24px] text-center border border-green-100 dark:border-green-800">
-              <i className="fa-solid fa-check-circle text-3xl text-green-600 dark:text-green-400 mb-2"></i>
-              <p className="text-sm text-gray-700 dark:text-gray-200 font-bold">Recovery link sent to {email}</p>
-              <button onClick={() => { setIsResetting(false); setResetSent(false); }} className="mt-4 text-xs font-black text-brand uppercase">Back to Login</button>
+            <div className="bg-brand/10 p-10 rounded-[40px] text-center border border-brand/20 animate-fadeIn">
+              <div className="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-xl shadow-brand/30">
+                <i className="fa-solid fa-paper-plane text-2xl"></i>
+              </div>
+              <p className="text-xs text-white/80 font-bold leading-relaxed">Recovery link sent to<br/><span className="text-brand">{email}</span></p>
+              <button onClick={() => { setIsResetting(false); setResetSent(false); }} className="mt-8 text-[11px] font-black text-brand uppercase tracking-widest">Back to Login</button>
             </div>
           ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              {error && <div className="p-3 bg-red-50 text-red-500 text-xs rounded-xl font-bold">{error}</div>}
-              <input 
-                type="email" 
-                required 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                className="w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl text-sm font-bold outline-none border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400" 
-                placeholder="Enter your email" 
-              />
-              <button type="submit" disabled={loading} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest">{loading ? 'Sending...' : 'Send Link'}</button>
-              <button type="button" onClick={() => setIsResetting(false)} className="w-full py-4 text-xs font-bold text-gray-400 uppercase">Cancel</button>
+            <form onSubmit={handleResetPassword} className="space-y-6">
+              {error && <div className="p-4 bg-red-500/10 text-red-400 text-[11px] font-bold rounded-2xl border border-red-500/20">{error}</div>}
+              <div className="auth-input-group">
+                <input 
+                  type="email" 
+                  required 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder=" " 
+                  className="auth-input-field" 
+                />
+                <label className="auth-label">Email Address</label>
+              </div>
+              <button type="submit" disabled={loading} className="auth-btn-primary">{loading ? 'Processing...' : 'SEND RECOVERY LINK'}</button>
+              <button type="button" onClick={() => setIsResetting(false)} className="w-full text-center text-gray-500 font-black text-[11px] uppercase tracking-widest mt-4 opacity-40 hover:opacity-100 transition-opacity">Cancel</button>
             </form>
           )}
         </div>
@@ -100,59 +103,67 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white dark:bg-gray-900 animate-fadeIn transition-colors duration-200">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <VelgoLogo className="h-12 mx-auto mb-6" />
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Welcome Back</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-2">Sign in to your account.</p>
+    <div className="auth-bg px-8 py-12 flex flex-col justify-center items-center">
+      <div className="w-full max-w-sm space-y-10">
+        <div className="text-center animate-fadeIn">
+          <VelgoLogo variant="light" className="h-12 mx-auto mb-6" />
+          <h1 className="text-[32px] font-black text-white uppercase tracking-tighter leading-none">Sign In</h1>
+          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[2px] mt-3 opacity-80">Naija Gig Marketplace</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          {error && <div className="p-4 bg-red-50 text-red-500 text-xs font-bold rounded-2xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{error}</span></div>}
+        <form onSubmit={handleLogin} className="space-y-5">
+          {error && (
+            <div className="p-4 bg-red-500/10 text-red-400 text-[11px] font-bold rounded-2xl border border-red-500/20 mb-2 animate-fadeIn flex items-center gap-3">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              {error}
+            </div>
+          )}
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
+          <div className="auth-input-group">
             <input 
               type="email" 
               required 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
-              placeholder="e.g. name@example.com"
+              className="auth-input-field"
+              placeholder=" "
             />
+            <label className="auth-label">Email Address</label>
           </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between items-center px-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Password</label>
-              <button type="button" onClick={() => setIsResetting(true)} className="text-[10px] font-black text-brand uppercase tracking-widest">Forgot?</button>
-            </div>
+          <div className="auth-input-group">
             <div className="relative">
               <input 
                 type={showPassword ? 'text' : 'password'} 
                 required 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-2xl text-sm font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
-                placeholder="••••••••"
+                className="auth-input-field"
+                placeholder=" "
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+              <label className="auth-label">Password</label>
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
+                <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
             </div>
+          </div>
+
+          <div className="flex justify-end px-1">
+             <button type="button" onClick={() => setIsResetting(true)} className="text-[10px] font-black text-brand uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Forgot Password?</button>
           </div>
 
           <button 
             type="submit" 
             disabled={loading} 
-            className="w-full bg-brand text-white py-5 rounded-[24px] font-black uppercase text-sm shadow-xl shadow-brand/20 active:scale-95 transition-transform disabled:opacity-70 disabled:scale-100"
+            className="auth-btn-primary mt-6"
           >
-            {loading ? 'Verifying...' : 'Sign In'}
+            {loading ? 'Authenticating...' : 'SIGN IN'}
           </button>
         </form>
 
         <div className="text-center pt-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-            New to Velgo? <button onClick={onToggle} className="text-brand font-black uppercase ml-1">Create Account</button>
+          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">
+            New to Velgo? <button onClick={onToggle} className="text-brand font-black ml-1 border-b border-brand/20 pb-0.5 hover:border-brand transition-all">Sign Up</button>
           </p>
         </div>
       </div>

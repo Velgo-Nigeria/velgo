@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
-import { Profile, PostedTask } from '../types';
+import { Profile, PostedTask } from '../lib/types';
 import { GoogleGenAI } from "@google/genai";
 import { VelgoLogo } from '../components/Brand';
 import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
@@ -11,393 +10,133 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [items, setItems] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
-  
-  // Location States
-  const [selectedState, setSelectedState] = useState('All Nigeria');
-  const [selectedLGA, setSelectedLGA] = useState('');
-  const [userLat, setUserLat] = useState<number | null>(null);
-  const [userLng, setUserLng] = useState<number | null>(null);
-  
-  // Worker View Mode
   const [workerViewMode, setWorkerViewMode] = useState<'jobs' | 'market'>('jobs');
-  
-  // Application & Bidding State
-  const [myApplications, setMyApplications] = useState<Set<string>>(new Set());
-  const [applyingTask, setApplyingTask] = useState<any | null>(null);
-  const [bidPrice, setBidPrice] = useState('');
-  
-  // Modals
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [insightQuery, setInsightQuery] = useState('');
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightResult, setInsightResult] = useState<{ text: string, sources: any[] } | null>(null);
 
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [translatingId, setTranslatingId] = useState<string | null>(null);
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-  
-  const [clientRatings, setClientRatings] = useState<Record<string, number>>({});
-  const [workerRatings, setWorkerRatings] = useState<Record<string, {avg: number, count: number}>>({});
-
-  useEffect(() => {
-      if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-              (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude); },
-              () => {} 
-          );
-      }
-  }, []);
-
-  // Debounce Search Input
-  useEffect(() => {
-      const timer = setTimeout(() => setDebouncedSearch(search), 500);
-      return () => clearTimeout(timer);
-  }, [search]);
+  const fetchMarketInsights = async () => {
+    if (!insightQuery.trim()) return;
+    setInsightLoading(true);
+    setInsightResult(null);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `What is the current market price for ${insightQuery} in Nigeria today? Include local context and average labor rates if applicable.`,
+        config: { tools: [{ googleSearch: {} }] }
+      });
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.web).filter(Boolean) || [];
+      setInsightResult({ text: response.text || "No insights found.", sources });
+    } catch (e) {
+      alert("Failed to fetch market insights. Please try again later.");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
-    setItems([]);
-
     const isFetchingWorkers = profile.role === 'client' || (profile.role === 'worker' && workerViewMode === 'market');
-
     try {
+        let query;
         if (isFetchingWorkers) {
-            let query = supabase.from('profiles').select('*').eq('role', 'worker');
-            
-            // Server-Side Filters
-            if (profile.role === 'worker') query = query.neq('id', profile.id);
+            query = supabase.from('profiles').select('*').eq('role', 'worker');
             if (category !== 'All') query = query.eq('category', category);
-            
-            if (selectedState !== 'All Nigeria') {
-                query = query.eq('state', selectedState);
-                if (selectedLGA) query = query.eq('lga', selectedLGA);
-            }
-
-            if (debouncedSearch) {
-                // Search name, category, or subcategory
-                query = query.or(`full_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%,subcategory.ilike.%${debouncedSearch}%`);
-            }
-
-            const { data } = await safeFetch<Profile[]>(async () => await query.limit(50));
-            
-            let workers = data || [];
-            if (userLat && userLng) {
-                workers = workers.sort((a, b) => {
-                    const distA = a.latitude ? Math.hypot(a.latitude - userLat, a.longitude! - userLng) : 999;
-                    const distB = b.latitude ? Math.hypot(b.latitude - userLat, b.longitude! - userLng) : 999;
-                    return distA - distB;
-                });
-            }
-            setItems(workers);
-
-            const workerIds = workers.map(w => w.id);
-            if (workerIds.length > 0) {
-                const { data: ratingData } = await supabase.from('bookings').select('worker_id, rating').in('worker_id', workerIds).not('rating', 'is', null);
-                const wMap: Record<string, {total: number, count: number}> = {};
-                ratingData?.forEach((r: any) => {
-                    if (!wMap[r.worker_id]) wMap[r.worker_id] = { total: 0, count: 0 };
-                    wMap[r.worker_id].total += r.rating;
-                    wMap[r.worker_id].count += 1;
-                });
-                const finalWMap: Record<string, {avg: number, count: number}> = {};
-                workerIds.forEach(id => {
-                    if (wMap[id]) finalWMap[id] = { avg: parseFloat((wMap[id].total / wMap[id].count).toFixed(1)), count: wMap[id].count };
-                });
-                setWorkerRatings(finalWMap);
-            }
-
         } else {
-            let query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
-            
-            // Server-Side Filters
+            query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
             if (category !== 'All') query = query.eq('category', category);
-            
-            if (selectedState !== 'All Nigeria') {
-                // For Tasks, location is often stored as "LGA, State" string
-                query = query.ilike('location', `%${selectedState}%`);
-                if (selectedLGA) query = query.ilike('location', `%${selectedLGA}%`);
-            }
-
-            if (debouncedSearch) {
-                query = query.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
-            }
-
-            const { data } = await safeFetch<PostedTask[]>(async () => await query.limit(50));
-            let tasks = data || [];
-            
-            setItems(tasks);
-
-            if (profile.role === 'worker') {
-                const { data: apps } = await supabase.from('bookings').select('task_id').eq('worker_id', profile.id).not('task_id', 'is', null);
-                if (apps) setMyApplications(new Set(apps.map((a: any) => a.task_id)));
-            }
-
-            const clientIds = Array.from(new Set(tasks.map((t: any) => t.client_id)));
-            if (clientIds.length > 0) {
-                const { data: ratingsData } = await supabase.from('bookings').select('client_id, client_rating').in('client_id', clientIds).not('client_rating', 'is', null);
-                const ratingsMap: Record<string, number> = {};
-                const countsMap: Record<string, number> = {};
-                ratingsData?.forEach((r: any) => {
-                    if (!ratingsMap[r.client_id]) { ratingsMap[r.client_id] = 0; countsMap[r.client_id] = 0; }
-                    ratingsMap[r.client_id] += r.client_rating;
-                    countsMap[r.client_id] += 1;
-                });
-                const finalRatings: Record<string, number> = {};
-                clientIds.forEach((id: string) => {
-                    if (countsMap[id]) finalRatings[id] = parseFloat((ratingsMap[id] / countsMap[id]).toFixed(1));
-                });
-                setClientRatings(finalRatings);
-            }
         }
-    } catch (e) {
-        console.error("Home Fetch Error:", e);
-    } finally {
-        setLoading(false);
-    }
-  }, [category, profile, workerViewMode, userLat, userLng, debouncedSearch, selectedState, selectedLGA]);
+        const { data } = await safeFetch<any[]>(async () => await query.limit(50));
+        setItems(data || []);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [category, profile, workerViewMode]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const initiateApply = (e: React.MouseEvent, task: any) => {
-      e.stopPropagation();
-      if (!profile) return;
-      
-      if (profile.role === 'worker') {
-         const limit = getTierLimit(profile.subscription_tier);
-         if (profile.task_count >= limit) {
-             setShowUpgradeModal(true);
-             return;
-         }
-      }
-      setApplyingTask(task);
-      setBidPrice(task.budget.toString());
-  };
-
-  const confirmApply = async () => {
-      if (!applyingTask || !profile) return;
-      
-      const { error } = await supabase.from('bookings').insert({
-          task_id: applyingTask.id,
-          client_id: applyingTask.client_id,
-          worker_id: profile.id,
-          status: 'pending',
-          quote_price: parseInt(bidPrice)
-      });
-
-      if (error) {
-          alert("Failed to apply: " + error.message);
-      } else {
-          setMyApplications(prev => new Set(prev).add(applyingTask.id));
-          setShowSuccessModal(true);
-      }
-      setApplyingTask(null);
-  };
-
-  const translateToPidgin = async (e: React.MouseEvent, text: string, id: string) => {
-      e.stopPropagation();
-      setTranslatingId(id);
-      try {
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-          const prompt = `Translate this English text to Nigerian Pidgin English clearly. Keep it short: "${text}"`;
-          const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
-          if (response.text) setTranslations(prev => ({ ...prev, [id]: response.text.trim() }));
-      } catch (err) { console.error(err); } 
-      setTranslatingId(null);
-  };
-
-  // We are now filtering on the server, so we just render 'items' directly
-  const displayItems = items; 
-
-  const handleWorkerClick = (workerId: string) => onViewWorker(workerId);
-
-  const BidModal = () => (
-      <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl space-y-4">
-              <h3 className="text-xl font-black text-gray-900">Your Price?</h3>
-              <p className="text-sm text-gray-500">The client's budget is ₦{applyingTask?.budget?.toLocaleString()}. What is your best offer?</p>
-              <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-xl font-black text-center outline-none border focus:border-brand" />
-              <button onClick={confirmApply} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg">Submit Application</button>
-              <button onClick={() => setApplyingTask(null)} className="w-full text-gray-400 text-xs font-bold uppercase py-2">Cancel</button>
-          </div>
-      </div>
-  );
-
   return (
-    <div className="bg-white min-h-screen">
-      {showSuccessModal && (
-         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
-               <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto text-green-500"><i className="fa-solid fa-paper-plane text-2xl"></i></div>
-               <h3 className="text-xl font-black text-gray-900">Application Sent!</h3>
-               <button onClick={() => setShowSuccessModal(false)} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg">Okay, Got it</button>
-            </div>
-         </div>
-      )}
-      {applyingTask && <BidModal />}
-      {showUpgradeModal && (
-          <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
-               <h3 className="text-xl font-black text-gray-900">Limit Reached</h3>
-               <p className="text-sm text-gray-500">Upgrade your plan to apply for more jobs.</p>
-               <button onClick={onUpgrade} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase">Upgrade Now</button>
-               <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 text-xs font-bold uppercase">Cancel</button>
-            </div>
-          </div>
-      )}
-      
-      {/* Header - MD: Hidden because we use Sidebar */}
-      <header className="md:hidden px-6 pt-10 pb-4 sticky top-0 bg-white/90 backdrop-blur-md z-30 space-y-4 border-b border-gray-50">
-        <div className="flex justify-between items-center">
-            <VelgoLogo className="h-10" />
-            <div className="flex items-center gap-3">
-                <button onClick={onShowGuide} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"><i className="fa-solid fa-question"></i></button>
-                <div className="w-10 h-10 rounded-2xl bg-gray-100 overflow-hidden border border-gray-100 shadow-sm">
-                   <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=008000&color=fff`} className="w-full h-full object-cover" />
+    <div className="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
+      {showInsights && (
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white dark:bg-gray-800 rounded-[40px] p-8 w-full max-w-sm relative max-h-[85vh] overflow-y-auto">
+             <button onClick={() => setShowInsights(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+             <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-magnifying-glass-chart"></i></div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Market Insights</h3>
+             </div>
+             <div className="space-y-4">
+                <div className="relative">
+                  <input value={insightQuery} onChange={e => setInsightQuery(e.target.value)} placeholder="e.g. 50kg Cement, Fuel Price..." className="w-full bg-gray-100 dark:bg-gray-700 border-none rounded-2xl py-4 px-5 text-sm font-bold dark:text-white outline-none" />
+                  <button onClick={fetchMarketInsights} disabled={insightLoading} className="absolute right-2 top-2 bg-brand text-white w-10 h-10 rounded-xl shadow-lg"><i className={`fa-solid ${insightLoading ? 'fa-spinner animate-spin' : 'fa-arrow-right'}`}></i></button>
                 </div>
+                {insightResult && (
+                  <div className="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-3xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4 whitespace-pre-wrap">{insightResult.text}</p>
+                    {insightResult.sources.length > 0 && (
+                      <div className="space-y-2">
+                        {insightResult.sources.slice(0, 3).map((s: any, i: number) => (
+                          <a key={i} href={s.uri} target="_blank" className="block text-[10px] text-brand font-bold underline truncate">{s.title || s.uri}</a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+      )}
+      <header className="px-6 pt-10 pb-4 sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md z-30 flex justify-between items-center border-b border-gray-50 dark:border-gray-800 transition-colors duration-200">
+        <VelgoLogo className="h-10" />
+        <div className="flex gap-3">
+            <button onClick={onShowGuide} className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-all" title="App Guide"><i className="fa-solid fa-question-circle"></i></button>
+            <button onClick={() => setShowInsights(true)} className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-all" title="Market Insights"><i className="fa-solid fa-magnifying-glass-chart"></i></button>
+            <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-800 overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
+                <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=008000&color=fff`} className="w-full h-full object-cover" />
             </div>
         </div>
       </header>
-      
-      {/* Desktop Header Equivalent */}
-      <div className="hidden md:flex justify-between items-center px-6 py-6 border-b border-gray-50">
-          <h1 className="text-2xl font-black text-gray-900">Marketplace</h1>
-          <div className="flex items-center gap-3">
-             <button onClick={onShowGuide} className="bg-gray-50 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><i className="fa-solid fa-question"></i> Help Guide</button>
-             {profile?.role === 'client' && (
-                <button onClick={onPostTask} className="bg-gray-900 text-white px-5 py-3 rounded-xl text-xs font-black uppercase shadow-lg hover:bg-black transition-colors">
-                    <i className="fa-solid fa-plus mr-2"></i> Post Job
-                </button>
-             )}
-          </div>
-      </div>
-
-      <div className="px-6 space-y-6 mt-6 pb-24">
+      <div className="px-6 space-y-6 mt-6 pb-24 max-w-2xl mx-auto">
         {profile?.role === 'worker' && (
-             <div className="bg-gray-100 p-1 rounded-xl flex text-[10px] font-black uppercase tracking-widest max-w-sm">
-                 <button onClick={() => setWorkerViewMode('jobs')} className={`flex-1 py-2.5 rounded-lg transition-all ${workerViewMode === 'jobs' ? 'bg-white text-brand shadow-sm' : 'text-gray-400'}`}>View Jobs</button>
-                 <button onClick={() => setWorkerViewMode('market')} className={`flex-1 py-2.5 rounded-lg transition-all ${workerViewMode === 'market' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}>Competitors</button>
+             <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl flex text-[10px] font-black uppercase tracking-widest max-w-sm mx-auto shadow-inner transition-colors duration-200">
+                 <button onClick={() => setWorkerViewMode('jobs')} className={`flex-1 py-3 rounded-xl transition-all ${workerViewMode === 'jobs' ? 'bg-white dark:bg-gray-700 text-brand shadow-lg' : 'text-gray-400'}`}>View Jobs</button>
+                 <button onClick={() => setWorkerViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${workerViewMode === 'market' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>Competitors</button>
              </div>
         )}
-
-        <div className="bg-gray-50 p-4 rounded-[24px] border border-gray-100 flex items-center justify-between">
-             <div>
-                 <h2 className="text-lg font-black text-gray-800">Hello, {profile?.full_name.split(' ')[0]}</h2>
-                 <p className="text-sm text-gray-500 font-medium">
-                    {profile?.role === 'client' ? 'Find experts for your needs.' : 'Browse jobs in your area.'}
-                 </p>
-             </div>
+        <div className="bg-gray-900 dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
+            <p className="text-[10px] font-black uppercase tracking-[4px] text-brand mb-1">NIGERIA HUB ACTIVE</p>
+            <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
+            {profile?.role === 'client' ? (
+                <button onClick={onPostTask} className="bg-brand text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all">Post a Job Request</button>
+            ) : <p className="text-xs font-medium text-gray-400">Find your next client today!</p>}
         </div>
-
-        {/* Mobile Post Button - Hidden Desktop */}
-        {profile?.role === 'client' && (
-          <div onClick={onPostTask} className="md:hidden bg-gray-900 text-white p-5 rounded-[28px] shadow-xl flex items-center justify-between active:scale-95 transition-all cursor-pointer">
-            <div><p className="text-[10px] font-black uppercase tracking-widest text-brand">Action</p><h2 className="text-xl font-black">Post a Job</h2></div>
-            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center"><i className="fa-solid fa-plus text-lg"></i></div>
-          </div>
-        )}
-
-        <div className="relative">
-          <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={profile?.role === 'client' ? "Search experts..." : "Search jobs..."} className="w-full bg-gray-50 border border-gray-100 rounded-[22px] py-4 pl-12 text-sm font-bold focus:ring-2 focus:ring-brand/20 outline-none" />
+        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
+          {['All', ...Object.keys(CATEGORY_MAP)].map(cat => (
+            <button key={cat} onClick={() => setCategory(cat)} className={`whitespace-nowrap px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${category === cat ? 'bg-brand text-white shadow-xl scale-105' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>{cat}</button>
+          ))}
         </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-end">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Location {userLat ? '(Closest First)' : ''}</p>
-            {selectedState !== 'All Nigeria' && <button onClick={() => { setSelectedState('All Nigeria'); setSelectedLGA(''); }} className="text-[9px] font-bold text-red-500 uppercase">Clear</button>}
-          </div>
-          
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0">
-            <button onClick={() => { setSelectedState('All Nigeria'); setSelectedLGA(''); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${selectedState === 'All Nigeria' ? 'bg-gray-900 text-white border-gray-900 shadow-lg' : 'bg-white text-gray-500 border-gray-100'}`}>All Nigeria</button>
-            {NIGERIA_STATES.map(n => (
-                <button key={n} onClick={() => { setSelectedState(n); setSelectedLGA(''); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${selectedState === n ? 'bg-gray-900 text-white border-gray-900 shadow-lg' : 'bg-white text-gray-500 border-gray-100'}`}>{n}</button>
+        <div className="grid grid-cols-1 gap-6">
+          {loading ? [1, 2, 3].map(i => <div key={i} className="h-40 bg-gray-50 dark:bg-gray-800 rounded-[40px] animate-pulse" />) : 
+            items.length === 0 ? <div className="text-center py-20 text-gray-300 dark:text-gray-700 font-black uppercase text-[10px] tracking-[5px]">No active gigs found</div> :
+            items.map(item => (
+              <div key={item.id} onClick={() => (profile?.role === 'client' || workerViewMode === 'market') ? onViewWorker(item.id) : onViewTask(item.id)} className="bg-white dark:bg-gray-800 p-6 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden">
+                      <img src={item.avatar_url || item.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${item.full_name || 'User'}&background=008000&color=fff`} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-gray-900 dark:text-white text-[18px] tracking-tight truncate">{(item.full_name || item.title)}</h4>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">{(item.category || item.subcategory || 'Artisan')}</p>
+                      <div className="mt-3 flex items-center gap-3">
+                          <span className="text-brand font-black text-lg tracking-tighter">₦{(item.starting_price || item.budget)?.toLocaleString()}</span>
+                          <span className="text-gray-200 dark:text-gray-700 text-xs">|</span>
+                          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-black uppercase"><i className="fa-solid fa-location-dot mr-1"></i>{item.lga || item.location?.split(',')[0] || 'Lagos'}</span>
+                      </div>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-300 dark:text-gray-600"><i className="fa-solid fa-chevron-right"></i></div>
+              </div>
             ))}
-          </div>
-
-          {selectedState !== 'All Nigeria' && NIGERIA_LGAS[selectedState] && (
-               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0 animate-fadeIn">
-                   {NIGERIA_LGAS[selectedState].map(lga => (
-                       <button key={lga} onClick={() => setSelectedLGA(lga === selectedLGA ? '' : lga)} className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${selectedLGA === lga ? 'bg-brand text-white border-brand' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>{lga}</button>
-                   ))}
-               </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0">
-            {['All', ...Object.keys(CATEGORY_MAP)].map(cat => (<button key={cat} onClick={() => setCategory(cat)} className={`whitespace-nowrap px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${category === cat ? 'bg-brand text-white shadow-xl shadow-brand/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>{cat}</button>))}
-          </div>
-        </div>
-
-        {/* RESPONSIVE GRID LAYOUT: 1 col mobile, 2 cols tablet, 3 cols desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
-          {loading ? [1, 2, 3].map(i => <div key={i} className="h-28 bg-gray-50 rounded-[32px] animate-pulse" />) : 
-            displayItems.length === 0 ? <div className="col-span-full text-center py-10 text-gray-400 font-medium text-sm">No results found in this area.</div> :
-            (profile?.role === 'client' || workerViewMode === 'market') ? (
-              displayItems.map(item => {
-                  const worker = item as Profile;
-                  const stats = workerRatings[worker.id];
-                  return (
-                    <div key={worker.id} onClick={() => handleWorkerClick(worker.id)} className={`p-5 bg-white rounded-[32px] border border-gray-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md group active:scale-[0.98] cursor-pointer relative overflow-hidden h-full`}>
-                        {worker.is_verified && <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase"><i className="fa-solid fa-check-circle mr-1"></i>Verified</div>}
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden border bg-gray-50 flex-shrink-0"><img src={worker.avatar_url || `https://ui-avatars.com/api/?name=${worker.full_name}&background=f3f4f6&color=008000`} className="w-full h-full object-cover" /></div>
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-gray-800 text-[15px] truncate">{worker.full_name}</h4>
-                            {stats && <div className="flex items-center gap-1 text-[10px]"><i className="fa-solid fa-star text-yellow-400"></i><span className="font-black text-gray-700">{stats.avg}</span><span className="text-gray-400">({stats.count})</span></div>}
-                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-0.5 truncate">{worker.subcategory || worker.category}</p>
-                            <div className="flex items-center gap-2 mt-1.5"><p className="text-brand font-black text-sm tracking-tight">₦{worker.starting_price?.toLocaleString() || '2,500'}+</p></div>
-                        </div>
-                    </div>
-                  );
-              })
-            ) : (
-               displayItems.map(item => {
-                   const task = item as any;
-                   const rating = clientRatings[task.client_id];
-                   const hasApplied = myApplications.has(task.id);
-                   
-                   return (
-                     <div key={task.id} onClick={() => onViewTask(task.id)} className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-sm space-y-4 hover:shadow-md active:scale-[0.98] transition-all cursor-pointer h-full flex flex-col">
-                        <div className="flex justify-between items-start">
-                            <div><span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${task.urgency === 'emergency' ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400'}`}>{task.urgency}</span><h3 className="text-lg font-black text-gray-900 mt-2 leading-tight line-clamp-1">{task.title}</h3></div>
-                            <div className="text-right shrink-0 ml-2"><p className="text-brand font-black text-lg">₦{task.budget.toLocaleString()}</p><p className="text-[9px] text-gray-400 font-bold uppercase">{task.category}</p></div>
-                        </div>
-                        
-                        <div className="relative flex-1">
-                            <p className="text-sm text-gray-600 font-medium line-clamp-3">{translations[task.id] || task.description}</p>
-                            {!translations[task.id] && (
-                                <button onClick={(e) => translateToPidgin(e, task.description, task.id)} className="text-[9px] font-black text-brand uppercase mt-1 flex items-center gap-1">
-                                    <i className={`fa-solid fa-language ${translatingId === task.id ? 'animate-spin' : ''}`}></i> Translate to Pidgin
-                                </button>
-                            )}
-                        </div>
-
-                        <p className="text-[10px] text-gray-400 font-bold uppercase"><i className="fa-solid fa-location-dot mr-1"></i> {task.location}</p>
-                        
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto">
-                            <div className="flex items-center gap-2">
-                                <img src={task.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${task.profiles?.full_name || 'Client'}`} className="w-8 h-8 rounded-full border border-white shadow-sm" />
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-gray-600 line-clamp-1">{task.profiles?.full_name || 'Client'}</span>
-                                    {rating ? <div className="flex items-center gap-0.5 text-yellow-400 text-[9px]"><span className="font-black text-gray-400 mr-1">{rating}</span><i className="fa-solid fa-star"></i></div> : <span className="text-[9px] text-gray-300 font-bold">New Client</span>}
-                                </div>
-                            </div>
-                            
-                            <button 
-                                onClick={(e) => !hasApplied && initiateApply(e, task)} 
-                                disabled={hasApplied}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${hasApplied ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand text-white shadow-lg active:scale-95'}`}
-                            >
-                                {hasApplied ? 'Applied' : 'Apply'}
-                            </button>
-                        </div>
-                     </div>
-                   );
-               })
-            )
-          }
         </div>
       </div>
     </div>

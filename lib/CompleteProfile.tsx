@@ -38,7 +38,6 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
     const { error } = await supabase.from('profiles').upsert(updates);
 
     if (error) {
-      console.error("Complete Profile Error:", error);
       setError("Failed to save profile. Please try again.");
       setLoading(false);
     } else {
@@ -56,28 +55,11 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="p-4 bg-red-500/10 text-red-400 text-[11px] font-bold rounded-2xl border border-red-500/20 mb-2 animate-fadeIn flex items-center gap-3">
-              <i className="fa-solid fa-circle-exclamation"></i>
-              {error}
-            </div>
-          )}
+          {error && <div className="p-4 bg-red-500/10 text-red-400 text-[11px] font-bold rounded-2xl border border-red-500/20 mb-2 animate-fadeIn">{error}</div>}
 
           <div className="auth-toggle-container">
-            <button 
-              type="button" 
-              onClick={() => setRole('client')} 
-              className={`auth-toggle-btn ${role === 'client' ? 'auth-toggle-btn-active' : 'auth-toggle-btn-inactive'}`}
-            >
-              Hire Help
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setRole('worker')} 
-              className={`auth-toggle-btn ${role === 'worker' ? 'auth-toggle-btn-active' : 'auth-toggle-btn-inactive'}`}
-            >
-              Earn Money
-            </button>
+            <button type="button" onClick={() => setRole('client')} className={`auth-toggle-btn ${role === 'client' ? 'auth-toggle-btn-active' : 'auth-toggle-btn-inactive'}`}>Hire Help</button>
+            <button type="button" onClick={() => setRole('worker')} className={`auth-toggle-btn ${role === 'worker' ? 'auth-toggle-btn-active' : 'auth-toggle-btn-inactive'}`}>Earn Money</button>
           </div>
 
           {role === 'client' && (
@@ -101,27 +83,12 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
           )}
 
           <div className="auth-input-group">
-            <input 
-              required 
-              value={fullName} 
-              onChange={(e) => setFullName(e.target.value)} 
-              placeholder=" " 
-              className="auth-input-field" 
-            />
-            <label className="auth-label">
-              {clientType === 'enterprise' && role === 'client' ? "Business Name" : "Full Name"}
-            </label>
+            <input required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder=" " className="auth-input-field" />
+            <label className="auth-label">{clientType === 'enterprise' && role === 'client' ? "Business Name" : "Full Name"}</label>
           </div>
 
           <div className="auth-input-group">
-            <input 
-              required 
-              type="tel" 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)} 
-              placeholder=" " 
-              className="auth-input-field" 
-            />
+            <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder=" " className="auth-input-field" />
             <label className="auth-label">Phone Number</label>
           </div>
 
@@ -129,13 +96,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
             {loading ? 'Finalizing...' : 'ENTER VELGO'}
           </button>
           
-          <button 
-            type="button" 
-            onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} 
-            className="w-full text-center text-gray-500 font-black text-[11px] uppercase tracking-widest mt-8 opacity-40 hover:opacity-100 transition-opacity"
-          >
-            Cancel & Sign Out
-          </button>
+          <button type="button" onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} className="w-full text-center text-gray-500 font-black text-[11px] uppercase tracking-widest mt-8 opacity-40 hover:opacity-100 transition-opacity">Cancel & Sign Out</button>
         </form>
       </div>
     </div>

@@ -2,12 +2,11 @@
 import React, { useCallback, useState } from 'react';
 import { usePaystackPayment } from 'react-paystack';
 import { supabase } from '../lib/supabaseClient';
-import { Profile, SubscriptionTier } from '../types';
+import { Profile, SubscriptionTier } from '../lib/types';
 import { TIERS } from '../lib/constants';
 
 interface SubscriptionProps { profile: Profile | null; sessionEmail?: string; onRefreshProfile: () => void; onBack: () => void; }
 
-// Hardcoded Velgo Bank Details for Manual Transfer
 const VELGO_BANK = {
     bankName: "Moniepoint MFB",
     accountNumber: "9167799600",
@@ -15,7 +14,6 @@ const VELGO_BANK = {
     supportPhone: "2349167799600"
 };
 
-// Sub-component to handle individual tier logic
 const SubscriptionCard: React.FC<{ 
   tier: typeof TIERS[0]; 
   isActive: boolean; 
@@ -28,7 +26,7 @@ const SubscriptionCard: React.FC<{
   const config = {
     reference: (new Date()).getTime().toString(),
     email: email,
-    amount: tier.price * 100, // Paystack expects amount in kobo
+    amount: tier.price * 100,
     publicKey: publicKey.trim(),
   };
 
@@ -100,7 +98,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
   const onSuccess = useCallback(async (tier: SubscriptionTier) => {
     if (!profile) return;
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 30); // 30 Days Validity
+    endDate.setDate(endDate.getDate() + 30);
 
     const { error } = await supabase.from('profiles').update({ 
       subscription_tier: tier, 
@@ -130,14 +128,12 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
       window.open(url, '_blank');
   };
 
-  // Use Env Var if available, otherwise use a fallback (Ensure this is correct in Vercel)
   const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';
   const userEmail = sessionEmail || (profile?.email) || (profile?.id ? `${profile.id}@velgo.ng` : 'guest@velgo.ng');
 
   return (
     <div className="p-4 space-y-6 pb-24 bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
       
-      {/* Manual Transfer Modal */}
       {showManualModal && selectedTier && (
           <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
               <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-6 text-center border border-gray-100 dark:border-gray-700">
