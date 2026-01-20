@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Profile } from './lib/types';
@@ -25,14 +26,12 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { InstallPWA } from './components/InstallPWA';
 import { NotificationToast } from './components/NotificationToast';
 import { UserGuide } from './components/UserGuide';
-import { subscribeToPush } from './lib/pushManager';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileError, setProfileError] = useState(false);
-  const [systemError, setSystemError] = useState<string | null>(null);
+  const [isInitializingProfile, setIsInitializingProfile] = useState(false);
   const [view, setView] = useState<any>('landing');
   const [viewData, setViewData] = useState<any>(null);
   
@@ -89,17 +88,21 @@ const App: React.FC = () => {
      }
   };
 
-  const fetchProfile = useCallback(async (uid: string, retries = 3) => {
+  const fetchProfile = useCallback(async (uid: string, retries = 2) => {
+    setIsInitializingProfile(true);
     const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
+    
     if (data) {
       setProfile(data);
-      setProfileError(false);
-      setSystemError(null);
+      setIsInitializingProfile(false);
     } else if (retries > 0) {
-      await new Promise(r => setTimeout(r, 500));
+      // Small delay before retry to allow Postgres trigger to finish
+      await new Promise(r => setTimeout(r, 1000));
       fetchProfile(uid, retries - 1);
     } else {
-      setProfileError(true);
+      // If we still have no profile, we stay in 'null' state which triggers 'CompleteProfile'
+      setProfile(null);
+      setIsInitializingProfile(false);
     }
   }, []);
 
@@ -134,14 +137,15 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]); 
 
-  if (loading) return (
+  if (loading || isInitializingProfile) return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900">
       <ShieldIcon className="h-20 animate-pulse text-brand" />
-      <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-[4px]">Velgo Nigeria Hub</p>
+      <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-[4px]">Syncing with Hub...</p>
     </div>
   );
 
   const renderContent = () => {
+    // 1. Not Logged In
     if (!session) {
       switch (view) {
         case 'login': return <Login onToggle={() => navigate('signup')} />;
@@ -153,10 +157,13 @@ const App: React.FC = () => {
       }
     }
 
-    if (profile && (!profile.role || !profile.phone_number)) {
+    // 2. Logged In but Profile Record Missing or Incomplete
+    // This is the "Safety Net" for database trigger failures
+    if (!profile || !profile.role || !profile.phone_number) {
       return <CompleteProfile session={session} onComplete={() => fetchProfile(session.user.id)} />;
     }
 
+    // 3. Authenticated & Profile Fully Synced
     switch (view) {
       case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
       case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;

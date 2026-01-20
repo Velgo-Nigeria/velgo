@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole, ClientType } from '../types';
@@ -51,18 +52,23 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
       });
 
       if (authError) {
-        // We now show the RAW error message from Supabase to help debug
-        setError(authError.message);
+        console.error("Signup process failed:", authError);
+        // Provide more descriptive errors for common Nigerian network/database issues
+        if (authError.message.includes("Database error")) {
+          setError("Account created in Auth, but Profile sync failed. Please try to Sign In; the app will fix your profile automatically.");
+        } else {
+          setError(authError.message);
+        }
       } else {
         if (data.session) {
-             // Handled by App.tsx
+             // Successfully logged in immediately
         } else if (data.user) {
-            alert("Success! Please check your email to verify your account.");
+            alert("Registration successful! Please check your email to confirm your account before signing in.");
             onToggle();
         }
       }
     } catch (err: any) {
-      setError("Connection failed. Please retry.");
+      setError("Connectivity issue. Please check your internet and try again.");
     } finally {
       setLoading(false);
     }
@@ -79,7 +85,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
 
         <form onSubmit={handleSignUp} className="space-y-5">
           {error && (
-            <div className="p-4 bg-red-500/10 text-red-400 text-xs font-bold rounded-2xl border border-red-500/20 flex items-start gap-3">
+            <div className="p-4 bg-red-500/10 text-red-400 text-xs font-bold rounded-2xl border border-red-500/20 flex items-start gap-3 animate-bounce">
               <i className="fa-solid fa-triangle-exclamation mt-0.5"></i>
               <span>{error}</span>
             </div>
