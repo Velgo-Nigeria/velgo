@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, PostedTask } from '../lib/types';
@@ -174,7 +175,21 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             <p className="text-[10px] font-black uppercase tracking-[4px] text-brand mb-1">NIGERIA HUB ACTIVE</p>
             <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
             {profile?.role === 'client' ? (
-                <button onClick={onPostTask} className="bg-brand text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all">Post a Job Request</button>
+                <div className="flex gap-3 animate-fadeIn">
+                    <button 
+                        onClick={onPostTask} 
+                        className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
+                    >
+                        Post a Job Request
+                    </button>
+                    <button 
+                        onClick={onPostTask} 
+                        className="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl shadow-xl shadow-brand/20 active:scale-95 transition-all shrink-0"
+                        aria-label="Quick post job"
+                    >
+                        <i className="fa-solid fa-plus"></i>
+                    </button>
+                </div>
             ) : <p className="text-xs font-medium text-gray-400">Ready for your next gig?</p>}
         </div>
 
