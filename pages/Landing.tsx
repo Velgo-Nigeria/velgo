@@ -174,7 +174,81 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
          </div>
       </div>
 
-      {/* 3. About Us Section */}
+      {/* 3. Pricing & Transparency Section (Sliding Row) */}
+      <div className="py-12 bg-gray-50 border-y border-gray-100">
+         <div className="space-y-8">
+            <div className="text-center space-y-2 px-6">
+                <p className="text-[10px] font-black uppercase tracking-[5px] text-brand">Simple Pricing</p>
+                <h2 className="text-4xl font-black text-gray-900 tracking-tighter italic">How Velgo Works</h2>
+                <p className="text-sm text-gray-500 font-medium">Swipe to see how we empower both sides of the hub.</p>
+            </div>
+
+            {/* Sliding Container */}
+            <div className="flex gap-6 overflow-x-auto px-6 pb-10 scrollbar-hide snap-x snap-mandatory">
+                
+                {/* For Workers Card */}
+                <div className="snap-center shrink-0 w-[85vw] md:w-[400px] bg-white p-8 rounded-[40px] border-2 border-brand/10 shadow-xl space-y-6 flex flex-col">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-xl"><i className="fa-solid fa-coins"></i></div>
+                        <h3 className="font-black text-gray-900 text-xl tracking-tight">For Workers</h3>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-700">Keep <span className="text-brand">100%</span> of your labor fee.</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-700">No hidden deductions on your earnings.</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-700">Small flat subscription for verified access.</p>
+                        </div>
+                    </div>
+                    <div className="pt-4 border-t border-gray-100 text-center">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Starting from</p>
+                        <p className="text-3xl font-black text-gray-900 italic">₦0 <span className="text-sm font-medium text-gray-400">/mo</span></p>
+                    </div>
+                </div>
+
+                {/* For Clients Card */}
+                <div className="snap-center shrink-0 w-[85vw] md:w-[400px] bg-gray-900 p-8 rounded-[40px] border-2 border-white/5 shadow-2xl space-y-6 flex flex-col text-white">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center text-xl"><i className="fa-solid fa-shield-check"></i></div>
+                        <h3 className="font-black text-white text-xl tracking-tight">For Clients</h3>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-200">Zero middleman markup on artisan labor.</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-200">Pay Workers directly to their bank account.</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
+                            <p className="text-sm font-bold text-gray-200">Security-vetted pros for your local needs.</p>
+                        </div>
+                    </div>
+                    <div className="pt-4 border-t border-white/10 text-center">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Secure & Direct</p>
+                        <p className="text-3xl font-black text-white italic">Trusted <span className="text-sm font-medium text-gray-500">Hub</span></p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div className="text-center px-6">
+                <p className="text-[9px] text-gray-400 font-black uppercase tracking-[3px]">
+                    Transparent Economy • Verified Pros • Direct Payouts
+                </p>
+            </div>
+         </div>
+      </div>
+
+      {/* 4. About Us Section */}
       <div className="py-10 px-6 bg-white border-b border-gray-100">
            <div className="max-w-2xl mx-auto text-center space-y-6">
               <div className="w-16 h-16 bg-brand-light text-brand rounded-3xl flex items-center justify-center mx-auto mb-2 text-2xl rotate-3 shadow-lg shadow-brand/10">
@@ -193,7 +267,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
            </div>
       </div>
 
-      {/* 4. Community Reviews Section */}
+      {/* 5. Community Reviews Section */}
       <div className="py-12 px-6 bg-[#fcfcfc] overflow-hidden">
         <div className="max-w-xl mx-auto space-y-8">
              <div className="text-center space-y-2">
@@ -288,7 +362,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
         </div>
       </div>
 
-      {/* 5. Rate Us Section */}
+      {/* 6. Rate Us Section */}
       <div className="bg-gray-900 text-white py-12 px-6">
         <div className="max-w-sm mx-auto space-y-8">
             <div className="text-center space-y-2">
