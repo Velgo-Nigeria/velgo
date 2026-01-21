@@ -64,17 +64,13 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     setInsightLoading(true);
     setInsightResult(null);
     try {
-      // Fix: Ensure initialization of GoogleGenAI follows the guidelines with a named apiKey parameter.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // Fix: Use ai.models.generateContent to query the model directly as instructed.
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `What is the current market price for ${insightQuery} in Nigeria today? Include local context and average labor rates if applicable.`,
         config: { tools: [{ googleSearch: {} }] }
       });
-      // Fix: Correctly access the grounding metadata sources from the response response.
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.web).filter(Boolean) || [];
-      // Fix: Directly access the .text property of GenerateContentResponse instead of calling it as a method.
       setInsightResult({ text: response.text || "No insights found.", sources });
     } catch (e) {
       alert("Failed to fetch market insights.");
@@ -119,7 +115,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     fetchData(); 
     fetchBroadcast();
 
-    // Subscribe to new broadcasts in real-time
     const broadcastChannel = supabase.channel('broadcasts_realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcasts' }, (payload) => {
           const newB = payload.new as Broadcast;
@@ -233,7 +228,9 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         {(profile?.role === 'worker' || profile?.role === 'admin') && (
              <div className="bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl flex text-[10px] font-black uppercase tracking-widest max-w-sm mx-auto shadow-inner transition-colors duration-200">
                  <button onClick={() => setViewMode('jobs')} className={`flex-1 py-3 rounded-xl transition-all ${viewMode === 'jobs' ? 'bg-white dark:bg-slate-700 text-brand shadow-lg' : 'text-gray-400'}`}>Live Jobs</button>
-                 <button onClick={() => setViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${viewMode === 'market' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>Artisans</button>
+                 <button onClick={() => setViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${viewMode === 'market' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>
+                    {profile?.role === 'worker' ? 'Competitors' : 'Workers'}
+                 </button>
              </div>
         )}
 
@@ -301,7 +298,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className="py-20 text-center opacity-30">
                 <i className="fa-solid fa-cloud-moon text-6xl text-gray-200 mb-6"></i>
                 <p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">
-                  No {viewMode === 'market' ? 'artisans' : 'jobs'} found in this area
+                  No {viewMode === 'market' ? (profile?.role === 'worker' ? 'competitors' : 'workers') : 'jobs'} found in this area
                 </p>
               </div>
             )}
