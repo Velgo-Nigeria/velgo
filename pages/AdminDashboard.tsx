@@ -94,16 +94,25 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           
           if (error) throw error;
 
-          // Push logic: Ideally triggers an Edge Function. 
-          // Here we just save it. The backend trigger handles the actual push.
           alert("Broadcast sent successfully to " + bTarget + " users!");
           setBTitle('');
           setBMessage('');
-          fetchData();
+          fetchData(); // Refresh history
       } catch (err: any) {
           alert("Failed to broadcast: " + err.message);
       } finally {
           setSendingBroadcast(false);
+      }
+  };
+
+  const handleDeleteBroadcast = async (id: string) => {
+      if (!window.confirm("Delete this broadcast from history? Users who already saw it won't be affected, but it will vanish from the feed.")) return;
+      
+      const { error } = await supabase.from('broadcasts').delete().eq('id', id);
+      if (error) {
+          alert("Could not delete: " + error.message);
+      } else {
+          setBroadcasts(prev => prev.filter(b => b.id !== id));
       }
   };
 
@@ -209,6 +218,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
          activeTab === 'broadcast' ? (
              <div className="space-y-6">
+                 {/* Create Broadcast */}
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700 space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-[3px] text-brand">New Broadcast</h3>
                     <div className="space-y-3">
@@ -225,17 +235,33 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
                  </div>
 
+                 {/* History List */}
                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-400 ml-2">Recent Broadcasts</h3>
-                    {broadcasts.length === 0 ? <p className="text-center text-xs text-gray-400 italic">No history yet.</p> :
+                    <div className="flex justify-between items-center px-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-400">Broadcast History</h3>
+                        <span className="text-[10px] font-bold text-gray-300 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-lg">{broadcasts.length} sent</span>
+                    </div>
+                    
+                    {broadcasts.length === 0 ? <p className="text-center text-xs text-gray-400 italic py-10">No history yet.</p> :
                      broadcasts.map(b => (
-                        <div key={b.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-gray-100 dark:border-slate-700">
-                            <div className="flex justify-between items-start mb-1">
-                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">{b.title}</h4>
-                                <span className="text-[9px] font-black text-brand uppercase">{b.target_role}</span>
+                        <div key={b.id} className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700 relative group transition-all hover:shadow-md">
+                            <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-black text-gray-900 dark:text-white text-sm tracking-tight">{b.title}</h4>
+                                <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${b.target_role === 'all' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                                    To: {b.target_role}
+                                </span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{b.message}</p>
-                            <p className="text-[8px] text-gray-300 dark:text-slate-600 mt-2 font-bold">{new Date(b.created_at).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium mb-3">{b.message}</p>
+                            <div className="flex justify-between items-center border-t border-gray-50 dark:border-slate-700 pt-3">
+                                <p className="text-[9px] text-gray-300 dark:text-slate-500 font-bold uppercase tracking-widest">{b.created_at ? new Date(b.created_at).toLocaleString() : 'Just now'}</p>
+                                <button 
+                                    onClick={() => handleDeleteBroadcast(b.id)} 
+                                    className="text-gray-300 hover:text-red-500 transition-colors p-2 -mr-2"
+                                    title="Delete from history"
+                                >
+                                    <i className="fa-solid fa-trash-can text-sm"></i>
+                                </button>
+                            </div>
                         </div>
                      ))}
                  </div>
