@@ -6,19 +6,12 @@ const getVapidKey = () => {
     if (metaEnv && metaEnv.VITE_VAPID_PUBLIC_KEY) {
         return metaEnv.VITE_VAPID_PUBLIC_KEY;
     }
-    try {
-        // @ts-ignore
-        if (typeof process !== 'undefined' && process.env && process.env.VITE_VAPID_PUBLIC_KEY) {
-            // @ts-ignore
-            return process.env.VITE_VAPID_PUBLIC_KEY;
-        }
-    } catch(e) {}
+    // Fallback key (Replace with your generated VAPID public key if needed)
     return 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
 };
 
 const PUBLIC_KEY = getVapidKey();
 
-// Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -44,47 +37,55 @@ export const checkSubscriptionStatus = async () => {
     }
 };
 
-export const subscribeToPush = async (userId: string) => {
+export const subscribeToPush = async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn("Push notifications are not supported in this browser.");
-        return false;
+        return { success: false, error: "Push notifications not supported on this browser." };
     }
 
     try {
-        // 1. Explicitly request permission first
-        const permission = await Notification.requestPermission();
+        // 1. Check Permission
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+        }
+        
         if (permission !== 'granted') {
-            console.warn("Notification permission denied by user.");
-            return false;
+            return { success: false, error: "Notification permission denied. Please enable them in browser settings." };
         }
 
-        // 2. Wait for service worker to be ready
+        // 2. Get Service Worker
         const registration = await navigator.serviceWorker.ready;
         
-        // 3. Subscribe to browser push service
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
-        });
+        // 3. Subscribe
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
+            });
+        }
 
-        // 4. Save to Supabase (using plain insert, the Edge Function handles cleanup)
+        // 4. Sync with Supabase
         const { error } = await supabase.from('push_subscriptions').insert({
             user_id: userId,
             subscription: subscription,
+            user_agent: navigator.userAgent, // Helpful for debugging
             updated_at: new Date().toISOString()
         });
 
         if (error) {
-            // Ignore duplicate key errors, it just means they are already subscribed in DB
-            if (!error.message.includes('unique constraint') && !error.message.includes('duplicate key')) {
-                 console.error("Database sync failed:", error.message);
+            // If it's a unique constraint error, it means we are already subscribed in DB, which is fine.
+            if (!error.message.toLowerCase().includes('unique') && !error.message.toLowerCase().includes('duplicate')) {
+                 console.error("Database sync failed:", error);
+                 // We don't fail the whole process if DB fails, as the browser part succeeded.
+                 // But we warn the user.
             }
         }
         
-        return true;
-    } catch (error) {
+        return { success: true };
+    } catch (error: any) {
         console.error("Push Subscription Critical Error:", error);
-        return false;
+        return { success: false, error: error.message || "Unknown error occurred." };
     }
 };
 
@@ -95,18 +96,13 @@ export const unsubscribeFromPush = async (userId: string) => {
         const subscription = await registration.pushManager.getSubscription();
         
         if (subscription) {
-            // 1. Unsubscribe from browser
             await subscription.unsubscribe();
             
-            // 2. Remove from Supabase
-            // We delete all subscriptions for this user that match the endpoint to keep it clean
-            // Note: In a complex app, we might match the exact JSON, but endpoint is usually unique enough
-            const { error } = await supabase.from('push_subscriptions')
+            // Best effort cleanup in DB
+            await supabase.from('push_subscriptions')
                 .delete()
                 .eq('user_id', userId)
                 .contains('subscription', { endpoint: subscription.endpoint });
-                
-            if (error) console.warn("DB Delete error", error);
         }
         return true;
     } catch (e) {

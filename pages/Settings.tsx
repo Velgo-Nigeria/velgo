@@ -109,21 +109,32 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       if (!profile || pushLoading) return;
       setPushLoading(true);
 
-      if (pushEnabled) {
-          // Turn OFF
-          const success = await unsubscribeFromPush(profile.id);
-          if (success) setPushEnabled(false);
-          else alert("Failed to disable notifications. Please try again.");
-      } else {
-          // Turn ON
-          const success = await subscribeToPush(profile.id);
-          if (success) {
-              setPushEnabled(true);
+      try {
+          if (pushEnabled) {
+              // Turn OFF
+              const success = await unsubscribeFromPush(profile.id);
+              if (success) {
+                  setPushEnabled(false);
+              } else {
+                  alert("Failed to disable notifications. Please try again.");
+              }
           } else {
-              alert("Could not enable notifications. Please check your browser settings or ensure you installed the app.");
+              // Turn ON
+              const result = await subscribeToPush(profile.id);
+              
+              if (result.success) {
+                  setPushEnabled(true);
+                  alert("Success! You will now receive alerts on this device.");
+              } else {
+                  // Show specific error from updated manager
+                  alert(`Could not enable notifications.\n\nError: ${result.error}`);
+              }
           }
+      } catch (err: any) {
+          alert("System Error: " + err.message);
+      } finally {
+          setPushLoading(false);
       }
-      setPushLoading(false);
   };
 
   const handleReAuth = async () => {
@@ -296,21 +307,17 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                         disabled={pushLoading}
                         className={`w-10 h-6 rounded-full transition-colors relative ${pushEnabled ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'}`}
                     >
-                        {pushLoading ? (
-                            <div className="w-4 h-4 bg-white rounded-full absolute top-1 left-3 animate-pulse" />
-                        ) : (
-                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${pushEnabled ? 'left-5' : 'left-1'}`} />
-                        )}
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${pushEnabled ? 'left-5' : 'left-1'}`} />
                     </button>
                 </div>
 
                 {onShowGuide && (
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <i className="fa-solid fa-circle-question text-gray-400"></i>
+                            <i className="fa-solid fa-book-open text-gray-400"></i>
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-200">App Guide</span>
                         </div>
-                        <button onClick={onShowGuide} className="text-[10px] font-black uppercase text-brand bg-brand/10 px-3 py-1.5 rounded-lg">View</button>
+                        <button onClick={onShowGuide} className="text-[10px] font-black uppercase text-brand bg-brand/10 px-3 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors">View</button>
                     </div>
                 )}
 
@@ -324,6 +331,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
             </div>
         </section>
 
+        {/* Legal & Compliance */}
         <section>
              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Legal</h3>
              <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -333,43 +341,124 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                         <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                     </button>
                 ))}
+                <button onClick={() => onNavigate('safety')} className="w-full p-5 flex items-center justify-between active:bg-gray-50 dark:active:bg-gray-700">
+                        <span className="text-sm font-bold text-red-500">Safety Center</span>
+                        <i className="fa-solid fa-chevron-right text-red-300 text-xs"></i>
+                </button>
              </div>
         </section>
 
-        <button onClick={handleSignOut} disabled={signingOut} className="w-full bg-red-50 dark:bg-red-900/20 p-5 rounded-[32px] flex items-center justify-between border border-red-100 dark:border-red-800 active:scale-95 transition-all mt-4">
-            <span className="font-black text-red-600 dark:text-red-400 text-sm">{signingOut ? 'Signing Out...' : 'Log Out'}</span>
-            <i className="fa-solid fa-right-from-bracket text-red-400"></i>
+        {/* About & Community */}
+        <section>
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Community</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-5 space-y-4">
+                 <div className="text-center pb-4 border-b border-gray-50 dark:border-gray-700">
+                     <p className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
+                         Velgo empowers Nigerian workers. Follow us for updates, grants, and community stories.
+                     </p>
+                 </div>
+
+                 {/* Social Media Links */}
+                 <div className="flex justify-around mb-4">
+                     <a href="https://instagram.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center"><i className="fa-brands fa-instagram"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Insta</span>
+                     </a>
+                     <a href="https://twitter.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-400 flex items-center justify-center"><i className="fa-brands fa-twitter"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Twitter</span>
+                     </a>
+                     <a href="https://facebook.com" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center"><i className="fa-brands fa-facebook-f"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Facebook</span>
+                     </a>
+                     <a href="https://whatsapp.com/channel/0029Vb6sLaWGOj9upwLX6s2v" target="_blank" className="flex flex-col items-center gap-1">
+                         <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-brands fa-whatsapp"></i></div>
+                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">WhatsApp</span>
+                     </a>
+                 </div>
+
+                 {/* New About Button */}
+                 <button onClick={() => onNavigate('about')} className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl flex items-center justify-between active:scale-95 transition-transform">
+                     <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center"><i className="fa-solid fa-circle-info text-gray-500 dark:text-gray-300"></i></div>
+                         <div className="text-left">
+                             <p className="text-xs font-black uppercase text-gray-900 dark:text-white">About Velgo</p>
+                             <p className="text-[9px] text-gray-400">Our Story & FAQ</p>
+                         </div>
+                     </div>
+                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                 </button>
+            </div>
+        </section>
+
+        {/* Sign Out Button */}
+        <button 
+            onClick={handleSignOut} 
+            disabled={signingOut} 
+            className="w-full bg-red-50 dark:bg-red-900/20 p-5 rounded-[32px] flex items-center justify-between border border-red-100 dark:border-red-800 group active:scale-95 transition-all mt-4"
+        >
+            <span className="font-black text-red-600 dark:text-red-400 text-sm group-hover:text-red-700 dark:group-hover:text-red-300 transition-colors">
+                {signingOut ? 'Signing Out...' : 'Log Out'}
+            </span>
+            <i className="fa-solid fa-right-from-bracket text-red-400 dark:text-red-500 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors"></i>
         </button>
 
         <div className="pt-4 text-center">
-            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.4 (Unified Build)</p>
+            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.6 (Unified Build)</p>
         </div>
+
       </div>
 
+      {/* Re-Auth / Bank Modal */}
       {reAuthMode === 'bank' && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-fadeIn">
               <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-4">
                   <div className="flex justify-between items-center">
                       <h3 className="text-lg font-black text-gray-900 dark:text-white">Bank Details</h3>
-                      <button onClick={() => { setReAuthMode(null); setPassword(''); setAuthError(null); }} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500"><i className="fa-solid fa-xmark"></i></button>
+                      <button onClick={() => { setReAuthMode(null); setPassword(''); setAuthError(null); }} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
                   </div>
+
                   {!isVerified ? (
                       <div className="space-y-4">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl"><i className="fa-solid fa-lock mr-2"></i>Security Check Required</p>
-                          {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100">{authError}</div>}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl">
+                              <i className="fa-solid fa-lock mr-2"></i>Security Check Required
+                          </p>
+                          
+                          {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{authError}</span></div>}
+
                           <div className="relative">
-                            <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter Password" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white pr-12" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                value={password} 
+                                onChange={e => setPassword(e.target.value)} 
+                                placeholder="Enter Password" 
+                                className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400 pr-12" 
+                            />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                           </div>
-                          <button onClick={handleReAuth} disabled={authLoading || !password} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs">{authLoading ? 'Verifying...' : 'Unlock'}</button>
+                          
+                          <button 
+                              onClick={handleReAuth} 
+                              disabled={authLoading || !password} 
+                              className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50"
+                          >
+                              {authLoading ? 'Verifying...' : 'Unlock'}
+                          </button>
                       </div>
                   ) : (
                       <div className="space-y-3">
-                          <p className="text-[10px] font-black text-green-500 uppercase tracking-widest text-center">Verified</p>
-                          <input value={newBankName} onChange={e => setNewBankName(e.target.value)} placeholder="Bank Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <input value={newAccountNum} onChange={e => setNewAccountNum(e.target.value)} placeholder="Account Number" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <input value={newAccountName} onChange={e => setNewAccountName(e.target.value)} placeholder="Account Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <button onClick={saveBankDetails} disabled={bankSaving} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs">{bankSaving ? 'Saving...' : 'Save Details'}</button>
+                          <p className="text-[10px] font-black text-green-500 uppercase tracking-widest text-center mb-2">Identity Verified</p>
+                          <input value={newBankName} onChange={e => setNewBankName(e.target.value)} placeholder="Bank Name (e.g. GTBank)" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
+                          <input value={newAccountNum} onChange={e => setNewAccountNum(e.target.value)} placeholder="Account Number" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
+                          <input value={newAccountName} onChange={e => setNewAccountName(e.target.value)} placeholder="Account Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400" />
+                          <button 
+                              onClick={saveBankDetails} 
+                              disabled={bankSaving} 
+                              className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50"
+                          >
+                              {bankSaving ? 'Saving...' : 'Save Details'}
+                          </button>
                       </div>
                   )}
               </div>
