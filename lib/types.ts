@@ -14,6 +14,16 @@ export interface NotificationPreferences {
   promotions: boolean;
 }
 
+export interface Broadcast {
+  id: string;
+  admin_id: string;
+  title: string;
+  message: string;
+  target_role: 'all' | 'worker' | 'client';
+  created_at: string;
+  expires_at?: string;
+}
+
 export interface Profile {
   id: string;
   email?: string;

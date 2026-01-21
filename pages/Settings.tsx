@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, NotificationPreferences } from '../lib/types';
-import { subscribeToPush } from '../lib/pushManager';
+import { subscribeToPush, unsubscribeFromPush, checkSubscriptionStatus } from '../lib/pushManager';
 
 interface SettingsProps { 
   profile: Profile | null; 
@@ -16,6 +17,8 @@ type ReAuthMode = 'bank' | null;
 const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefreshProfile, onShowGuide }) => {
   // UI State
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>(profile?.theme_mode || 'auto');
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
   
   // Detailed Notifications
   const defaultNotifs = {
@@ -49,23 +52,29 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
 
   const isAdmin = profile?.role === 'admin' || profile?.email === 'admin.velgo@gmail.com'; 
 
+  // Check Push Status on Mount
+  useEffect(() => {
+      const initPushState = async () => {
+          const isSubscribed = await checkSubscriptionStatus();
+          setPushEnabled(isSubscribed);
+      };
+      initPushState();
+  }, []);
+
   const handleClearCache = async () => {
     if(window.confirm("This will reset the app and log you out. Continue?")) {
         localStorage.clear();
         sessionStorage.clear();
-        
         if ('caches' in window) {
             const keys = await caches.keys();
             await Promise.all(keys.map(key => caches.delete(key)));
         }
-        
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for(let registration of registrations) {
                 registration.unregister();
             }
         }
-        
         await supabase.auth.signOut();
         window.location.reload();
     }
@@ -96,21 +105,31 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       updatePreference({ notification_preferences: updated });
   };
   
-  const handleEnablePush = async () => {
-      if (!profile) return;
-      const success = await subscribeToPush(profile.id);
-      if (success) {
-          alert("Success! You will now receive alerts even when the app is closed.");
+  const handlePushToggle = async () => {
+      if (!profile || pushLoading) return;
+      setPushLoading(true);
+
+      if (pushEnabled) {
+          // Turn OFF
+          const success = await unsubscribeFromPush(profile.id);
+          if (success) setPushEnabled(false);
+          else alert("Failed to disable notifications. Please try again.");
       } else {
-          alert("Could not enable notifications. Please check your browser settings or ensure you installed the app.");
+          // Turn ON
+          const success = await subscribeToPush(profile.id);
+          if (success) {
+              setPushEnabled(true);
+          } else {
+              alert("Could not enable notifications. Please check your browser settings or ensure you installed the app.");
+          }
       }
+      setPushLoading(false);
   };
 
   const handleReAuth = async () => {
     if (!profile?.id) return;
     setAuthLoading(true);
     setAuthError(null);
-    
     try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !user.email) {
@@ -118,12 +137,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
             setAuthLoading(false);
             return;
         }
-
-        const { error } = await supabase.auth.signInWithPassword({
-            email: user.email,
-            password: password
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: password });
         if (error) {
             setAuthError("Incorrect password. Please try again.");
             setAuthLoading(false);
@@ -150,7 +164,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
         account_name: newAccountName
     }).eq('id', profile.id);
     setBankSaving(false);
-    
     if (!error) {
         alert("Bank details updated securely.");
         await onRefreshProfile();
@@ -170,7 +183,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
         emergency_contact_phone: emergencyPhone
       }).eq('id', profile.id);
       setEmergencySaving(false);
-      
       if (!error) {
           alert("Emergency contact updated.");
           await onRefreshProfile();
@@ -195,7 +207,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       </div>
 
       <div className="p-6 space-y-8 relative z-10">
-        
         {isAdmin && (
             <button onClick={() => onNavigate('admin')} className="w-full bg-gray-900 text-white p-5 rounded-[24px] shadow-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -216,7 +227,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                     </div>
                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                 </button>
-                
                 {profile?.role === 'worker' && (
                     <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); setAuthError(null); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
                         <div className="flex items-center gap-3">
@@ -240,26 +250,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                     </div>
                 </div>
                 <div className="space-y-3">
-                    <input 
-                        value={emergencyName} 
-                        onChange={e => setEmergencyName(e.target.value)} 
-                        placeholder="Contact Name" 
-                        className="w-full bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-xl text-xs font-bold outline-none dark:text-white"
-                    />
-                    <input 
-                        value={emergencyPhone} 
-                        onChange={e => setEmergencyPhone(e.target.value)} 
-                        placeholder="Contact Phone" 
-                        type="tel"
-                        className="w-full bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-xl text-xs font-bold outline-none dark:text-white"
-                    />
-                    <button 
-                        onClick={saveEmergencyContact} 
-                        disabled={emergencySaving}
-                        className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest"
-                    >
-                        {emergencySaving ? 'Saving...' : 'Update Contact'}
-                    </button>
+                    <input value={emergencyName} onChange={e => setEmergencyName(e.target.value)} placeholder="Contact Name" className="w-full bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-xl text-xs font-bold outline-none dark:text-white" />
+                    <input value={emergencyPhone} onChange={e => setEmergencyPhone(e.target.value)} placeholder="Contact Phone" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-xl text-xs font-bold outline-none dark:text-white" />
+                    <button onClick={saveEmergencyContact} disabled={emergencySaving} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest">{emergencySaving ? 'Saving...' : 'Update Contact'}</button>
                 </div>
             </div>
         </section>
@@ -289,13 +282,25 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                      </button>
                 </div>
                 
+                {/* Push Notification Toggle */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <i className="fa-solid fa-mobile-screen text-gray-400"></i>
-                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Push Notifications</span>
+                        <div>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 block leading-none">Push Notifications</span>
+                            <span className="text-[9px] text-gray-400">Get alerts on this device</span>
+                        </div>
                     </div>
-                    <button onClick={handleEnablePush} className="text-[10px] font-black uppercase text-brand bg-brand/10 px-3 py-1.5 rounded-lg">
-                        Enable
+                    <button 
+                        onClick={handlePushToggle} 
+                        disabled={pushLoading}
+                        className={`w-10 h-6 rounded-full transition-colors relative ${pushEnabled ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'}`}
+                    >
+                        {pushLoading ? (
+                            <div className="w-4 h-4 bg-white rounded-full absolute top-1 left-3 animate-pulse" />
+                        ) : (
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${pushEnabled ? 'left-5' : 'left-1'}`} />
+                        )}
                     </button>
                 </div>
 
@@ -331,21 +336,14 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
              </div>
         </section>
 
-        <button 
-            onClick={handleSignOut} 
-            disabled={signingOut} 
-            className="w-full bg-red-50 dark:bg-red-900/20 p-5 rounded-[32px] flex items-center justify-between border border-red-100 dark:border-red-800 active:scale-95 transition-all mt-4"
-        >
-            <span className="font-black text-red-600 dark:text-red-400 text-sm">
-                {signingOut ? 'Signing Out...' : 'Log Out'}
-            </span>
+        <button onClick={handleSignOut} disabled={signingOut} className="w-full bg-red-50 dark:bg-red-900/20 p-5 rounded-[32px] flex items-center justify-between border border-red-100 dark:border-red-800 active:scale-95 transition-all mt-4">
+            <span className="font-black text-red-600 dark:text-red-400 text-sm">{signingOut ? 'Signing Out...' : 'Log Out'}</span>
             <i className="fa-solid fa-right-from-bracket text-red-400"></i>
         </button>
 
         <div className="pt-4 text-center">
             <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.4 (Unified Build)</p>
         </div>
-
       </div>
 
       {reAuthMode === 'bank' && (
@@ -355,26 +353,15 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                       <h3 className="text-lg font-black text-gray-900 dark:text-white">Bank Details</h3>
                       <button onClick={() => { setReAuthMode(null); setPassword(''); setAuthError(null); }} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500"><i className="fa-solid fa-xmark"></i></button>
                   </div>
-
                   {!isVerified ? (
                       <div className="space-y-4">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl">
-                              <i className="fa-solid fa-lock mr-2"></i>Security Check Required
-                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl"><i className="fa-solid fa-lock mr-2"></i>Security Check Required</p>
                           {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100">{authError}</div>}
                           <div className="relative">
-                            <input 
-                                type={showPassword ? "text" : "password"} 
-                                value={password} 
-                                onChange={e => setPassword(e.target.value)} 
-                                placeholder="Enter Password" 
-                                className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white pr-12" 
-                            />
+                            <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter Password" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white pr-12" />
                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                           </div>
-                          <button onClick={handleReAuth} disabled={authLoading || !password} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs">
-                              {authLoading ? 'Verifying...' : 'Unlock'}
-                          </button>
+                          <button onClick={handleReAuth} disabled={authLoading || !password} className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs">{authLoading ? 'Verifying...' : 'Unlock'}</button>
                       </div>
                   ) : (
                       <div className="space-y-3">
@@ -382,9 +369,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                           <input value={newBankName} onChange={e => setNewBankName(e.target.value)} placeholder="Bank Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
                           <input value={newAccountNum} onChange={e => setNewAccountNum(e.target.value)} placeholder="Account Number" type="tel" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
                           <input value={newAccountName} onChange={e => setNewAccountName(e.target.value)} placeholder="Account Name" className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
-                          <button onClick={saveBankDetails} disabled={bankSaving} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs">
-                              {bankSaving ? 'Saving...' : 'Save Details'}
-                          </button>
+                          <button onClick={saveBankDetails} disabled={bankSaving} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs">{bankSaving ? 'Saving...' : 'Save Details'}</button>
                       </div>
                   )}
               </div>
