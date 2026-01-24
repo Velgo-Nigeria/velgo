@@ -1,4 +1,5 @@
 
+// @ts-nocheck
 const CACHE_NAME = 'velgo-v1.0.6';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 

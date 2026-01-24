@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 
 export const InstallPWA: React.FC = () => {
@@ -10,8 +11,8 @@ export const InstallPWA: React.FC = () => {
       setSupportsPWA(true);
       setPromptInstall(e);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt' as any, handler);
+    return () => window.removeEventListener('beforeinstallprompt' as any, handler);
   }, []);
 
   const onClick = (evt: React.MouseEvent) => {
