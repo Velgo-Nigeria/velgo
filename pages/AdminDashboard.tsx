@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, SubscriptionTier, Broadcast } from '../lib/types';
 import { TIERS } from '../lib/constants';
+import { GoogleGenAI } from "@google/genai";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'verify' | 'broadcast'>('verify');
+  const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'verify' | 'broadcast' | 'branding'>('verify');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -22,6 +23,18 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [bTarget, setBTarget] = useState<'all' | 'worker' | 'client'>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
+  // Branding / Logo Gen
+  const [logoPrompt, setLogoPrompt] = useState(JSON.stringify({
+    subject: "A high-end, 3D corporate logo centered on a stylized 'V' that doubles as a checkmark",
+    composition: "The 'V' is sharp and aerodynamic with deep beveled edges. Two sweeping orbital rings wrap around it, creating a sense of motion.",
+    materials: "Polished chrome and brushed steel with a glossy finish.",
+    colors: "Gradient transitioning from Deep Teal (#008080) to Electric Cyan (#00FFFF) and Cobalt Blue (#2E5BFF). Cool silver highlights.",
+    lighting: "Studio rim lighting, volumetric glow, high contrast against a pure black background.",
+    style: "Professional, industrial, sleek, Octane Render, 8k resolution, Unreal Engine 5 style."
+  }, null, 2));
+  const [generatingLogo, setGeneratingLogo] = useState(false);
+  const [generatedLogoUrl, setGeneratedLogoUrl] = useState<string | null>(null);
+
   const [selectedTicketUser, setSelectedTicketUser] = useState<any>(null);
   const [adminReply, setAdminReply] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -35,6 +48,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, [supportMessages, selectedTicketUser]);
 
   const fetchData = async () => {
+    if (activeTab === 'branding') return; // No DB fetch needed for branding
+    
     setLoading(true);
     setErrorMsg(null);
     
@@ -78,6 +93,45 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     } finally {
         setLoading(false);
     }
+  };
+
+  const handleGenerateLogo = async () => {
+      setGeneratingLogo(true);
+      setGeneratedLogoUrl(null);
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          let promptText = logoPrompt;
+          try {
+              const json = JSON.parse(logoPrompt);
+              // Flatten JSON to descriptive text for the model
+              promptText = `Generate an image: ${json.subject}. ${json.composition}. Materials: ${json.materials}. Colors: ${json.colors}. Lighting: ${json.lighting}. Style: ${json.style}`;
+          } catch (e) {
+              // Use raw text if JSON parse fails
+          }
+
+          const response = await ai.models.generateContent({
+              model: 'gemini-3-pro-image-preview',
+              contents: { parts: [{ text: promptText }] },
+              config: {
+                  imageConfig: { aspectRatio: "1:1", imageSize: "1K" }
+              }
+          });
+
+          if (response.candidates?.[0]?.content?.parts) {
+              for (const part of response.candidates[0].content.parts) {
+                  if (part.inlineData) {
+                      setGeneratedLogoUrl(`data:image/png;base64,${part.inlineData.data}`);
+                      break;
+                  }
+              }
+          } else {
+              alert("No image generated. Try adjusting the prompt.");
+          }
+      } catch (err: any) {
+          alert("Generation failed: " + err.message);
+      } finally {
+          setGeneratingLogo(false);
+      }
   };
 
   const handleSendBroadcast = async () => {
@@ -206,15 +260,61 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['verify', 'users', 'safety', 'support', 'broadcast'].map(tab => (
+          {['verify', 'users', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
             <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>{tab}</button>
           ))}
         </div>
       </div>
 
       <div className="p-4 flex-1 overflow-y-auto">
-        {loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
+        {activeTab !== 'branding' && loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
          errorMsg ? <div className="p-6 bg-red-50 text-red-600 rounded-2xl text-center border border-red-100 animate-fadeIn"><p className="text-xs font-bold">{errorMsg}</p></div> :
+
+         activeTab === 'branding' ? (
+             <div className="space-y-6 animate-fadeIn">
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700">
+                     <div className="flex justify-between items-center mb-4">
+                         <div>
+                             <h3 className="text-lg font-black text-gray-900 dark:text-white">AI Logo Generator</h3>
+                             <p className="text-xs text-gray-500 dark:text-gray-400">Generate high-end 3D assets for the platform.</p>
+                         </div>
+                         <div className="w-10 h-10 bg-brand/10 text-brand rounded-full flex items-center justify-center"><i className="fa-solid fa-wand-magic-sparkles"></i></div>
+                     </div>
+                     
+                     <div className="space-y-4">
+                         <div className="relative">
+                             <textarea 
+                                value={logoPrompt} 
+                                onChange={e => setLogoPrompt(e.target.value)} 
+                                rows={8} 
+                                className="w-full bg-gray-50 dark:bg-slate-900 p-4 rounded-2xl text-xs font-mono border border-gray-100 dark:border-slate-700 outline-none focus:border-brand dark:text-gray-300 resize-y"
+                             />
+                             <div className="absolute top-2 right-2 text-[9px] font-bold text-gray-400 uppercase bg-white dark:bg-slate-800 px-2 py-1 rounded">JSON Config</div>
+                         </div>
+                         
+                         <button 
+                            onClick={handleGenerateLogo} 
+                            disabled={generatingLogo} 
+                            className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                         >
+                             {generatingLogo ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-bolt"></i>}
+                             {generatingLogo ? 'Rendering 3D Model...' : 'Generate Logo'}
+                         </button>
+                     </div>
+                 </div>
+
+                 {generatedLogoUrl && (
+                     <div className="bg-black p-6 rounded-[32px] shadow-2xl border border-gray-800 text-center animate-fadeIn">
+                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Preview Output</p>
+                         <img src={generatedLogoUrl} className="w-full max-w-sm mx-auto rounded-2xl shadow-lg border border-white/10" alt="Generated Logo" />
+                         <div className="mt-6 flex gap-3">
+                             <a href={generatedLogoUrl} download="velgo-logo-ai.png" className="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-wider">Download PNG</a>
+                             <button onClick={() => setGeneratedLogoUrl(null)} className="px-4 py-3 bg-gray-800 text-white rounded-xl font-bold text-xs uppercase">Dismiss</button>
+                         </div>
+                     </div>
+                 )}
+             </div>
+         ) :
 
          activeTab === 'broadcast' ? (
              <div className="space-y-6">

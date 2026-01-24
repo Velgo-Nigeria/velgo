@@ -17,6 +17,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [urgency, setUrgency] = useState('normal');
   const [loading, setLoading] = useState(false);
   
+  // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -299,9 +300,9 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                </button>
              </div>
            ) : (
-             <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-all">
+             <div onClick={() => fileInputRef.current?.click()} className="h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-all">
                <i className="fa-solid fa-camera text-2xl text-gray-300 mb-2"></i>
-               <p className="text-xs font-bold text-gray-400">Tap to add photo</p>
+               <p className="text-xs font-bold text-gray-400">Upload</p>
                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
              </div>
            )}

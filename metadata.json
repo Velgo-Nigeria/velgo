@@ -1,6 +1,6 @@
 {
   "name": "Velgo",
-  "description": "A hyper-local gig marketplace PWA for Nigeria connecting verified workers and clients.",
+  "description": "The trusted app bridging the gap between verified local Workers and Clients in Nigeria.",
   "requestFramePermissions": [
     "geolocation",
     "microphone",

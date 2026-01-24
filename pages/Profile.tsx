@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
-import { CATEGORY_MAP } from '../lib/constants';
+import { CATEGORY_MAP, TIERS } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 
@@ -15,6 +16,14 @@ const ProfilePage: React.FC<{ profile: Profile | null; onRefreshProfile: () => P
   const [account, setAccount] = useState(profile?.account_number || '');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Usage Meter Calculation
+  const currentTier = TIERS.find(t => t.id === profile?.subscription_tier) || TIERS[0];
+  const limit = currentTier.limit;
+  const usage = profile?.task_count || 0;
+  const percentage = Math.min(100, Math.max(0, (usage / limit) * 100));
+  const isUnlimited = limit > 1000;
+  const progressColor = percentage >= 100 ? 'bg-red-500' : percentage > 70 ? 'bg-yellow-400' : 'bg-brand';
 
   useEffect(() => {
     if (profile) {
@@ -68,9 +77,28 @@ const ProfilePage: React.FC<{ profile: Profile | null; onRefreshProfile: () => P
           <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-camera text-white text-xl"></i></button>
           <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
         </div>
-        <div className="text-center mt-6 z-10 px-4">
+        <div className="text-center mt-6 z-10 px-4 w-full flex flex-col items-center">
           <h2 className="text-3xl font-black text-white tracking-tight">{profile?.full_name}</h2>
           <span className="inline-block bg-brand/80 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mt-3 border border-white/10">{profile?.subscription_tier} Member</span>
+          
+          {/* Usage Meter */}
+          {!isUnlimited && (
+            <div className="w-full max-w-[200px] mt-6 space-y-2 animate-fadeIn bg-white/5 p-3 rounded-2xl border border-white/5">
+                <div className="flex justify-between items-end text-white/80">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Monthly Usage</span>
+                    <span className="text-[10px] font-black text-white">{usage} / {limit}</span>
+                </div>
+                <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                    <div 
+                        className={`h-full ${progressColor} transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,255,0.2)]`} 
+                        style={{ width: `${percentage}%` }}
+                    />
+                </div>
+                <p className="text-[9px] text-gray-400 font-medium text-center pt-1">
+                    {usage >= limit ? 'Limit Reached. Upgrade now.' : `${limit - usage} slots remaining`}
+                </p>
+            </div>
+          )}
         </div>
       </div>
       <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 space-y-8">
