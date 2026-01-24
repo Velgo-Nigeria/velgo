@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'velgo-v1.0.5';
+const CACHE_NAME = 'velgo-v1.0.6';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 
 // Assets to pre-cache immediately
@@ -95,8 +95,8 @@ self.addEventListener('push', function(event) {
 
     const options = {
       body: data.body,
-      icon: 'https://img.icons8.com/ios-filled/192/008000/shield.png',
-      badge: 'https://img.icons8.com/ios-filled/96/008000/shield.png',
+      icon: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
+      badge: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),

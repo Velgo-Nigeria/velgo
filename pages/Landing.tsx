@@ -115,13 +115,22 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent"></div>
         </div>
 
+        {/* 3D LOGO HERO PLACEMENT */}
+        <div className="absolute top-20 right-6 z-0 animate-pulse pointer-events-none opacity-90">
+             <img
+                src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+                className="w-32 h-32 md:w-56 md:h-56 object-contain drop-shadow-[0_20px_50px_rgba(0,128,0,0.5)]"
+                alt="Velgo 3D Icon"
+            />
+        </div>
+
         <div className="relative z-10 space-y-6 animate-fadeIn">
           <div className="flex justify-between items-start">
              <VelgoLogo variant="light" className="h-12" />
              <button onClick={onLogin} className="velgo-glass px-6 py-2.5 rounded-full text-[11px] font-black uppercase text-white hover:bg-white/20 transition-all">Sign In</button>
           </div>
           
-          <h1 className="text-5xl font-black text-white leading-[0.95] tracking-tighter mt-4">
+          <h1 className="text-5xl font-black text-white leading-[0.95] tracking-tighter mt-4 drop-shadow-lg">
             The Trusted <br/>
             Gig <span className="text-brand">Hub</span> <br/>
             For Naija.

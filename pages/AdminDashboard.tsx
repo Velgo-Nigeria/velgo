@@ -307,8 +307,19 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                      <div className="bg-black p-6 rounded-[32px] shadow-2xl border border-gray-800 text-center animate-fadeIn">
                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Preview Output</p>
                          <img src={generatedLogoUrl} className="w-full max-w-sm mx-auto rounded-2xl shadow-lg border border-white/10" alt="Generated Logo" />
-                         <div className="mt-6 flex gap-3">
-                             <a href={generatedLogoUrl} download="velgo-logo-ai.png" className="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-wider">Download PNG</a>
+                         
+                         <div className="bg-gray-900 mt-6 p-4 rounded-xl border border-gray-700 text-left space-y-2">
+                            <p className="text-[10px] font-black text-brand uppercase">Step 1: Save</p>
+                            <a href={generatedLogoUrl} download="velgo-logo.png" className="block w-full bg-white text-black text-center py-2 rounded-lg font-bold text-xs">Download Image</a>
+                            
+                            <p className="text-[10px] font-black text-brand uppercase mt-2">Step 2: Host</p>
+                            <p className="text-[10px] text-gray-400">Go to Supabase Dashboard -> Storage -> 'branding' bucket. Upload the file.</p>
+                            
+                            <p className="text-[10px] font-black text-brand uppercase mt-2">Step 3: Update</p>
+                            <p className="text-[10px] text-gray-400">Click "Get Public URL" in Supabase and send the link to the dev chat to update the app icon.</p>
+                         </div>
+
+                         <div className="mt-6 flex justify-center">
                              <button onClick={() => setGeneratedLogoUrl(null)} className="px-4 py-3 bg-gray-800 text-white rounded-xl font-bold text-xs uppercase">Dismiss</button>
                          </div>
                      </div>

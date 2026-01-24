@@ -234,32 +234,42 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
              </div>
         )}
 
-        {/* Welcome Card */}
+        {/* Welcome Card - WITH 3D LOGO WATERMARK */}
         <div className="bg-[#0f172a] dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
+            {/* The 3D Watermark */}
+            <img 
+                src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+                className="absolute -right-6 -bottom-8 w-48 h-48 opacity-20 rotate-12 pointer-events-none grayscale-[0.2]"
+                alt=""
+            />
+            
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand/10 rounded-full blur-3xl group-hover:bg-brand/20 transition-all"></div>
-            <p className="text-[10px] font-black uppercase tracking-[4px] text-brand mb-1">
-              {isAdmin ? 'ADMIN CONTROL PANEL' : 'NIGERIA HUB ACTIVE'}
-            </p>
-            <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
-            {profile?.role === 'client' || isAdmin ? (
-                <div className="flex gap-3 animate-fadeIn">
-                    <button 
-                        onClick={onPostTask} 
-                        className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
-                    >
-                        {isAdmin ? 'Post Admin Alert' : 'Post a Job Request'}
-                    </button>
-                    {!isAdmin && (
-                      <button 
-                          onClick={onPostTask} 
-                          className="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl shadow-xl shadow-brand/20 active:scale-95 transition-all shrink-0"
-                          aria-label="Quick post job"
-                      >
-                          <i className="fa-solid fa-plus"></i>
-                      </button>
-                    )}
-                </div>
-            ) : <p className="text-xs font-medium text-gray-400">Ready for your next gig?</p>}
+            
+            <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-[4px] text-brand mb-1">
+                  {isAdmin ? 'ADMIN CONTROL PANEL' : 'NIGERIA HUB ACTIVE'}
+                </p>
+                <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
+                {profile?.role === 'client' || isAdmin ? (
+                    <div className="flex gap-3 animate-fadeIn">
+                        <button 
+                            onClick={onPostTask} 
+                            className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
+                        >
+                            {isAdmin ? 'Post Admin Alert' : 'Post a Job Request'}
+                        </button>
+                        {!isAdmin && (
+                          <button 
+                              onClick={onPostTask} 
+                              className="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl shadow-xl shadow-brand/20 active:scale-95 transition-all shrink-0"
+                              aria-label="Quick post job"
+                          >
+                              <i className="fa-solid fa-plus"></i>
+                          </button>
+                        )}
+                    </div>
+                ) : <p className="text-xs font-medium text-gray-400">Ready for your next gig?</p>}
+            </div>
         </div>
 
         {/* Results */}
