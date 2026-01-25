@@ -49,17 +49,25 @@ const SubscriptionCard: React.FC<{
   };
 
   return (
-    <div className={`p-6 rounded-[32px] border ${isActive ? 'border-brand bg-brand/5 dark:bg-brand/10' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'} shadow-sm space-y-4 relative overflow-hidden transition-all duration-300 flex flex-col`}>
-      {isActive && <div className="absolute top-0 right-0 bg-brand text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl">Current Plan</div>}
+    <div className={`p-6 rounded-[32px] border ${isActive ? 'border-brand bg-brand/5 dark:bg-brand/10' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'} shadow-sm space-y-4 relative overflow-hidden transition-all duration-300 flex flex-col group`}>
       
-      <div className="flex justify-between items-start">
+      {/* Holographic Watermark */}
+      <img 
+          src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+          className="absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.08] -rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-500"
+          alt=""
+      />
+
+      {isActive && <div className="absolute top-0 right-0 bg-brand text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl z-10">Current Plan</div>}
+      
+      <div className="flex justify-between items-start relative z-10">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400">{tier.name}</span>
           <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{tier.price.toLocaleString()} <span className="text-sm font-medium text-gray-400 dark:text-gray-500">/mo</span></h3>
         </div>
       </div>
 
-      <ul className="space-y-2 flex-1">
+      <ul className="space-y-2 flex-1 relative z-10">
         {tier.features.map((f, i) => (
           <li key={i} className="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
             <i className="fa-solid fa-check text-brand text-[10px]"></i> {f}
@@ -67,7 +75,7 @@ const SubscriptionCard: React.FC<{
         ))}
       </ul>
 
-      <div className="space-y-2 mt-4">
+      <div className="space-y-2 mt-4 relative z-10">
           <button 
             type="button"
             onClick={handlePaystack}

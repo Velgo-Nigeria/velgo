@@ -153,75 +153,87 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
       {/* Client Completion & Rating Modal */}
       {showCompleteModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-                <button onClick={() => setShowCompleteModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+            <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-hidden">
                 
-                <div className="text-center">
-                    <div className="w-16 h-16 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-receipt"></i></div>
-                    <h3 className="text-xl font-black text-gray-900 dark:text-white">Payment & Completion</h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Pay Worker Directly</p>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[32px] p-6 space-y-4">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Worker Bank</p>
-                            <p className="text-sm font-black text-gray-900 dark:text-white">{completingBooking?.profiles?.bank_name || 'Bank Not Set'}</p>
-                        </div>
-                        <i className="fa-solid fa-building-columns text-gray-200 dark:text-gray-700 text-xl"></i>
-                    </div>
-
-                    <div>
-                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Account Number</p>
-                        <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-700">
-                            <p className="text-lg font-black text-gray-900 dark:text-white tracking-widest font-mono">{completingBooking?.profiles?.account_number || '----------'}</p>
-                            {completingBooking?.profiles?.account_number && (
-                                <button onClick={() => handleCopy(completingBooking.profiles.account_number)} className="text-brand p-2 active:scale-90 transition-transform">
-                                    <i className="fa-regular fa-copy"></i>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Account Name</p>
-                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-tight">{completingBooking?.profiles?.account_name || completingBooking?.profiles?.full_name}</p>
-                    </div>
-
-                    <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <p className="text-[9px] text-center text-gray-400 font-medium italic">
-                            Verify the name on your banking app matches before sending.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-6 pt-2">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-3">Rate {completingBooking?.profiles?.full_name.split(' ')[0]}'s Service</p>
-                        <div className="flex justify-center gap-4">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button key={star} onClick={() => setRating(star)} className={`text-3xl transition-all active:scale-125 ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
-                                    <i className="fa-solid fa-star"></i>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <textarea 
-                        value={review}
-                        onChange={(e) => setReview(e.target.value)}
-                        placeholder="Write a quick review about the work..."
-                        rows={2}
-                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl py-4 px-5 text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-brand/20 resize-none"
+                {/* Receipt Watermark */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                    <img 
+                        src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+                        className="w-64 h-64 opacity-[0.03] grayscale pointer-events-none"
+                        alt=""
                     />
+                </div>
 
-                    <button 
-                        onClick={submitCompletion}
-                        disabled={isSubmitting}
-                        className="w-full bg-brand text-white py-5 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl shadow-brand/20 active:scale-95 transition-all"
-                    >
-                        {isSubmitting ? 'Processing...' : 'Confirm Payment & Complete'}
-                    </button>
+                <div className="relative z-10 overflow-y-auto max-h-[80vh]">
+                    <button onClick={() => setShowCompleteModal(false)} className="absolute top-0 right-0 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+                    
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-receipt"></i></div>
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white">Payment & Completion</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Pay Worker Directly</p>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[32px] p-6 space-y-4 mt-6">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Worker Bank</p>
+                                <p className="text-sm font-black text-gray-900 dark:text-white">{completingBooking?.profiles?.bank_name || 'Bank Not Set'}</p>
+                            </div>
+                            <i className="fa-solid fa-building-columns text-gray-200 dark:text-gray-700 text-xl"></i>
+                        </div>
+
+                        <div>
+                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Account Number</p>
+                            <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                <p className="text-lg font-black text-gray-900 dark:text-white tracking-widest font-mono">{completingBooking?.profiles?.account_number || '----------'}</p>
+                                {completingBooking?.profiles?.account_number && (
+                                    <button onClick={() => handleCopy(completingBooking.profiles.account_number)} className="text-brand p-2 active:scale-90 transition-transform">
+                                        <i className="fa-regular fa-copy"></i>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Account Name</p>
+                            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-tight">{completingBooking?.profiles?.account_name || completingBooking?.profiles?.full_name}</p>
+                        </div>
+
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                            <p className="text-[9px] text-center text-gray-400 font-medium italic">
+                                Verify the name on your banking app matches before sending.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6 pt-4">
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-3">Rate {completingBooking?.profiles?.full_name.split(' ')[0]}'s Service</p>
+                            <div className="flex justify-center gap-4">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button key={star} onClick={() => setRating(star)} className={`text-3xl transition-all active:scale-125 ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
+                                        <i className="fa-solid fa-star"></i>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <textarea 
+                            value={review}
+                            onChange={(e) => setReview(e.target.value)}
+                            placeholder="Write a quick review about the work..."
+                            rows={2}
+                            className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl py-4 px-5 text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-brand/20 resize-none"
+                        />
+
+                        <button 
+                            onClick={submitCompletion}
+                            disabled={isSubmitting}
+                            className="w-full bg-brand text-white py-5 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl shadow-brand/20 active:scale-95 transition-all"
+                        >
+                            {isSubmitting ? 'Processing...' : 'Confirm Payment & Complete'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -287,8 +299,16 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
         {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Gigs...</div> :
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {currentItems.length > 0 ? currentItems.map(item => (
-                <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 relative overflow-hidden transition-all hover:shadow-md">
-                    <div className="flex items-center gap-4">
+                <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 relative overflow-hidden transition-all hover:shadow-md group">
+                    
+                    {/* Gig Card Watermark */}
+                    <img 
+                        src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+                        className="absolute -right-4 -bottom-4 w-24 h-24 opacity-[0.05] rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-500"
+                        alt=""
+                    />
+
+                    <div className="flex items-center gap-4 relative z-10">
                       <div className="w-16 h-16 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden">
                           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} className="w-full h-full object-cover"/> : <span className="font-black text-gray-300 dark:text-gray-600 text-xl">{(item.profiles?.full_name || item.title || 'U')[0]}</span>}
                       </div>
@@ -302,14 +322,14 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                     </div>
 
                     {item.status === 'pending' && (
-                        <div className="flex gap-3 w-full">
+                        <div className="flex gap-3 w-full relative z-10">
                             <button onClick={() => updateBookingStatus(item, 'cancelled')} className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">Decline</button>
                             <button onClick={() => updateBookingStatus(item, 'accepted')} className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">Accept</button>
                         </div>
                     )}
 
                     {['accepted', 'assigned'].includes(item.status) && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 relative z-10">
                             {profile?.role === 'client' && (
                                 <button 
                                     onClick={() => handleOpenCompleteModal(item)} 
@@ -328,7 +348,7 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                     )}
 
                     {item.status === 'completed' && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 relative z-10">
                             {/* Display ratings if both provided */}
                             <div className="pt-2 border-t border-gray-50 dark:border-gray-700 flex flex-col gap-2">
                                 <div className="flex items-center justify-between">

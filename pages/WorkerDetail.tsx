@@ -83,9 +83,17 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     <div className="bg-white min-h-screen pb-24 relative">
       {showUpgradeModal && <UpgradeModal />}
 
-      <div className="relative h-[45vh] bg-gray-900">
+      <div className="relative h-[45vh] bg-gray-900 overflow-hidden">
+        
+        {/* Holographic Watermark */}
+        <img 
+            src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+            className="absolute -right-12 -bottom-24 w-80 h-80 opacity-[0.15] rotate-[-15deg] pointer-events-none z-0"
+            alt=""
+        />
+
         <button onClick={onBack} className="absolute top-6 left-6 z-20 bg-white/20 backdrop-blur-xl text-white p-4 rounded-2xl"><i className="fa-solid fa-chevron-left"></i></button>
-        <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80" />
+        <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80 relative z-10" />
       </div>
       <div className="px-6 -mt-24 relative z-10">
         <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white shadow-2xl object-cover" />

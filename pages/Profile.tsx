@@ -72,6 +72,14 @@ const ProfilePage: React.FC<{ profile: Profile | null; onRefreshProfile: () => P
   return (
     <div className="p-6 space-y-8 pb-32">
       <div className="flex flex-col items-center py-10 relative overflow-hidden bg-gray-900 rounded-[48px] shadow-2xl">
+        
+        {/* Holographic Watermark */}
+        <img 
+            src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
+            className="absolute -right-12 -bottom-12 w-64 h-64 opacity-[0.07] rotate-[-15deg] pointer-events-none"
+            alt=""
+        />
+
         <div className="relative group w-32 h-32 rounded-[44px] overflow-hidden border-4 border-white shadow-2xl z-10">
           <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=008000&color=fff`} className="w-full h-full object-cover" />
           <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-camera text-white text-xl"></i></button>
