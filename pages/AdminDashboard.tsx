@@ -313,7 +313,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <a href={generatedLogoUrl} download="velgo-logo.png" className="block w-full bg-white text-black text-center py-2 rounded-lg font-bold text-xs">Download Image</a>
                             
                             <p className="text-[10px] font-black text-brand uppercase mt-2">Step 2: Host</p>
-                            <p className="text-[10px] text-gray-400">Go to Supabase Dashboard -> Storage -> 'branding' bucket. Upload the file.</p>
+                            <p className="text-[10px] text-gray-400">Go to Supabase Dashboard &rarr; Storage &rarr; 'branding' bucket. Upload the file.</p>
                             
                             <p className="text-[10px] font-black text-brand uppercase mt-2">Step 3: Update</p>
                             <p className="text-[10px] text-gray-400">Click "Get Public URL" in Supabase and send the link to the dev chat to update the app icon.</p>
