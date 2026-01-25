@@ -50,6 +50,11 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   
   const [signingOut, setSigningOut] = useState(false);
 
+  // Delete Account State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const isAdmin = profile?.role === 'admin' || profile?.email === 'admin.velgo@gmail.com'; 
 
   // Check Push Status on Mount
@@ -83,6 +88,34 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const handleSignOut = async () => {
       setSigningOut(true);
       await supabase.auth.signOut();
+  };
+
+  const handleDeleteAccount = async () => {
+      if (deleteConfirmation !== 'DELETE') return;
+      setIsDeleting(true);
+
+      try {
+          // Call the RPC function created in SQL
+          const { error } = await supabase.rpc('delete_own_account');
+          
+          if (error) {
+              console.error("Delete Account Error:", error);
+              throw error;
+          }
+
+          // Perform local cleanup
+          localStorage.clear();
+          sessionStorage.clear();
+           if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(key => caches.delete(key)));
+          }
+          await supabase.auth.signOut();
+          window.location.href = '/'; // Force hard navigation
+      } catch (err: any) {
+          alert(`Failed to delete account.\n\nReason: ${err.message || 'Unknown Error'}\n\nHint: Check the SQL function in Supabase.`);
+          setIsDeleting(false);
+      }
   };
 
   const updatePreference = async (updates: Partial<Profile>) => {
@@ -404,11 +437,75 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
             <i className="fa-solid fa-right-from-bracket text-red-400 dark:text-red-500 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors"></i>
         </button>
 
-        <div className="pt-4 text-center">
-            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.6 (Unified Build)</p>
+        {/* DANGER ZONE - DELETE ACCOUNT */}
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+            <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-4 ml-2">Danger Zone</h3>
+            <button
+                onClick={() => setShowDeleteModal(true)}
+                className="w-full bg-red-50 dark:bg-red-900/10 p-5 rounded-[32px] flex items-center justify-between border border-red-100 dark:border-red-900/30 group active:scale-95 transition-all"
+            >
+                <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                        <i className="fa-solid fa-trash-can text-red-600 dark:text-red-400 text-xs"></i>
+                     </div>
+                     <div className="text-left">
+                        <span className="block text-sm font-black text-red-600 dark:text-red-400 group-hover:text-red-700 transition-colors">Delete Account</span>
+                        <span className="text-[9px] text-red-400 font-medium">Irreversible action</span>
+                     </div>
+                </div>
+                <i className="fa-solid fa-chevron-right text-red-300 text-xs"></i>
+            </button>
+        </div>
+
+        <div className="pt-8 text-center">
+            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.7 (Security Update)</p>
         </div>
 
       </div>
+
+      {/* DELETE MODAL */}
+      {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
+              <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-6 text-center border-2 border-red-100 dark:border-red-900/30">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto text-red-600 dark:text-red-400 text-2xl animate-pulse">
+                      <i className="fa-solid fa-triangle-exclamation"></i>
+                  </div>
+
+                  <div>
+                      <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase">Final Warning</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                          This will <b>permanently erase</b> your profile, booking history, and messages. This action cannot be undone.
+                      </p>
+                  </div>
+
+                  <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Type "DELETE" to confirm</label>
+                      <input
+                          value={deleteConfirmation}
+                          onChange={(e) => setDeleteConfirmation(e.target.value)}
+                          placeholder="DELETE"
+                          className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl text-center text-sm font-black outline-none text-red-600 placeholder-red-200 focus:ring-2 focus:ring-red-500/20 transition-all uppercase"
+                      />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                      <button
+                          onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
+                          className="py-4 rounded-2xl text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300"
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          onClick={handleDeleteAccount}
+                          disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+                          className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-red-600 text-white shadow-xl shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                          {isDeleting ? 'Erasing...' : 'Delete Forever'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Re-Auth / Bank Modal */}
       {reAuthMode === 'bank' && (
