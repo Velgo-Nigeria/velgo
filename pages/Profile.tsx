@@ -2,127 +2,315 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
-import { CATEGORY_MAP, TIERS } from '../lib/constants';
-import { GoogleGenAI } from "@google/genai";
+import { CATEGORY_MAP } from '../lib/constants';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 
-const ProfilePage: React.FC<{ profile: Profile | null; onRefreshProfile: () => Promise<void>; onSubscription: () => void; onSettings: () => void; }> = ({ profile, onRefreshProfile, onSubscription, onSettings }) => {
+interface ProfilePageProps {
+  profile: Profile | null;
+  onRefreshProfile: () => void;
+  onSubscription: () => void;
+  onSettings: () => void;
+}
+
+const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, onSubscription, onSettings }) => {
   const [editing, setEditing] = useState(false);
-  const [phone, setPhone] = useState(profile?.phone_number || '');
-  const [streetAddress, setStreetAddress] = useState(profile?.address || '');
-  const [selectedState, setSelectedState] = useState(profile?.state || 'Lagos');
-  const [selectedLGA, setSelectedLGA] = useState(profile?.lga || '');
-  const [bank, setBank] = useState(profile?.bank_name || '');
-  const [account, setAccount] = useState(profile?.account_number || '');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Usage Meter Calculation
-  const currentTier = TIERS.find(t => t.id === profile?.subscription_tier) || TIERS[0];
-  const limit = currentTier.limit;
-  const usage = profile?.task_count || 0;
-  const percentage = Math.min(100, Math.max(0, (usage / limit) * 100));
-  const isUnlimited = limit > 1000;
-  const progressColor = percentage >= 100 ? 'bg-red-500' : percentage > 70 ? 'bg-yellow-400' : 'bg-brand';
+  // Form State
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [phone, setPhone] = useState(profile?.phone_number || '');
+  const [address, setAddress] = useState(profile?.address || '');
+  const [state, setState] = useState(profile?.state || 'Lagos');
+  const [lga, setLga] = useState(profile?.lga || '');
+  
+  // Professional State (Workers Only)
+  const [bio, setBio] = useState(profile?.bio || '');
+  const [category, setCategory] = useState(profile?.category || Object.keys(CATEGORY_MAP)[0]);
+  const [subcategory, setSubcategory] = useState(profile?.subcategory || '');
+  const [startingPrice, setStartingPrice] = useState(profile?.starting_price?.toString() || '');
+  const [instagram, setInstagram] = useState(profile?.instagram_handle || '');
+  const [portfolio, setPortfolio] = useState(profile?.portfolio_url || '');
+
+  const isWorker = profile?.role === 'worker';
 
   useEffect(() => {
-    if (profile) {
-      setPhone(profile.phone_number || '');
-      setStreetAddress(profile.address || '');
-      setSelectedState(profile.state || 'Lagos');
-      setSelectedLGA(profile.lga || '');
-      setBank(profile.bank_name || '');
-      setAccount(profile.account_number || '');
+    // Reset LGA if state changes and current LGA is invalid for new state
+    if (state && NIGERIA_LGAS[state] && !NIGERIA_LGAS[state].includes(lga)) {
+        setLga(NIGERIA_LGAS[state][0] || '');
     }
-  }, [profile]);
+  }, [state]);
 
-  const handleUpdate = async () => {
-    if (!profile) return;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !profile) return;
+    
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
     setLoading(true);
-    try {
-        const updates = { 
-          phone_number: phone || null, 
-          address: streetAddress || null, 
-          state: selectedState || null,
-          lga: selectedLGA || null,
-          bank_name: bank || null,
-          account_number: account || null,
-          updated_at: new Date().toISOString()
-        };
-        const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
-        if (error) throw error;
-        await onRefreshProfile();
-        setEditing(false); 
-    } catch (err: any) { alert("Unable to save: " + err.message); } finally { setLoading(false); }
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+
+    if (uploadError) {
+      alert("Error uploading image: " + uploadError.message);
+      setLoading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
+    onRefreshProfile();
+    setLoading(false);
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files?.[0]) return;
-    const file = event.target.files[0];
-    const fileName = `${profile?.id}-${Date.now()}.jpg`;
-    try {
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
-        if (uploadError) throw uploadError;
-        const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', profile?.id);
-        await onRefreshProfile();
-    } catch (err: any) { alert("Upload failed: " + err.message); }
+  const handleSave = async () => {
+    if (!profile) return;
+    setLoading(true);
+
+    const updates: any = {
+      full_name: fullName,
+      phone_number: phone,
+      address,
+      state,
+      lga,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isWorker) {
+        updates.bio = bio;
+        updates.category = category;
+        updates.subcategory = subcategory;
+        updates.starting_price = parseInt(startingPrice) || 0;
+        updates.instagram_handle = instagram;
+        updates.portfolio_url = portfolio;
+    }
+
+    const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
+
+    if (error) {
+      alert("Failed to update profile: " + error.message);
+    } else {
+      setEditing(false);
+      onRefreshProfile();
+    }
+    setLoading(false);
   };
 
   return (
-    <div className="p-6 space-y-8 pb-32">
-      <div className="flex flex-col items-center py-10 relative overflow-hidden bg-gray-900 rounded-[48px] shadow-2xl">
-        
-        {/* Holographic Watermark */}
-        <img 
-            src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
-            className="absolute -right-12 -bottom-12 w-64 h-64 opacity-[0.07] rotate-[-15deg] pointer-events-none"
-            alt=""
-        />
-
-        <div className="relative group w-32 h-32 rounded-[44px] overflow-hidden border-4 border-white shadow-2xl z-10">
-          <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=008000&color=fff`} className="w-full h-full object-cover" />
-          <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-camera text-white text-xl"></i></button>
-          <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+    <div className="bg-white dark:bg-gray-900 min-h-screen pb-24 transition-colors duration-200">
+      
+      {/* Header */}
+      <div className="px-6 pt-10 pb-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 z-10 border-b border-gray-100 dark:border-gray-800">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Profile</h1>
+        <div className="flex gap-3">
+            <button onClick={onSettings} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
+                <i className="fa-solid fa-gear"></i>
+            </button>
+            <button onClick={onSubscription} className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${profile?.subscription_tier === 'basic' ? 'bg-gray-400' : 'bg-brand'}`}>
+                <i className="fa-solid fa-crown"></i>
+            </button>
         </div>
-        <div className="text-center mt-6 z-10 px-4 w-full flex flex-col items-center">
-          <h2 className="text-3xl font-black text-white tracking-tight">{profile?.full_name}</h2>
-          <span className="inline-block bg-brand/80 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mt-3 border border-white/10">{profile?.subscription_tier} Member</span>
-          
-          {/* Usage Meter */}
-          {!isUnlimited && (
-            <div className="w-full max-w-[200px] mt-6 space-y-2 animate-fadeIn bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex justify-between items-end text-white/80">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Monthly Usage</span>
-                    <span className="text-[10px] font-black text-white">{usage} / {limit}</span>
+      </div>
+
+      <div className="p-6 space-y-8">
+        
+        {/* Avatar Section */}
+        <div className="flex flex-col items-center">
+            <div className="relative group">
+                <div className="w-28 h-28 rounded-[36px] overflow-hidden border-4 border-white dark:border-gray-800 shadow-2xl bg-gray-100 dark:bg-gray-700">
+                    <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}`} className="w-full h-full object-cover" />
                 </div>
-                <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-                    <div 
-                        className={`h-full ${progressColor} transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,255,0.2)]`} 
-                        style={{ width: `${percentage}%` }}
+                <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+                >
+                    <i className="fa-solid fa-camera text-sm"></i>
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+            </div>
+            
+            <div className="mt-4 text-center">
+                <h2 className="text-xl font-black text-gray-900 dark:text-white">{profile?.full_name}</h2>
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
+                    {profile?.role} • {profile?.subscription_tier}
+                </p>
+                {profile?.is_verified && (
+                    <div className="mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        <i className="fa-solid fa-circle-check"></i> Verified ID
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Edit Toggle */}
+        <div className="flex justify-end">
+            {editing ? (
+                <div className="flex gap-2">
+                    <button onClick={() => setEditing(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold uppercase">Cancel</button>
+                    <button onClick={handleSave} disabled={loading} className="px-6 py-2 bg-brand text-white rounded-xl text-xs font-black uppercase shadow-lg">
+                        {loading ? 'Saving...' : 'Save Changes'}
+                    </button>
+                </div>
+            ) : (
+                <button onClick={() => setEditing(true)} className="px-4 py-2 bg-brand/10 text-brand rounded-xl text-xs font-black uppercase tracking-widest">
+                    Edit Profile
+                </button>
+            )}
+        </div>
+
+        {/* Personal Details Form */}
+        <div className="space-y-6">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Personal Details</h3>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Full Name</label>
+                    <input 
+                        disabled={!editing} 
+                        value={fullName} 
+                        onChange={e => setFullName(e.target.value)} 
+                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all" 
                     />
                 </div>
-                <p className="text-[9px] text-gray-400 font-medium text-center pt-1">
-                    {usage >= limit ? 'Limit Reached. Upgrade now.' : `${limit - usage} slots remaining`}
-                </p>
+                <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Phone Number</label>
+                    <input 
+                        disabled={!editing} 
+                        value={phone} 
+                        onChange={e => setPhone(e.target.value)} 
+                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all" 
+                    />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Street Address</label>
+                    <input 
+                        disabled={!editing} 
+                        value={address} 
+                        onChange={e => setAddress(e.target.value)} 
+                        placeholder="Enter street address"
+                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all placeholder-gray-300" 
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">State</label>
+                        {editing ? (
+                             <select value={state} onChange={e => setState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
+                                {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                             </select>
+                        ) : (
+                            <p className="font-bold text-gray-900 dark:text-white">{state}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">LGA</label>
+                        {editing ? (
+                             <select value={lga} onChange={e => setLga(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
+                                {NIGERIA_LGAS[state]?.map(l => <option key={l} value={l}>{l}</option>)}
+                             </select>
+                        ) : (
+                            <p className="font-bold text-gray-900 dark:text-white">{lga}</p>
+                        )}
+                    </div>
+                </div>
             </div>
-          )}
         </div>
-      </div>
-      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 space-y-8">
-        <div className="flex justify-between items-center border-b border-gray-50 pb-6"><h3 className="font-black text-gray-900 text-[10px] uppercase tracking-[4px]">Account Info</h3><button onClick={() => setEditing(!editing)} className="px-4 py-1.5 rounded-full bg-gray-50 text-[10px] font-black text-brand uppercase tracking-widest border border-gray-100">{editing ? 'Cancel' : 'Edit'}</button></div>
-        <div className="space-y-4">
-            <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Phone Contact</label>{editing ? <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-black border border-gray-100" /> : <p className="font-bold text-gray-900">{profile?.phone_number || 'Not Set'}</p>}</div>
-            <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">State</label>{editing ? <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-black border border-gray-100">{NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}</select> : <p className="font-bold text-gray-900">{profile?.state || 'Not Set'}</p>}</div>
-            <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">LGA</label>{editing ? <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-black border border-gray-100">{NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}</select> : <p className="font-bold text-gray-900">{profile?.lga || 'Not Set'}</p>}</div>
-        </div>
-        {editing && <button onClick={handleUpdate} disabled={loading} className="w-full bg-brand text-white py-5 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl shadow-brand/40 transition-all">{loading ? 'Saving Changes...' : 'Save Profile'}</button>}
-      </div>
-      <div className="grid grid-cols-1 gap-4">
-        <button onClick={onSubscription} className="w-full bg-white p-6 rounded-[32px] flex items-center justify-between border border-gray-100 shadow-sm active:scale-95 transition-transform"><span className="font-black text-gray-900 text-xs uppercase tracking-widest">Subscription</span><i className="fa-solid fa-crown text-yellow-500"></i></button>
-        <button onClick={onSettings} className="w-full bg-white p-6 rounded-[32px] flex items-center justify-between border border-gray-100 shadow-sm active:scale-95 transition-transform"><span className="font-black text-gray-900 text-xs uppercase tracking-widest">Settings</span><i className="fa-solid fa-gear text-gray-300"></i></button>
+
+        {/* Professional Profile - WORKERS ONLY */}
+        {isWorker && (
+            <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-[10px] font-black text-brand uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <i className="fa-solid fa-briefcase"></i> Professional Profile
+                </h3>
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border-2 border-brand/10 shadow-lg shadow-brand/5 space-y-4">
+                    
+                    {/* Category Selection */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">Trade Category</label>
+                            {editing ? (
+                                <select value={category} onChange={e => { setCategory(e.target.value); setSubcategory(''); }} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-xs font-bold dark:text-white outline-none">
+                                    {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            ) : <p className="font-bold text-sm text-gray-900 dark:text-white">{category || 'Not Set'}</p>}
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">Specialization</label>
+                            {editing ? (
+                                <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-xs font-bold dark:text-white outline-none">
+                                    <option value="">Select...</option>
+                                    {CATEGORY_MAP[category]?.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            ) : <p className="font-bold text-sm text-gray-900 dark:text-white">{subcategory || 'Not Set'}</p>}
+                        </div>
+                    </div>
+
+                    {/* Bio */}
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">Professional Bio</label>
+                        {editing ? (
+                            <textarea 
+                                value={bio} 
+                                onChange={e => setBio(e.target.value)} 
+                                rows={3}
+                                placeholder="Describe your skills and experience..."
+                                className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 resize-none outline-none focus:ring-1 focus:ring-brand" 
+                            />
+                        ) : (
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed">{bio || 'No bio added yet.'}</p>
+                        )}
+                    </div>
+
+                    {/* Pricing */}
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">Starting Price (₦)</label>
+                        <input 
+                            type="number"
+                            disabled={!editing} 
+                            value={startingPrice} 
+                            onChange={e => setStartingPrice(e.target.value)} 
+                            placeholder="0"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all" 
+                        />
+                    </div>
+
+                    {/* Socials & Portfolio */}
+                    <div className="pt-2 space-y-3">
+                         <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center"><i className="fa-brands fa-instagram"></i></div>
+                             <div className="flex-1">
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Instagram Handle</label>
+                                 <input 
+                                    disabled={!editing}
+                                    value={instagram}
+                                    onChange={e => setInstagram(e.target.value)}
+                                    placeholder="@username"
+                                    className="w-full bg-transparent border-b border-gray-100 dark:border-gray-700 py-1 text-sm font-medium focus:border-brand outline-none dark:text-white"
+                                 />
+                             </div>
+                         </div>
+                         <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i className="fa-solid fa-globe"></i></div>
+                             <div className="flex-1">
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Portfolio Website</label>
+                                 <input 
+                                    disabled={!editing}
+                                    value={portfolio}
+                                    onChange={e => setPortfolio(e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full bg-transparent border-b border-gray-100 dark:border-gray-700 py-1 text-sm font-medium focus:border-brand outline-none dark:text-white"
+                                 />
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
       </div>
     </div>
   );
 };
+
 export default ProfilePage;
