@@ -403,6 +403,24 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <div className="min-w-0">
                                     <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{user.full_name}</p>
                                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                    {user.phone_number && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <a href={`tel:${user.phone_number}`} className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300 hover:text-brand hover:underline">
+                                                {user.phone_number}
+                                            </a>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    navigator.clipboard.writeText(user.phone_number);
+                                                    alert("Phone copied!");
+                                                }} 
+                                                className="text-gray-400 hover:text-brand transition-colors"
+                                                title="Copy Phone"
+                                            >
+                                                <i className="fa-regular fa-copy text-[10px]"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 {user.is_verified && <i className="fa-solid fa-check-circle text-blue-500 text-lg"></i>}
                             </div>
