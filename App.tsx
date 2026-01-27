@@ -39,6 +39,8 @@ const App: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
 
   const viewRef = useRef(view);
+  // Track if we have successfully loaded the profile at least once to enable silent refreshing
+  const hasLoadedProfileRef = useRef(false);
 
   useEffect(() => { 
     viewRef.current = view; 
@@ -88,17 +90,20 @@ const App: React.FC = () => {
      }
   };
 
-  const fetchProfile = useCallback(async (uid: string, retries = 2) => {
-    setIsInitializingProfile(true);
+  const fetchProfile = useCallback(async (uid: string, retries = 2, silent = false) => {
+    // Only show the loading screen if this is the first load or explicit refresh, not a background update
+    if (!silent) setIsInitializingProfile(true);
+    
     const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
     
     if (data) {
       setProfile(data);
+      hasLoadedProfileRef.current = true;
       setIsInitializingProfile(false);
     } else if (retries > 0) {
       // Small delay before retry to allow Postgres trigger to finish
       await new Promise(r => setTimeout(r, 1000));
-      fetchProfile(uid, retries - 1);
+      fetchProfile(uid, retries - 1, silent);
     } else {
       // If we still have no profile, we stay in 'null' state which triggers 'CompleteProfile'
       setProfile(null);
@@ -125,9 +130,14 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       if (currentSession) {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchProfile(currentSession.user.id);
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // Use background refresh if we already have a loaded profile
+            // This prevents UI disruption during re-authentication events
+            fetchProfile(currentSession.user.id, 2, hasLoadedProfileRef.current);
+        }
       } else {
         setProfile(null);
+        hasLoadedProfileRef.current = false;
         if (viewRef.current !== 'reset-password' && viewRef.current !== 'change-password') {
             setView('landing');
             window.history.replaceState({ view: 'landing', data: null }, '', '');
@@ -173,7 +183,7 @@ const App: React.FC = () => {
       case 'chat': return <Chat profile={profile} partnerId={viewData} onBack={() => handleBackNavigation('messages')} />;
       case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
-      case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id)} onShowGuide={() => setShowGuide(true)} />;
+      case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} />;
       case 'change-password': return <ResetPassword onSuccess={() => { setToast({ msg: 'Password updated!', type: 'success' }); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
