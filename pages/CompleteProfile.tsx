@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole, ClientType } from '../types';
 import { VelgoLogo } from '../components/Brand';
@@ -9,16 +10,33 @@ interface CompleteProfileProps {
 }
 
 const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }) => {
-  const [role, setRole] = useState<UserRole>('client');
-  const [clientType, setClientType] = useState<ClientType>('personal');
-  const [fullName, setFullName] = useState(session.user.user_metadata.full_name || '');
-  const [phone, setPhone] = useState(session.user.user_metadata.phone_number || '');
+  const metadata = session.user.user_metadata || {};
+
+  // Initialize state from session metadata if available
+  const [role, setRole] = useState<UserRole>(metadata.role || 'client');
+  const [clientType, setClientType] = useState<ClientType>(metadata.client_type || 'personal');
+  const [fullName, setFullName] = useState(metadata.full_name || '');
+  const [phone, setPhone] = useState(metadata.phone_number || '');
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // New state to handle invisible auto-submission
+  const [isAutoCompleting, setIsAutoCompleting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    // Check if we have the critical data needed to skip the manual form
+    const hasCriticalData = metadata.full_name && metadata.phone_number && metadata.role;
+    
+    if (hasCriticalData) {
+      performProfileUpdate(true);
+    }
+  }, []);
+
+  const performProfileUpdate = async (isAuto: boolean) => {
+    if (isAuto) setIsAutoCompleting(true);
+    else setLoading(true);
+    
     setError(null);
 
     const updates = {
@@ -36,21 +54,46 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
     };
 
     const { error } = await supabase.from('profiles').upsert(updates);
+
     if (error) {
-      setError("Sync failed. Ensure your database trigger is updated.");
-      setLoading(false);
+      console.error("Profile Sync Error:", error);
+      // If auto-complete fails, fall back to manual form so user isn't stuck
+      if (isAuto) {
+        setIsAutoCompleting(false);
+        // We don't show an error immediately, we just let them see the form to confirm details
+      } else {
+        setError("Sync failed. Please check your connection and try again.");
+        setLoading(false);
+      }
     } else {
+      // Success! Proceed to app
       onComplete();
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    performProfileUpdate(false);
+  };
+
+  // 1. Loading State (Invisible Setup)
+  if (isAutoCompleting) {
+    return (
+      <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center animate-fadeIn">
+         <VelgoLogo variant="light" className="h-16 animate-pulse mb-6" />
+         <p className="text-white text-[10px] font-black uppercase tracking-[4px] opacity-80">Finalizing Setup...</p>
+      </div>
+    );
+  }
+
+  // 2. Manual Fallback Form (Only shown if data is missing or auto-sync failed)
   return (
     <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm space-y-10 animate-fadeIn">
         <div className="text-center">
           <VelgoLogo variant="light" className="h-12 mx-auto mb-8" />
           <h2 className="text-4xl font-black text-white uppercase tracking-tighter italic leading-none">Complete</h2>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[3px] mt-3">Almost there, Naija!</p>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[3px] mt-3">Confirm your details</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
