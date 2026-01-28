@@ -33,11 +33,22 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
   const isAdmin = profile?.role === 'admin';
 
-  // Usage Calculation
+  // Usage Calculation & Animation
   const usageCount = profile?.task_count || 0;
   const usageLimit = getTierLimit(profile?.subscription_tier);
-  const usagePercent = Math.min((usageCount / usageLimit) * 100, 100);
-  const usageColor = usagePercent >= 100 ? 'bg-red-500' : usagePercent >= 80 ? 'bg-yellow-500' : 'bg-brand';
+  const rawPercent = Math.min((usageCount / usageLimit) * 100, 100);
+  
+  const [usagePercent, setUsagePercent] = useState(0);
+  
+  // Animate the progress bar on mount/update
+  useEffect(() => {
+    const timer = setTimeout(() => setUsagePercent(rawPercent), 400);
+    return () => clearTimeout(timer);
+  }, [rawPercent]);
+
+  const isHighUsage = rawPercent >= 80;
+  const usageColor = rawPercent >= 100 ? 'bg-red-500' : isHighUsage ? 'bg-yellow-400' : 'bg-brand';
+  const usageStatus = rawPercent >= 100 ? 'Maxed Out' : isHighUsage ? 'Running Low' : 'Active';
 
   const fetchBroadcast = useCallback(async () => {
     if (!profile) return;
@@ -240,7 +251,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
              </div>
         )}
 
-        {/* Welcome Card - WITH 3D LOGO WATERMARK & USAGE INDICATOR */}
+        {/* Welcome Card - WITH 3D LOGO WATERMARK & ANIMATED USAGE INDICATOR */}
         <div className="bg-[#0f172a] dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
             {/* The 3D Watermark */}
             <img 
@@ -265,19 +276,37 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                 
                 <h2 className="text-3xl font-black tracking-tighter leading-none mb-3">Hello, {profile?.full_name.split(' ')[0]}</h2>
                 
-                {/* Plan Usage Indicator */}
+                {/* Enhanced Plan Usage Indicator */}
                 {!isAdmin && (
-                  <div className="mb-6 w-full max-w-[200px]">
-                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
-                      <span>Monthly Limit</span>
-                      <span className={usagePercent >= 80 ? 'text-white' : ''}>{usageCount} / {usageLimit > 999 ? '∞' : usageLimit} Used</span>
+                  <div className="mb-6 w-full max-w-[220px]">
+                    <div className="flex justify-between items-end text-[8px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                      <div className="flex flex-col">
+                         <span>Monthly Limit</span>
+                         <span className={isHighUsage ? 'text-yellow-400 animate-pulse' : 'text-brand-light'}>
+                            {usageStatus}
+                         </span>
+                      </div>
+                      <div className="text-right">
+                         <span className="text-white text-[10px]">{usageCount}</span>
+                         <span className="opacity-50"> / {usageLimit > 999 ? '∞' : usageLimit}</span>
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    
+                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden relative">
+                      {/* Background Pulse for high usage */}
+                      {isHighUsage && <div className="absolute inset-0 bg-yellow-400/20 animate-pulse"></div>}
+                      
                       <div 
-                        className={`h-full rounded-full transition-all duration-500 ease-out ${usageColor}`} 
+                        className={`h-full rounded-full transition-all duration-1000 ease-out relative ${usageColor}`} 
                         style={{ width: `${usagePercent}%` }}
                       />
                     </div>
+
+                    {isHighUsage && (
+                        <button onClick={onUpgrade} className="mt-3 w-full text-center text-[9px] font-black uppercase text-gray-900 bg-yellow-400 rounded-lg py-1.5 hover:bg-white transition-colors shadow-lg">
+                            Upgrade Now
+                        </button>
+                    )}
                   </div>
                 )}
 
