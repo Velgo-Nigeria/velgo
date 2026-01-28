@@ -39,7 +39,6 @@ const App: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
 
   const viewRef = useRef(view);
-  // Track if we have successfully loaded the profile at least once to enable silent refreshing
   const hasLoadedProfileRef = useRef(false);
 
   useEffect(() => { 
@@ -91,7 +90,6 @@ const App: React.FC = () => {
   };
 
   const fetchProfile = useCallback(async (uid: string, retries = 2, silent = false) => {
-    // Only show the loading screen if this is the first load or explicit refresh, not a background update
     if (!silent) setIsInitializingProfile(true);
     
     const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
@@ -101,11 +99,9 @@ const App: React.FC = () => {
       hasLoadedProfileRef.current = true;
       setIsInitializingProfile(false);
     } else if (retries > 0) {
-      // Small delay before retry to allow Postgres trigger to finish
       await new Promise(r => setTimeout(r, 1000));
       fetchProfile(uid, retries - 1, silent);
     } else {
-      // If we still have no profile, we stay in 'null' state which triggers 'CompleteProfile'
       setProfile(null);
       setIsInitializingProfile(false);
     }
@@ -131,8 +127,6 @@ const App: React.FC = () => {
       setSession(currentSession);
       if (currentSession) {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            // Use background refresh if we already have a loaded profile
-            // This prevents UI disruption during re-authentication events
             fetchProfile(currentSession.user.id, 2, hasLoadedProfileRef.current);
         }
       } else {
@@ -147,10 +141,38 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]); 
 
+  // Skeleton Loader for Initialization
   if (loading || isInitializingProfile) return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900">
-      <ShieldIcon className="h-20 animate-pulse text-brand" />
-      <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-[4px]">Syncing with Hub...</p>
+    <div className="h-screen w-screen flex flex-col md:flex-row bg-white dark:bg-gray-900 overflow-hidden">
+      {/* Desktop Sidebar Skeleton */}
+      <div className="hidden md:flex w-72 border-r border-gray-100 dark:border-gray-800 p-6 flex-col gap-8">
+         <div className="h-10 w-32 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>
+         <div className="space-y-4">
+            {[1,2,3,4].map(i => <div key={i} className="h-12 w-full bg-gray-50 dark:bg-gray-800 rounded-xl animate-pulse"></div>)}
+         </div>
+      </div>
+      
+      {/* Main Content Skeleton */}
+      <div className="flex-1 p-6 space-y-8">
+         {/* Mobile Header Skeleton */}
+         <div className="md:hidden flex justify-between items-center mb-8">
+            <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>
+            <div className="flex gap-2">
+               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse"></div>
+               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse"></div>
+            </div>
+         </div>
+
+         {/* Hero/Card Skeleton */}
+         <div className="w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-[32px] animate-pulse"></div>
+         
+         {/* List Items Skeleton */}
+         <div className="space-y-4">
+            {[1,2,3].map(i => (
+                <div key={i} className="h-24 w-full bg-gray-50 dark:bg-gray-800 rounded-[24px] animate-pulse"></div>
+            ))}
+         </div>
+      </div>
     </div>
   );
 
@@ -168,7 +190,6 @@ const App: React.FC = () => {
     }
 
     // 2. Logged In but Profile Record Missing or Incomplete
-    // This is the "Safety Net" for database trigger failures
     if (!profile || !profile.role || !profile.phone_number) {
       return <CompleteProfile session={session} onComplete={() => fetchProfile(session.user.id)} />;
     }

@@ -4,6 +4,7 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, PostedTask } from '../types';
 import { getTierLimit } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
+import { VerificationBadge } from '../components/VerificationBadge';
 
 interface TaskDetailProps { 
   profile: Profile | null; 
@@ -153,6 +154,17 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
           setTranslating(false);
       }
   };
+
+  const handleShare = () => {
+    if (!task) return;
+    const text = `Check out this job: ${task.title} on Velgo!`;
+    const url = window.location.href;
+    if (navigator.share) {
+        navigator.share({ title: 'Velgo Job', text, url }).catch(console.error);
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    }
+  };
   
   const UpgradeModal = () => (
     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
@@ -232,9 +244,14 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                <div className="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             )}
         </div>
-        <button onClick={onBack} className="absolute top-6 left-6 z-20 bg-white/20 backdrop-blur-xl text-white p-4 rounded-2xl active:scale-95 transition-transform">
-            <i className="fa-solid fa-chevron-left"></i>
-        </button>
+        <div className="absolute top-6 left-6 right-6 z-20 flex justify-between items-center">
+            <button onClick={onBack} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform">
+                <i className="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform">
+                <i className="fa-solid fa-share-nodes"></i>
+            </button>
+        </div>
         
         <div className="absolute bottom-6 left-6 right-6 text-white z-20">
             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${task.urgency === 'emergency' ? 'bg-red-500' : 'bg-brand'}`}>
@@ -283,7 +300,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                         <span className="text-[9px] text-gray-400 font-bold">No ratings yet</span>
                     )}
                 </div>
-                {client?.is_verified && <i className="fa-solid fa-circle-check text-blue-500 ml-auto"></i>}
+                {client?.is_verified && <VerificationBadge className="text-blue-500" />}
             </div>
 
             {/* Description */}

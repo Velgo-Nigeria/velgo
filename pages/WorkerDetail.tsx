@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
+import { VerificationBadge } from '../components/VerificationBadge';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -61,6 +62,17 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     }
   };
 
+  const handleShare = () => {
+    if (!worker) return;
+    const text = `Check out ${worker.full_name} on Velgo!`;
+    const url = window.location.href;
+    if (navigator.share) {
+        navigator.share({ title: 'Velgo Profile', text, url }).catch(console.error);
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    }
+  };
+
   const UpgradeModal = () => (
     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
@@ -92,20 +104,28 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
             alt=""
         />
 
-        <button onClick={onBack} className="absolute top-6 left-6 z-20 bg-white/20 backdrop-blur-xl text-white p-4 rounded-2xl"><i className="fa-solid fa-chevron-left"></i></button>
+        <div className="absolute top-6 left-6 right-6 z-20 flex justify-between items-center">
+            <button onClick={onBack} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
+                <i className="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
+                <i className="fa-solid fa-share-nodes"></i>
+            </button>
+        </div>
+
         <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80 relative z-10" />
       </div>
       <div className="px-6 -mt-24 relative z-10">
-        <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white shadow-2xl object-cover" />
+        <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white shadow-2xl object-cover bg-white" />
         <div className="mt-6 space-y-8">
           <div>
               <div className="flex items-center gap-2 mb-1">
                  <h1 className="text-3xl font-black text-gray-900">{worker?.full_name}</h1>
-                 {worker?.is_verified && <i className="fa-solid fa-circle-check text-blue-500 text-xl" title="Verified ID"></i>}
+                 {worker?.is_verified && <VerificationBadge className="text-blue-500 text-xl" />}
               </div>
               <div className="flex flex-wrap gap-2">
                  <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">{worker?.category}</span>
-                 {worker?.is_verified && <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><i className="fa-solid fa-shield"></i> ID Verified</span>}
+                 {worker?.is_verified && <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><VerificationBadge className="text-blue-600" /> ID Verified</span>}
               </div>
           </div>
           <div className="grid grid-cols-3 gap-1 py-8 border-y border-gray-100">
@@ -140,7 +160,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
               )}
           </div>
 
-          {profile?.role === 'client' && <button onClick={handleBooking} className="w-full bg-brand text-white py-5 rounded-[28px] font-black shadow-2xl uppercase tracking-widest">INITIATE BOOKING</button>}
+          {profile?.role === 'client' && <button onClick={handleBooking} className="w-full bg-brand text-white py-5 rounded-[28px] font-black shadow-2xl uppercase tracking-widest active:scale-95 transition-transform">INITIATE BOOKING</button>}
         </div>
       </div>
     </div>

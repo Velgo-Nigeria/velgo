@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { VelgoLogo } from '../components/Brand';
 import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { VerificationBadge } from '../components/VerificationBadge';
 
 const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide }) => {
   const [items, setItems] = useState<any[]>([]); 
@@ -354,7 +355,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-black text-gray-900 dark:text-white truncate">{item.full_name || item.title}</h3>
-                      {(item.is_verified || item.profiles?.is_verified) && <i className="fa-solid fa-circle-check text-blue-500 text-xs"></i>}
+                      {(item.is_verified || item.profiles?.is_verified) && <VerificationBadge />}
                     </div>
                     <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
                       {item.category || 'Gig'} • {item.state || item.location?.split(',').pop()?.trim() || 'Nigeria'}
