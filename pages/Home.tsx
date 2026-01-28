@@ -5,7 +5,7 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, PostedTask, Broadcast } from '../lib/types';
 import { GoogleGenAI } from "@google/genai";
 import { VelgoLogo } from '../components/Brand';
-import { CATEGORY_MAP } from '../lib/constants';
+import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 
 const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide }) => {
@@ -32,6 +32,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [insightResult, setInsightResult] = useState<{ text: string, sources: any[] } | null>(null);
 
   const isAdmin = profile?.role === 'admin';
+
+  // Usage Calculation
+  const usageCount = profile?.task_count || 0;
+  const usageLimit = getTierLimit(profile?.subscription_tier);
+  const usagePercent = Math.min((usageCount / usageLimit) * 100, 100);
+  const usageColor = usagePercent >= 100 ? 'bg-red-500' : usagePercent >= 80 ? 'bg-yellow-500' : 'bg-brand';
 
   const fetchBroadcast = useCallback(async () => {
     if (!profile) return;
@@ -234,7 +240,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
              </div>
         )}
 
-        {/* Welcome Card - WITH 3D LOGO WATERMARK */}
+        {/* Welcome Card - WITH 3D LOGO WATERMARK & USAGE INDICATOR */}
         <div className="bg-[#0f172a] dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
             {/* The 3D Watermark */}
             <img 
@@ -246,10 +252,35 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand/10 rounded-full blur-3xl group-hover:bg-brand/20 transition-all"></div>
             
             <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[4px] text-brand mb-1">
-                  {isAdmin ? 'ADMIN CONTROL PANEL' : 'NIGERIA HUB ACTIVE'}
-                </p>
-                <h2 className="text-3xl font-black tracking-tighter leading-none mb-4">Hello, {profile?.full_name.split(' ')[0]}</h2>
+                <div className="flex justify-between items-start mb-1">
+                    <p className="text-[10px] font-black uppercase tracking-[4px] text-brand">
+                      {isAdmin ? 'ADMIN CONTROL PANEL' : 'NIGERIA HUB ACTIVE'}
+                    </p>
+                    {!isAdmin && (
+                      <span className="text-[8px] font-black uppercase bg-white/10 px-2 py-1 rounded-md text-gray-400 border border-white/5">
+                        {profile?.subscription_tier} Plan
+                      </span>
+                    )}
+                </div>
+                
+                <h2 className="text-3xl font-black tracking-tighter leading-none mb-3">Hello, {profile?.full_name.split(' ')[0]}</h2>
+                
+                {/* Plan Usage Indicator */}
+                {!isAdmin && (
+                  <div className="mb-6 w-full max-w-[200px]">
+                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                      <span>Monthly Limit</span>
+                      <span className={usagePercent >= 80 ? 'text-white' : ''}>{usageCount} / {usageLimit > 999 ? '∞' : usageLimit} Used</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${usageColor}`} 
+                        style={{ width: `${usagePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {profile?.role === 'client' || isAdmin ? (
                     <div className="flex gap-3 animate-fadeIn">
                         <button 
