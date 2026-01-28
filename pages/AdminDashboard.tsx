@@ -6,7 +6,7 @@ import { TIERS } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'verify' | 'broadcast' | 'branding'>('verify');
+  const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'broadcast' | 'branding'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -63,7 +63,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             return;
         }
 
-        if (activeTab === 'users' || activeTab === 'verify') {
+        if (activeTab === 'users') {
             result = await safeFetch(() => supabase.from('profiles').select('*').order('created_at', { ascending: false }));
         } else if (activeTab === 'safety') {
             result = await safeFetch(() => supabase
@@ -83,7 +83,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             setErrorMsg(`Data Error: ${result.error.message}`);
         }
 
-        if (activeTab === 'users' || activeTab === 'verify') setUsers(result.data || []);
+        if (activeTab === 'users') setUsers(result.data || []);
         else if (activeTab === 'safety') setSafetyReports(result.data || []);
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
         else setSupportMessages(result.data || []);
@@ -165,26 +165,20 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       else setBroadcasts(prev => prev.filter(b => b.id !== id));
   };
 
-  const handleVerify = async (e: React.MouseEvent, id: string, approve: boolean) => {
-      e.preventDefault();
-      e.stopPropagation(); 
+  // Manual verification toggle for Admins (Offline check replacement)
+  const toggleVerification = async (userId: string, newStatus: boolean) => {
       if (processingId) return;
-      if(!window.confirm(approve ? "Approve this user?" : "Reject verification?")) return;
+      if (!window.confirm(newStatus ? "Verify this user manually?" : "Revoke verification?")) return;
       
-      setProcessingId(id);
+      setProcessingId(userId);
       try {
-          // If approved, we keep the URL for record but set verified=true
-          // If rejected, we clear the URL so they can upload again
-          const updates = approve ? { is_verified: true } : { nin_image_url: null, is_verified: false };
-          
-          const { error } = await supabase.from('profiles').update(updates).eq('id', id); 
+          const { error } = await supabase.from('profiles').update({ is_verified: newStatus }).eq('id', userId);
           if (error) throw error;
           
-          // Optimistic update
-          setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
-          if (!approve) alert("Rejected. User can now upload a new document.");
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_verified: newStatus } : u));
+          alert(newStatus ? "User marked as Verified!" : "Verification revoked.");
       } catch (err: any) {
-          alert("Action failed: " + err.message);
+          alert("Failed: " + err.message);
       } finally {
           setProcessingId(null);
       }
@@ -232,7 +226,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       }
   };
 
-  const pendingVerifications = users.filter(u => u.nin_image_url && !u.is_verified);
   const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const groupedSupport = supportMessages.reduce((acc: any, msg) => {
@@ -261,7 +254,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['verify', 'users', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
+          {['users', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
             <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>{tab}</button>
           ))}
         </div>
@@ -374,34 +367,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                  </div>
              </div>
          ) : 
-
-         activeTab === 'verify' ? (
-             pendingVerifications.length === 0 ? <div className="text-center py-20 text-gray-400 text-sm font-bold">No pending verifications.</div> :
-             pendingVerifications.map(u => (
-                 <div key={u.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm space-y-4 mb-4 border border-gray-100 dark:border-slate-700">
-                     <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-900 flex items-center justify-center">
-                             {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full rounded-full object-cover"/> : <span className="font-black dark:text-white">{u.full_name[0]}</span>}
-                         </div>
-                         <div>
-                             <h3 className="font-bold dark:text-white text-sm">{u.full_name}</h3>
-                             <p className="text-xs text-gray-500 dark:text-gray-400">{u.role} • {u.phone_number}</p>
-                         </div>
-                     </div>
-                     
-                     <div className="bg-gray-100 dark:bg-slate-900 rounded-xl p-2 border border-gray-200 dark:border-slate-700">
-                         <a href={u.nin_image_url} target="_blank" rel="noreferrer">
-                             <img src={u.nin_image_url || ''} className="w-full h-48 object-contain rounded-lg" alt="ID Document" />
-                         </a>
-                     </div>
-                     
-                     <div className="flex gap-3">
-                         <button onClick={(e) => handleVerify(e, u.id, false)} className="flex-1 bg-red-50 text-red-600 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-red-100 transition-colors">Reject & Reset</button>
-                         <button onClick={(e) => handleVerify(e, u.id, true)} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-green-600/30 hover:bg-green-700 transition-colors">Approve ID</button>
-                     </div>
-                 </div>
-             ))
-         ) : 
          
          activeTab === 'users' ? (
             <div className="space-y-4">
@@ -432,7 +397,13 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                         </div>
                                     )}
                                 </div>
-                                {user.is_verified && <i className="fa-solid fa-check-circle text-blue-500 text-lg"></i>}
+                                <button 
+                                    onClick={() => toggleVerification(user.id, !user.is_verified)}
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${user.is_verified ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}
+                                    title={user.is_verified ? "Verified (Click to Revoke)" : "Not Verified (Click to Approve)"}
+                                >
+                                    <i className={`fa-solid fa-check-circle text-lg`}></i>
+                                </button>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-slate-700">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'worker' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>

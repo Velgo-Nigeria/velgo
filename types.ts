@@ -1,6 +1,4 @@
 
-
-
 export type UserRole = 'client' | 'worker' | 'admin';
 export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
 export type ClientType = 'personal' | 'enterprise';
@@ -16,6 +14,16 @@ export interface NotificationPreferences {
   promotions: boolean;
 }
 
+export interface Broadcast {
+  id: string;
+  admin_id: string;
+  title: string;
+  message: string;
+  target_role: 'all' | 'worker' | 'client';
+  created_at: string;
+  expires_at?: string;
+}
+
 export interface Profile {
   id: string;
   email?: string;
@@ -27,19 +35,18 @@ export interface Profile {
   task_count: number;
   bank_name?: string;
   account_number?: string;
-  account_name?: string; // New field
+  account_name?: string;
   address?: string; 
   state?: string;   
   lga?: string;     
-  latitude?: number;  // New: For Geofencing
-  longitude?: number; // New: For Geofencing
+  latitude?: number;
+  longitude?: number;
   bio?: string;
   service_title?: string;
   starting_price?: number;
   avatar_url?: string;
-  nin_image_url?: string; // New: Manual Verification
-  instagram_handle?: string; // New: Social Proof
-  portfolio_url?: string;    // New: Portfolio Link
+  instagram_handle?: string;
+  portfolio_url?: string;
   is_verified: boolean;
   category?: string;
   subcategory?: string;
@@ -58,15 +65,15 @@ export interface PostedTask {
   description: string;
   budget: number;
   location: string;
-  latitude?: number;  // New: For Geofencing
-  longitude?: number; // New: For Geofencing
+  latitude?: number;
+  longitude?: number;
   status: TaskStatus;
   urgency: TaskUrgency;
   assigned_worker_id?: string;
   category: string;
   subcategory?: string;
   created_at: string;
-  image_url?: string; // New: Task Image
+  image_url?: string;
 }
 
 export interface Booking {
@@ -76,10 +83,10 @@ export interface Booking {
   status: 'pending' | 'accepted' | 'completed' | 'cancelled';
   task_id?: string;
   created_at: string;
-  quote_price?: number; // New: Worker's Bid
+  quote_price?: number;
   rating?: number; 
   review?: string;
-  is_punctual?: boolean; // New: Punctuality Check
+  is_punctual?: boolean;
   client_rating?: number; 
   client_review?: string;
   profiles?: Profile; 

@@ -17,9 +17,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Verification State
-  const [verificationLoading, setVerificationLoading] = useState(false);
-
   // Form State
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState(profile?.phone_number || '');
@@ -66,47 +63,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
     onRefreshProfile();
     setLoading(false);
-  };
-
-  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !profile) return;
-    
-    const file = e.target.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-        alert("File size too large. Max 5MB.");
-        return;
-    }
-
-    const fileExt = file.name.split('.').pop();
-    // Unique filename using timestamp
-    const fileName = `id-${profile.id}-${Date.now()}.${fileExt}`;
-
-    setVerificationLoading(true);
-    
-    // Upload to existing 'ID-CARDS' bucket
-    const { error: uploadError } = await supabase.storage.from('ID-CARDS').upload(fileName, file);
-
-    if (uploadError) {
-      alert("Error uploading document: " + uploadError.message);
-      setVerificationLoading(false);
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('ID-CARDS').getPublicUrl(fileName);
-
-    // Update profile to allow Admin to see it
-    const { error: dbError } = await supabase.from('profiles').update({ 
-        nin_image_url: publicUrl,
-        is_verified: false // Reset to false to trigger admin review
-    }).eq('id', profile.id);
-
-    if (dbError) {
-        alert("Failed to update profile: " + dbError.message);
-    } else {
-        alert("Document uploaded! Pending admin review.");
-        onRefreshProfile();
-    }
-    setVerificationLoading(false);
   };
 
   const handleSave = async () => {
@@ -348,54 +304,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                              </div>
                          </div>
                     </div>
-                </div>
-            </div>
-        )}
-
-        {/* Identity Verification - WORKERS ONLY */}
-        {isWorker && (
-            <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-[10px] font-black text-brand uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <i className="fa-solid fa-id-card"></i> Identity Verification
-                </h3>
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border-2 border-brand/10 shadow-lg shadow-brand/5 space-y-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                        To build trust, please upload a clear photo of your <b>NIN Slip, Voter's Card, or Driver's License</b>.
-                    </p>
-
-                    {profile?.is_verified ? (
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-800 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white"><i className="fa-solid fa-check"></i></div>
-                            <div>
-                                <p className="text-sm font-black text-green-700 dark:text-green-400">Identity Verified</p>
-                                <p className="text-[10px] text-green-600 dark:text-green-300">You have full access to the platform.</p>
-                            </div>
-                        </div>
-                    ) : profile?.nin_image_url ? (
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border border-yellow-100 dark:border-yellow-800 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white"><i className="fa-solid fa-hourglass-half"></i></div>
-                            <div>
-                                <p className="text-sm font-black text-yellow-700 dark:text-yellow-400">Verification Pending</p>
-                                <p className="text-[10px] text-yellow-600 dark:text-yellow-300">Our admin team is reviewing your document.</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            <div className="relative group w-full h-48 bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 transition-all" onClick={() => document.getElementById('id-upload')?.click()}>
-                                <i className="fa-solid fa-cloud-arrow-up text-3xl text-gray-300 dark:text-gray-600 mb-2 group-hover:text-brand transition-colors"></i>
-                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500">Tap to Upload ID</p>
-                                <input 
-                                    id="id-upload" 
-                                    type="file" 
-                                    accept="image/*" 
-                                    onChange={handleIdUpload} 
-                                    className="hidden" 
-                                    disabled={verificationLoading}
-                                />
-                            </div>
-                            {verificationLoading && <p className="text-center text-[10px] font-bold text-brand animate-pulse">Uploading secure document...</p>}
-                        </div>
-                    )}
                 </div>
             </div>
         )}
