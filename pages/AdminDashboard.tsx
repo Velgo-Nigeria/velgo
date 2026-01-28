@@ -6,10 +6,11 @@ import { TIERS } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'safety' | 'support' | 'broadcast' | 'branding'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
+  const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -65,6 +66,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
         if (activeTab === 'users') {
             result = await safeFetch(() => supabase.from('profiles').select('*').order('created_at', { ascending: false }));
+        } else if (activeTab === 'verify') {
+            // Fetch users who have an uploaded ID but are NOT yet verified
+            result = await safeFetch(() => supabase.from('profiles').select('*').not('nin_image_url', 'is', null).eq('is_verified', false).order('updated_at', { ascending: false }));
         } else if (activeTab === 'safety') {
             result = await safeFetch(() => supabase
                 .from('safety_reports')
@@ -84,6 +88,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         }
 
         if (activeTab === 'users') setUsers(result.data || []);
+        else if (activeTab === 'verify') setPendingVerifications(result.data || []);
         else if (activeTab === 'safety') setSafetyReports(result.data || []);
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
         else setSupportMessages(result.data || []);
@@ -165,20 +170,21 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       else setBroadcasts(prev => prev.filter(b => b.id !== id));
   };
 
-  // Manual verification toggle for Admins (Offline check replacement)
-  const toggleVerification = async (userId: string, newStatus: boolean) => {
-      if (processingId) return;
-      if (!window.confirm(newStatus ? "Verify this user manually?" : "Revoke verification?")) return;
-      
+  // Process Verification from Verify Tab
+  const handleVerificationDecision = async (userId: string, decision: 'approve' | 'reject') => {
       setProcessingId(userId);
       try {
-          const { error } = await supabase.from('profiles').update({ is_verified: newStatus }).eq('id', userId);
+          const updates = decision === 'approve' 
+            ? { is_verified: true } 
+            : { nin_image_url: null, is_verified: false }; // Clear image on reject so user can re-upload
+
+          const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
           if (error) throw error;
-          
-          setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_verified: newStatus } : u));
-          alert(newStatus ? "User marked as Verified!" : "Verification revoked.");
+
+          setPendingVerifications(prev => prev.filter(u => u.id !== userId));
+          alert(`User ${decision}d successfully.`);
       } catch (err: any) {
-          alert("Failed: " + err.message);
+          alert("Action failed: " + err.message);
       } finally {
           setProcessingId(null);
       }
@@ -254,7 +260,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
             <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>{tab}</button>
           ))}
         </div>
@@ -266,7 +272,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
          activeTab === 'branding' ? (
              <div className="space-y-6 animate-fadeIn">
-                 {/* Branding Tool Logic retained from previous version */}
+                 {/* Branding Tool Logic */}
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700">
                      <div className="flex justify-between items-center mb-4">
                          <div>
@@ -366,6 +372,53 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                      ))}
                  </div>
              </div>
+         ) :
+
+         activeTab === 'verify' ? (
+             <div className="space-y-6">
+                 {pendingVerifications.length === 0 ? (
+                     <div className="text-center py-20 opacity-30">
+                         <i className="fa-solid fa-circle-check text-6xl mb-4"></i>
+                         <p className="font-black uppercase tracking-widest text-xs">All clear! No pending IDs.</p>
+                     </div>
+                 ) : (
+                     pendingVerifications.map(user => (
+                         <div key={user.id} className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+                             <div className="flex items-center gap-4">
+                                 <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}`} className="w-12 h-12 rounded-full object-cover" />
+                                 <div>
+                                     <h4 className="font-bold text-gray-900 dark:text-white">{user.full_name}</h4>
+                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">{user.role}</p>
+                                 </div>
+                             </div>
+                             
+                             <div className="bg-gray-100 dark:bg-black rounded-2xl overflow-hidden aspect-video relative group">
+                                 <img src={user.nin_image_url} className="w-full h-full object-contain" alt="User ID" />
+                                 <a href={user.nin_image_url} target="_blank" className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-xs uppercase tracking-widest transition-opacity">
+                                     View Full Image
+                                 </a>
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-3">
+                                 <button 
+                                    onClick={() => handleVerificationDecision(user.id, 'reject')}
+                                    disabled={processingId === user.id}
+                                    className="py-3 rounded-xl bg-red-50 text-red-600 font-bold text-xs uppercase"
+                                 >
+                                     Reject
+                                 </button>
+                                 <button 
+                                    onClick={() => handleVerificationDecision(user.id, 'approve')}
+                                    disabled={processingId === user.id}
+                                    className="py-3 rounded-xl bg-green-500 text-white font-bold text-xs uppercase shadow-lg"
+                                 >
+                                     Approve
+                                 </button>
+                             </div>
+                         </div>
+                     ))
+                 )}
+             </div>
          ) : 
          
          activeTab === 'users' ? (
@@ -397,13 +450,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                         </div>
                                     )}
                                 </div>
-                                <button 
-                                    onClick={() => toggleVerification(user.id, !user.is_verified)}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${user.is_verified ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}
-                                    title={user.is_verified ? "Verified (Click to Revoke)" : "Not Verified (Click to Approve)"}
-                                >
-                                    <i className={`fa-solid fa-check-circle text-lg`}></i>
-                                </button>
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${user.is_verified ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                                    {user.is_verified ? 'Verified' : 'Unverified'}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-slate-700">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'worker' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>

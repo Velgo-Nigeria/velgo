@@ -15,7 +15,9 @@ interface ProfilePageProps {
 const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, onSubscription, onSettings }) => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [idLoading, setIdLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const idInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [fullName, setFullName] = useState(profile?.full_name || '');
@@ -63,6 +65,37 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
     onRefreshProfile();
     setLoading(false);
+  };
+
+  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !profile) return;
+    
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `id_${profile.id}_${Date.now()}.${fileExt}`;
+
+    setIdLoading(true);
+    
+    // Upload to 'verifications' bucket
+    const { error: uploadError } = await supabase.storage.from('verifications').upload(fileName, file);
+
+    if (uploadError) {
+      alert("Error uploading ID: " + uploadError.message);
+      setIdLoading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('verifications').getPublicUrl(fileName);
+
+    const { error: updateError } = await supabase.from('profiles').update({ nin_image_url: publicUrl }).eq('id', profile.id);
+
+    if (updateError) {
+      alert("Failed to update profile: " + updateError.message);
+    } else {
+      alert("ID Uploaded! Your verification is now pending.");
+      onRefreshProfile();
+    }
+    setIdLoading(false);
   };
 
   const handleSave = async () => {
@@ -158,6 +191,48 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                     Edit Profile
                 </button>
             )}
+        </div>
+
+        {/* Identity Verification Section */}
+        <div className="space-y-6">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Identity Verification</h3>
+            <div className={`p-5 rounded-[32px] border shadow-sm flex items-center justify-between ${profile?.is_verified ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+                {profile?.is_verified ? (
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i className="fa-solid fa-shield-check"></i></div>
+                        <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Account Verified</h4>
+                            <p className="text-[10px] text-gray-500 font-medium">Your identity has been confirmed.</p>
+                        </div>
+                    </div>
+                ) : profile?.nin_image_url ? (
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl"><i className="fa-solid fa-clock-rotate-left"></i></div>
+                        <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Pending Review</h4>
+                            <p className="text-[10px] text-gray-500 font-medium">Admin is reviewing your ID.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center text-xl"><i className="fa-solid fa-id-card"></i></div>
+                            <div>
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Not Verified</h4>
+                                <p className="text-[10px] text-gray-500 font-medium">Upload NIN / Driver's License</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => idInputRef.current?.click()} 
+                            disabled={idLoading}
+                            className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                        >
+                            {idLoading ? '...' : 'Upload'}
+                        </button>
+                        <input ref={idInputRef} type="file" accept="image/*" onChange={handleIdUpload} className="hidden" />
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* Personal Details Form */}

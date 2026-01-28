@@ -45,6 +45,7 @@ export interface Profile {
   service_title?: string;
   starting_price?: number;
   avatar_url?: string;
+  nin_image_url?: string;
   instagram_handle?: string;
   portfolio_url?: string;
   is_verified: boolean;
