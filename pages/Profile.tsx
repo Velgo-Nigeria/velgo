@@ -78,12 +78,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     }
 
     const fileExt = file.name.split('.').pop();
+    // Unique filename using timestamp
     const fileName = `id-${profile.id}-${Date.now()}.${fileExt}`;
 
     setVerificationLoading(true);
     
-    // Upload to 'verifications' bucket
-    const { error: uploadError } = await supabase.storage.from('verifications').upload(fileName, file);
+    // Upload to existing 'ID-CARDS' bucket
+    const { error: uploadError } = await supabase.storage.from('ID-CARDS').upload(fileName, file);
 
     if (uploadError) {
       alert("Error uploading document: " + uploadError.message);
@@ -91,9 +92,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('verifications').getPublicUrl(fileName);
+    const { data: { publicUrl } } = supabase.storage.from('ID-CARDS').getPublicUrl(fileName);
 
-    // Update profile
+    // Update profile to allow Admin to see it
     const { error: dbError } = await supabase.from('profiles').update({ 
         nin_image_url: publicUrl,
         is_verified: false // Reset to false to trigger admin review

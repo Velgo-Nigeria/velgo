@@ -48,7 +48,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, [supportMessages, selectedTicketUser]);
 
   const fetchData = async () => {
-    if (activeTab === 'branding') return; // No DB fetch needed for branding
+    if (activeTab === 'branding') return; 
     
     setLoading(true);
     setErrorMsg(null);
@@ -103,7 +103,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           let promptText = logoPrompt;
           try {
               const json = JSON.parse(logoPrompt);
-              // Flatten JSON to descriptive text for the model
               promptText = `Generate an image: ${json.subject}. ${json.composition}. Materials: ${json.materials}. Colors: ${json.colors}. Lighting: ${json.lighting}. Style: ${json.style}`;
           } catch (e) {
               // Use raw text if JSON parse fails
@@ -151,7 +150,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           alert("Broadcast sent successfully to " + bTarget + " users!");
           setBTitle('');
           setBMessage('');
-          fetchData(); // Refresh history
+          fetchData();
       } catch (err: any) {
           alert("Failed to broadcast: " + err.message);
       } finally {
@@ -160,14 +159,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const handleDeleteBroadcast = async (id: string) => {
-      if (!window.confirm("Delete this broadcast from history? Users who already saw it won't be affected, but it will vanish from the feed.")) return;
-      
+      if (!window.confirm("Delete this broadcast?")) return;
       const { error } = await supabase.from('broadcasts').delete().eq('id', id);
-      if (error) {
-          alert("Could not delete: " + error.message);
-      } else {
-          setBroadcasts(prev => prev.filter(b => b.id !== id));
-      }
+      if (error) alert("Could not delete: " + error.message);
+      else setBroadcasts(prev => prev.filter(b => b.id !== id));
   };
 
   const handleVerify = async (e: React.MouseEvent, id: string, approve: boolean) => {
@@ -178,10 +173,16 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       
       setProcessingId(id);
       try {
-          const updates = approve ? { is_verified: true, nin_image_url: null } : { nin_image_url: null };
+          // If approved, we keep the URL for record but set verified=true
+          // If rejected, we clear the URL so they can upload again
+          const updates = approve ? { is_verified: true } : { nin_image_url: null, is_verified: false };
+          
           const { error } = await supabase.from('profiles').update(updates).eq('id', id); 
           if (error) throw error;
+          
+          // Optimistic update
           setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+          if (!approve) alert("Rejected. User can now upload a new document.");
       } catch (err: any) {
           alert("Action failed: " + err.message);
       } finally {
@@ -272,6 +273,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
          activeTab === 'branding' ? (
              <div className="space-y-6 animate-fadeIn">
+                 {/* Branding Tool Logic retained from previous version */}
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700">
                      <div className="flex justify-between items-center mb-4">
                          <div>
@@ -311,12 +313,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                          <div className="bg-gray-900 mt-6 p-4 rounded-xl border border-gray-700 text-left space-y-2">
                             <p className="text-[10px] font-black text-brand uppercase">Step 1: Save</p>
                             <a href={generatedLogoUrl} download="velgo-logo.png" className="block w-full bg-white text-black text-center py-2 rounded-lg font-bold text-xs">Download Image</a>
-                            
-                            <p className="text-[10px] font-black text-brand uppercase mt-2">Step 2: Host</p>
-                            <p className="text-[10px] text-gray-400">Go to Supabase Dashboard &rarr; Storage &rarr; 'branding' bucket. Upload the file.</p>
-                            
-                            <p className="text-[10px] font-black text-brand uppercase mt-2">Step 3: Update</p>
-                            <p className="text-[10px] text-gray-400">Click "Get Public URL" in Supabase and send the link to the dev chat to update the app icon.</p>
                          </div>
 
                          <div className="mt-6 flex justify-center">
@@ -382,12 +378,26 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
          activeTab === 'verify' ? (
              pendingVerifications.length === 0 ? <div className="text-center py-20 text-gray-400 text-sm font-bold">No pending verifications.</div> :
              pendingVerifications.map(u => (
-                 <div key={u.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm space-y-4 mb-4">
-                     <h3 className="font-bold dark:text-white">{u.full_name}</h3>
-                     <img src={u.nin_image_url || ''} className="w-full h-48 object-contain bg-gray-100 dark:bg-slate-900 rounded-xl border dark:border-slate-700" />
-                     <div className="flex gap-2">
-                         <button onClick={(e) => handleVerify(e, u.id, false)} className="flex-1 bg-red-100 text-red-600 py-4 rounded-xl font-black text-xs uppercase">REJECT</button>
-                         <button onClick={(e) => handleVerify(e, u.id, true)} className="flex-1 bg-green-600 text-white py-4 rounded-xl font-black text-xs uppercase">APPROVE</button>
+                 <div key={u.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm space-y-4 mb-4 border border-gray-100 dark:border-slate-700">
+                     <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-900 flex items-center justify-center">
+                             {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full rounded-full object-cover"/> : <span className="font-black dark:text-white">{u.full_name[0]}</span>}
+                         </div>
+                         <div>
+                             <h3 className="font-bold dark:text-white text-sm">{u.full_name}</h3>
+                             <p className="text-xs text-gray-500 dark:text-gray-400">{u.role} • {u.phone_number}</p>
+                         </div>
+                     </div>
+                     
+                     <div className="bg-gray-100 dark:bg-slate-900 rounded-xl p-2 border border-gray-200 dark:border-slate-700">
+                         <a href={u.nin_image_url} target="_blank" rel="noreferrer">
+                             <img src={u.nin_image_url || ''} className="w-full h-48 object-contain rounded-lg" alt="ID Document" />
+                         </a>
+                     </div>
+                     
+                     <div className="flex gap-3">
+                         <button onClick={(e) => handleVerify(e, u.id, false)} className="flex-1 bg-red-50 text-red-600 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-red-100 transition-colors">Reject & Reset</button>
+                         <button onClick={(e) => handleVerify(e, u.id, true)} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-green-600/30 hover:bg-green-700 transition-colors">Approve ID</button>
                      </div>
                  </div>
              ))
