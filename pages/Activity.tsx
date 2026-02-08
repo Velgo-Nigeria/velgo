@@ -4,7 +4,16 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
 
-const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: string) => void; onUpgrade: () => void; onRefreshProfile: () => void; }> = ({ profile, onOpenChat, onUpgrade, onRefreshProfile }) => {
+interface ActivityProps {
+  profile: Profile | null;
+  onOpenChat: (partnerId: string) => void;
+  onUpgrade: () => void;
+  onRefreshProfile: () => void;
+  onViewTask: (id: string) => void;
+  onViewWorker: (id: string) => void;
+}
+
+const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onRefreshProfile, onViewTask, onViewWorker }) => {
   const [activeTab, setActiveTab] = useState<'requests' | 'ongoing' | 'history'>('requests');
   const [bookings, setBookings] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -27,6 +36,7 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
     setLoading(true);
     const partnerColumn = profile.role === 'client' ? 'worker_id' : 'client_id';
     
+    // Fetch Bookings (Direct hires or applications)
     const { data: bookingsData } = await safeFetch<any[]>(async () => 
       await supabase.from('bookings')
         .select(`
@@ -42,6 +52,7 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
     );
     setBookings(bookingsData || []);
     
+    // Fetch Tasks (Jobs posted by the client or assigned to the worker)
     let taskQuery = supabase.from('posted_tasks').select('*, profiles:assigned_worker_id(*)').order('created_at', { ascending: false });
     if (profile.role === 'client') taskQuery = taskQuery.eq('client_id', profile.id);
     else taskQuery = taskQuery.eq('assigned_worker_id', profile.id);
@@ -144,6 +155,32 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
       }
   };
 
+  const handleItemClick = (item: any) => {
+    // 1. Is it a raw Task Post? (Identified by having a budget but no worker_id in the item root)
+    // Note: Bookings might have task_id, but 'item' here is the row from the query.
+    // tasksData items have 'budget' directly. bookingsData items have 'posted_tasks.budget'.
+    
+    if (item.budget !== undefined && !item.worker_id) {
+        // It's a Posted Task
+        onViewTask(item.id);
+        return;
+    }
+
+    // 2. Is it a Booking linked to a Task?
+    if (item.task_id) {
+        onViewTask(item.task_id);
+        return;
+    }
+
+    // 3. Is it a Direct Hire? (No task_id)
+    if (profile?.role === 'client') {
+        onViewWorker(item.worker_id);
+    } else {
+        onViewWorker(item.client_id);
+    }
+  };
+
+  // Helper to determine what to show in the list
   const currentItems = activeTab === 'requests' ? bookings.filter(b => b.status === 'pending').concat(tasks.filter(t => t.status === 'open')) 
                      : activeTab === 'ongoing' ? bookings.filter(b => b.status === 'accepted').concat(tasks.filter(t => t.status === 'assigned'))
                      : bookings.filter(b => ['completed', 'cancelled'].includes(b.status)).concat(tasks.filter(t => t.status === 'completed'));
@@ -298,8 +335,16 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
       <div className="p-6 pb-24">
         {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Gigs...</div> :
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {currentItems.length > 0 ? currentItems.map(item => (
-                <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 relative overflow-hidden transition-all hover:shadow-md group">
+            {currentItems.length > 0 ? currentItems.map(item => {
+                // Logic to identify if item is an Open Task (no worker assigned yet)
+                const isOpenTask = item.budget !== undefined && !item.worker_id; 
+                
+                return (
+                <div 
+                    key={item.id} 
+                    onClick={() => handleItemClick(item)}
+                    className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 relative overflow-hidden transition-all hover:shadow-md group active:scale-[0.98] cursor-pointer"
+                >
                     
                     {/* Gig Card Watermark */}
                     <img 
@@ -308,14 +353,29 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                         alt=""
                     />
 
+                    {/* Interaction Hint */}
+                    <div className="absolute top-4 right-4 text-gray-200 dark:text-gray-700 group-hover:text-brand transition-colors">
+                        <i className="fa-solid fa-chevron-right text-xs"></i>
+                    </div>
+
                     <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-16 h-16 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden">
-                          {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} className="w-full h-full object-cover"/> : <span className="font-black text-gray-300 dark:text-gray-600 text-xl">{(item.profiles?.full_name || item.title || 'U')[0]}</span>}
+                      <div className="w-16 h-16 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden shrink-0">
+                          {item.profiles?.avatar_url ? (
+                              <img src={item.profiles.avatar_url} className="w-full h-full object-cover"/>
+                          ) : isOpenTask ? (
+                              <i className="fa-solid fa-briefcase text-brand text-2xl"></i>
+                          ) : (
+                              <span className="font-black text-gray-300 dark:text-gray-600 text-xl">{(item.profiles?.full_name || item.title || 'U')[0]}</span>
+                          )}
                       </div>
                       <div className="flex-1 min-w-0">
                           <h3 className="font-black text-gray-900 dark:text-white text-[15px] truncate tracking-tight">{item.title || item.posted_tasks?.title || 'Direct Request'}</h3>
                           <div className="flex items-center gap-2">
-                             <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{item.profiles?.full_name || 'User'}</span>
+                             {isOpenTask ? (
+                                <span className="text-[10px] font-bold text-brand uppercase tracking-widest bg-brand/10 px-2 py-0.5 rounded-lg">Open for Applications</span>
+                             ) : (
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{item.profiles?.full_name || 'User'}</span>
+                             )}
                              {item.status === 'completed' && <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">Completed</span>}
                           </div>
                       </div>
@@ -323,8 +383,18 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
 
                     {item.status === 'pending' && (
                         <div className="flex gap-3 w-full relative z-10">
-                            <button onClick={() => updateBookingStatus(item, 'cancelled')} className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">Decline</button>
-                            <button onClick={() => updateBookingStatus(item, 'accepted')} className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">Accept</button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                            >
+                                Decline
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
+                                className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                            >
+                                Accept
+                            </button>
                         </div>
                     )}
 
@@ -332,14 +402,14 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                         <div className="space-y-3 relative z-10">
                             {profile?.role === 'client' && (
                                 <button 
-                                    onClick={() => handleOpenCompleteModal(item)} 
+                                    onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(item); }} 
                                     className="w-full bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-yellow-200 active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <i className="fa-solid fa-circle-check"></i> Complete & Pay
                                 </button>
                             )}
                             <button 
-                                onClick={() => onOpenChat(profile?.role === 'client' ? (item.worker_id || item.assigned_worker_id) : item.client_id)} 
+                                onClick={(e) => { e.stopPropagation(); onOpenChat(profile?.role === 'client' ? (item.worker_id || item.assigned_worker_id) : item.client_id); }} 
                                 className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                             >
                                 Open Chat
@@ -372,7 +442,7 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                             {/* Show Worker Feedback Button if missing */}
                             {profile?.role === 'worker' && !item.client_rating && (
                                 <button 
-                                    onClick={() => handleOpenWorkerRatingModal(item)}
+                                    onClick={(e) => { e.stopPropagation(); handleOpenWorkerRatingModal(item); }}
                                     className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors"
                                 >
                                     <i className="fa-solid fa-star-half-stroke mr-1"></i> Rate this Client
@@ -385,7 +455,7 @@ const Activity: React.FC<{ profile: Profile | null; onOpenChat: (partnerId: stri
                         </div>
                     )}
                 </div>
-            )) : <div className="col-span-full text-center py-20 flex flex-col items-center opacity-30"><i className="fa-solid fa-cloud text-6xl text-gray-200 mb-6"></i><p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">No Gigs in this tab</p></div>}
+            )}) : <div className="col-span-full text-center py-20 flex flex-col items-center opacity-30"><i className="fa-solid fa-cloud text-6xl text-gray-200 mb-6"></i><p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">No Gigs in this tab</p></div>}
           </div>
         }
       </div>
