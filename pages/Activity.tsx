@@ -396,19 +396,62 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     </div>
 
                     {item.status === 'pending' && (
-                        <div className="flex gap-3 w-full relative z-10">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
-                                className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
-                            >
-                                Decline
-                            </button>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
-                                className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
-                            >
-                                Accept
-                            </button>
+                        <div className="w-full relative z-10">
+                            {/* CASE 1: JOB APPLICATION (HAS TASK ID) */}
+                            {item.task_id ? (
+                                profile?.role === 'client' ? (
+                                    // Client View: Accept/Decline Worker's Application
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                                        >
+                                            Decline
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
+                                            className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                                        >
+                                            Accept
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // Worker View: Withdraw Application
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
+                                    >
+                                        Withdraw Application
+                                    </button>
+                                )
+                            ) : (
+                                /* CASE 2: DIRECT BOOKING (NO TASK ID) */
+                                profile?.role === 'worker' ? (
+                                    // Worker View: Accept/Decline Client's Request
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                                        >
+                                            Decline
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
+                                            className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                                        >
+                                            Accept
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // Client View: Cancel Request
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
+                                    >
+                                        Cancel Request
+                                    </button>
+                                )
+                            )}
                         </div>
                     )}
 
