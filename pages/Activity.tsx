@@ -67,12 +67,30 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const updateBookingStatus = async (booking: any, newStatus: string) => {
     if (!profile) return;
     try {
+        // 1. Worker Acceptance Limit Check (For Direct Hires)
         if (newStatus === 'accepted' && profile.role === 'worker') {
           const limit = getTierLimit(profile.subscription_tier);
           if (profile.task_count >= limit) { onUpgrade(); return; }
         }
+
+        // 2. Update the Booking Status
         const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
         if (error) throw error;
+
+        // 3. AUTO-HIDE LOGIC: If a Client accepts a Worker for a Job Post
+        if (newStatus === 'accepted' && booking.task_id && profile.role === 'client') {
+            // Update the Task to 'assigned' so it disappears from the Marketplace
+            const { error: taskError } = await supabase
+                .from('posted_tasks')
+                .update({ 
+                    status: 'assigned',
+                    assigned_worker_id: booking.worker_id 
+                })
+                .eq('id', booking.task_id);
+            
+            if (taskError) console.error("Failed to auto-assign task:", taskError.message);
+        }
+
         if (newStatus === 'accepted') onRefreshProfile();
         fetchActivity();
     } catch (err: any) { alert("Action failed: " + err.message); }
@@ -157,11 +175,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
   const handleItemClick = (item: any) => {
     // 1. Is it a raw Task Post? (Identified by having a budget but no worker_id in the item root)
-    // Note: Bookings might have task_id, but 'item' here is the row from the query.
-    // tasksData items have 'budget' directly. bookingsData items have 'posted_tasks.budget'.
-    
     if (item.budget !== undefined && !item.worker_id) {
-        // It's a Posted Task
         onViewTask(item.id);
         return;
     }
