@@ -14,6 +14,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [loading, setLoading] = useState(true);
   
   // Filter States
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('All');
   const [subcategory, setSubcategory] = useState('All');
@@ -228,19 +229,64 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             </div>
         )}
 
-        {/* Search Bar */}
-        <div className="relative group">
-            <input 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={viewMode === 'market' ? "Find verified workers..." : "Search for live jobs..."}
-              className="w-full bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand/30 py-5 px-14 rounded-3xl text-sm font-bold dark:text-white outline-none transition-all shadow-sm"
-            />
-            <i className="fa-solid fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            {searchTerm && (
-                <button onClick={() => setSearchTerm('')} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand"><i className="fa-solid fa-circle-xmark"></i></button>
-            )}
+        {/* Search & Filter Bar */}
+        <div className="flex gap-2">
+            <div className="relative group flex-1">
+                <input 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={viewMode === 'market' ? "Find workers by name..." : "Search for live jobs..."}
+                  className="w-full bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand/30 py-4 px-12 rounded-2xl text-sm font-bold dark:text-white outline-none transition-all shadow-sm"
+                />
+                <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <button 
+                onClick={() => setShowFilters(!showFilters)} 
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${showFilters || isFilterActive ? 'bg-brand text-white shadow-lg' : 'bg-gray-50 dark:bg-slate-800 text-gray-400'}`}
+            >
+                <i className="fa-solid fa-sliders text-lg"></i>
+            </button>
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-xl border border-gray-100 dark:border-slate-700 animate-fadeIn space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide">Filter Options</h3>
+                    <button onClick={clearFilters} className="text-[10px] font-bold text-red-500 uppercase">Clear All</button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Location */}
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase">Location (State / LGA)</label>
+                        <div className="flex gap-2">
+                            <select value={selectedState} onChange={e => handleStateChange(e.target.value)} className="flex-1 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none">
+                                <option value="All">All States</option>
+                                {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} disabled={selectedState === 'All'} className="flex-1 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none disabled:opacity-50">
+                                <option value="All">All LGAs</option>
+                                {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase">Industry & Role</label>
+                        <select value={category} onChange={e => handleCategoryChange(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none mb-2">
+                            <option value="All">All Industries</option>
+                            {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <select value={subcategory} onChange={e => setSubcategory(e.target.value)} disabled={category === 'All'} className="w-full bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none disabled:opacity-50">
+                            <option value="All">All Specializations</option>
+                            {CATEGORY_MAP[category]?.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* View Toggle for Workers and Admin */}
         {(profile?.role === 'worker' || profile?.role === 'admin') && (
@@ -358,8 +404,11 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                       {(item.is_verified || item.profiles?.is_verified) && <VerificationBadge />}
                     </div>
                     <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
-                      {item.category || 'Gig'} • {item.state || item.location?.split(',').pop()?.trim() || 'Nigeria'}
+                      {item.category && item.category !== 'All' ? item.category.split(',')[0] : 'Gig'} • {item.state || item.location?.split(',').pop()?.trim() || 'Nigeria'}
                     </p>
+                    {item.subcategory && (
+                        <p className="text-[10px] font-medium text-brand mt-1 truncate">{item.subcategory}</p>
+                    )}
                   </div>
                   <i className="fa-solid fa-chevron-right text-gray-200 dark:text-slate-700 group-hover:text-brand transition-colors"></i>
                 </div>
@@ -369,7 +418,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className="py-20 text-center opacity-30">
                 <i className="fa-solid fa-cloud-moon text-6xl text-gray-200 mb-6"></i>
                 <p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">
-                  No {viewMode === 'market' ? (profile?.role === 'worker' ? 'competitors' : 'workers') : 'jobs'} found in this area
+                  No {viewMode === 'market' ? (profile?.role === 'worker' ? 'competitors' : 'workers') : 'jobs'} found
                 </p>
               </div>
             )}

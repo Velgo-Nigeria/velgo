@@ -318,20 +318,19 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
           <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you need..." className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand/20 resize-none" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Category</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
-              {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Subcategory</label>
-            <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
-              <option value="">General</option>
-              {CATEGORY_MAP[category]?.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Industry Sector</label>
+          <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+            {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Role / Specialization</label>
+          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+            <option value="">General / Any</option>
+            {CATEGORY_MAP[category]?.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <div>
