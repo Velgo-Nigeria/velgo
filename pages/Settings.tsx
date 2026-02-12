@@ -95,7 +95,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       setIsDeleting(true);
 
       try {
-          // Call the RPC function created in SQL
           const { error } = await supabase.rpc('delete_own_account');
           
           if (error) {
@@ -103,7 +102,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
               throw error;
           }
 
-          // Perform local cleanup
           localStorage.clear();
           sessionStorage.clear();
            if ('caches' in window) {
@@ -111,9 +109,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
               await Promise.all(keys.map(key => caches.delete(key)));
           }
           await supabase.auth.signOut();
-          window.location.href = '/'; // Force hard navigation
+          window.location.href = '/'; 
       } catch (err: any) {
-          alert(`Failed to delete account.\n\nReason: ${err.message || 'Unknown Error'}\n\nHint: Check the SQL function in Supabase.`);
+          alert(`Failed to delete account.\n\nReason: ${err.message || 'Unknown Error'}`);
           setIsDeleting(false);
       }
   };
@@ -159,7 +157,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                   setPushEnabled(true);
                   alert("Success! You will now receive alerts on this device.");
               } else {
-                  // Show specific error from updated manager
                   alert(`Could not enable notifications.\n\nError: ${result.error}`);
               }
           }
@@ -316,6 +313,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                     </div>
                 </div>
 
+                {/* Job Alerts (Visual only, logic tied to push) */}
                 <div className="flex items-center justify-between">
                      <div className="flex items-center gap-3">
                         <i className="fa-solid fa-bell text-gray-400"></i>
@@ -326,7 +324,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                      </button>
                 </div>
                 
-                {/* Push Notification Toggle */}
+                {/* Push Notification Toggle - FUNCTIONAL */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <i className="fa-solid fa-mobile-screen text-gray-400"></i>
@@ -364,7 +362,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
             </div>
         </section>
 
-        {/* Legal & Compliance */}
+        {/* Legal & Community */}
         <section>
              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Legal</h3>
              <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -381,50 +379,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
              </div>
         </section>
 
-        {/* About & Community */}
-        <section>
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Community</h3>
-            <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-5 space-y-4">
-                 <div className="text-center pb-4 border-b border-gray-50 dark:border-gray-700">
-                     <p className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
-                         Velgo empowers Nigerian workers. Follow us for updates, grants, and community stories.
-                     </p>
-                 </div>
-
-                 {/* Social Media Links */}
-                 <div className="flex justify-around mb-4">
-                     <a href="https://instagram.com" target="_blank" className="flex flex-col items-center gap-1">
-                         <div className="w-10 h-10 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center"><i className="fa-brands fa-instagram"></i></div>
-                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Insta</span>
-                     </a>
-                     <a href="https://twitter.com" target="_blank" className="flex flex-col items-center gap-1">
-                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-400 flex items-center justify-center"><i className="fa-brands fa-twitter"></i></div>
-                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Twitter</span>
-                     </a>
-                     <a href="https://facebook.com" target="_blank" className="flex flex-col items-center gap-1">
-                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center"><i className="fa-brands fa-facebook-f"></i></div>
-                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">Facebook</span>
-                     </a>
-                     <a href="https://whatsapp.com/channel/0029Vb6sLaWGOj9upwLX6s2v" target="_blank" className="flex flex-col items-center gap-1">
-                         <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-brands fa-whatsapp"></i></div>
-                         <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">WhatsApp</span>
-                     </a>
-                 </div>
-
-                 {/* New About Button */}
-                 <button onClick={() => onNavigate('about')} className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl flex items-center justify-between active:scale-95 transition-transform">
-                     <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center"><i className="fa-solid fa-circle-info text-gray-500 dark:text-gray-300"></i></div>
-                         <div className="text-left">
-                             <p className="text-xs font-black uppercase text-gray-900 dark:text-white">About Velgo</p>
-                             <p className="text-[9px] text-gray-400">Our Story & FAQ</p>
-                         </div>
-                     </div>
-                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                 </button>
-            </div>
-        </section>
-
         {/* Sign Out Button */}
         <button 
             onClick={handleSignOut} 
@@ -437,7 +391,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
             <i className="fa-solid fa-right-from-bracket text-red-400 dark:text-red-500 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors"></i>
         </button>
 
-        {/* DANGER ZONE - DELETE ACCOUNT */}
+        {/* Delete Account */}
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
             <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-4 ml-2">Danger Zone</h3>
             <button
@@ -458,7 +412,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
         </div>
 
         <div className="pt-8 text-center">
-            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.7 (Security Update)</p>
+            <p className="text-[10px] text-gray-300 font-mono uppercase">Version 1.0.8 (Push Enabled)</p>
         </div>
 
       </div>

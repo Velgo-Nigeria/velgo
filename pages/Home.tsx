@@ -211,7 +211,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       </header>
 
       <div className="px-6 space-y-6 mt-6 pb-24 max-w-2xl mx-auto">
-        {/* Announcement Banner (Refined) */}
+        {/* Announcement Banner */}
         {activeBroadcast && (
             <div className="bg-emerald-600 text-white p-6 rounded-[32px] shadow-2xl relative animate-fadeIn border border-white/20">
                 <button onClick={dismissBroadcast} className="absolute top-4 right-4 text-white/50 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
@@ -298,7 +298,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
              </div>
         )}
 
-        {/* Welcome Card - WITH 3D LOGO WATERMARK & ANIMATED USAGE INDICATOR */}
+        {/* Welcome Card */}
         <div className="bg-[#0f172a] dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
             {/* The 3D Watermark */}
             <img 
@@ -323,7 +323,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                 
                 <h2 className="text-3xl font-black tracking-tighter leading-none mb-3">Hello, {profile?.full_name.split(' ')[0]}</h2>
                 
-                {/* Enhanced Plan Usage Indicator */}
+                {/* Plan Usage Indicator */}
                 {!isAdmin && (
                   <div className="mb-6 w-full max-w-[220px]">
                     <div className="flex justify-between items-end text-[8px] font-black uppercase tracking-widest text-gray-400 mb-2">
@@ -340,7 +340,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                     </div>
                     
                     <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden relative">
-                      {/* Background Pulse for high usage */}
                       {isHighUsage && <div className="absolute inset-0 bg-yellow-400/20 animate-pulse"></div>}
                       
                       <div 

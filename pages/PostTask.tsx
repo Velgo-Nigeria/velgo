@@ -17,7 +17,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [urgency, setUrgency] = useState('normal');
   const [loading, setLoading] = useState(false);
   
-  // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +64,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
     e.preventDefault();
     if (!profile) return;
     
+    // Check Client Limit before Posting
     const limit = getTierLimit(profile.subscription_tier);
     if (profile.task_count >= limit) {
       setShowUpgradeModal(true);

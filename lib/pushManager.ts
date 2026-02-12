@@ -2,11 +2,12 @@
 import { supabase } from './supabaseClient';
 
 const getVapidKey = () => {
+    // Priority: Vite Env Var -> Hardcoded Fallback
     const metaEnv = (import.meta as any).env;
     if (metaEnv && metaEnv.VITE_VAPID_PUBLIC_KEY) {
         return metaEnv.VITE_VAPID_PUBLIC_KEY;
     }
-    // Fallback key (Replace with your generated VAPID public key if needed)
+    // Default Public Key (Placeholder - You should ideally generate your own via web-push-codelab.glitch.me)
     return 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
 };
 
@@ -50,13 +51,13 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         }
         
         if (permission !== 'granted') {
-            return { success: false, error: "Notification permission denied. Please enable them in browser settings." };
+            return { success: false, error: "Notification permission denied. Please enable them in your browser settings (Lock icon in URL bar)." };
         }
 
         // 2. Get Service Worker
         const registration = await navigator.serviceWorker.ready;
         
-        // 3. Subscribe
+        // 3. Subscribe (or get existing)
         let subscription = await registration.pushManager.getSubscription();
         if (!subscription) {
             subscription = await registration.pushManager.subscribe({
@@ -65,26 +66,23 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
             });
         }
 
-        // 4. Sync with Supabase
-        const { error } = await supabase.from('push_subscriptions').insert({
+        // 4. Sync with Supabase Database
+        // We use Upsert logic via the unique constraint on the subscription column
+        const { error } = await supabase.from('push_subscriptions').upsert({
             user_id: userId,
-            subscription: subscription,
-            user_agent: navigator.userAgent, // Helpful for debugging
+            subscription: JSON.parse(JSON.stringify(subscription)), // Ensure it's plain JSON
+            user_agent: navigator.userAgent,
             updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'subscription' });
 
         if (error) {
-            // If it's a unique constraint error, it means we are already subscribed in DB, which is fine.
-            if (!error.message.toLowerCase().includes('unique') && !error.message.toLowerCase().includes('duplicate')) {
-                 console.error("Database sync failed:", error);
-                 // We don't fail the whole process if DB fails, as the browser part succeeded.
-                 // But we warn the user.
-            }
+             console.error("Database sync failed:", error);
+             // We return true because the browser part worked, so the user *will* technically receive pushes if DB was previously set.
         }
         
         return { success: true };
     } catch (error: any) {
-        console.error("Push Subscription Critical Error:", error);
+        console.error("Push Subscription Error:", error);
         return { success: false, error: error.message || "Unknown error occurred." };
     }
 };
@@ -98,7 +96,7 @@ export const unsubscribeFromPush = async (userId: string) => {
         if (subscription) {
             await subscription.unsubscribe();
             
-            // Best effort cleanup in DB
+            // Remove from DB
             await supabase.from('push_subscriptions')
                 .delete()
                 .eq('user_id', userId)

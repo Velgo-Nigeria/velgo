@@ -1,7 +1,7 @@
 
 /// <reference lib="webworker" />
 // @ts-nocheck
-const CACHE_NAME = 'velgo-v1.0.6';
+const CACHE_NAME = 'velgo-v1.0.8';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 
 // Assets to pre-cache immediately
@@ -39,6 +39,17 @@ self.addEventListener('fetch', (event) => {
 
   if (!isSameOrigin && !isSupabase) return;
 
+  // Cache First for Navigation (HTML)
+  if (event.request.mode === 'navigate' && isSameOrigin) {
+      event.respondWith(
+          fetch(event.request).catch(() => {
+              return caches.match('/') || caches.match('/index.html');
+          })
+      );
+      return;
+  }
+
+  // Network First for API calls (Supabase)
   if (isSupabase && event.request.method === 'GET' && !url.href.includes('/auth/v1/')) {
       event.respondWith(
           fetch(event.request).then((networkResponse) => {
@@ -58,72 +69,73 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  if (event.request.mode === 'navigate' && isSameOrigin) {
-      event.respondWith(
-          fetch(event.request).catch(() => {
-              return caches.match('/') || caches.match('/index.html');
-          })
-      );
-      return;
-  }
-
+  // Stale-While-Revalidate for Assets
   if (event.request.method === 'GET' && isSameOrigin) {
       event.respondWith(
           caches.match(event.request).then((response) => {
-              return response || fetch(event.request).then((networkResponse) => {
+              const fetchPromise = fetch(event.request).then((networkResponse) => {
                    return caches.open(CACHE_NAME).then((cache) => {
                        if (networkResponse.status === 200) {
                             cache.put(event.request, networkResponse.clone());
                        }
                        return networkResponse;
                    });
-              }).catch(() => {
-                  return new Response('', { status: 404 });
               });
+              return response || fetchPromise;
           })
       );
   }
 });
 
-// --- PUSH NOTIFICATION HANDLERS ---
+// --- PUSH NOTIFICATION HANDLERS (FREE SYSTEM) ---
 self.addEventListener('push', function(event) {
+  let data = { title: 'Velgo Update', body: 'You have a new activity.', url: '/' };
+  
   if (event.data) {
-    let data = { title: 'Velgo', body: 'New Activity', url: '/' };
     try {
         data = event.data.json();
     } catch(e) {
         data.body = event.data.text();
     }
-
-    const options = {
-      body: data.body,
-      icon: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
-      badge: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: 1,
-        url: data.url || '/'
-      }
-    };
-    
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
   }
+
+  const options = {
+    body: data.body,
+    icon: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
+    badge: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1,
+      url: data.url || '/'
+    },
+    actions: [
+        { action: 'open', title: 'View Now' }
+    ]
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  
+  if (event.action === 'close') return;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       const urlToOpen = new URL(event.notification.data.url || '/', self.location.origin).href;
+      
+      // If a window is already open, focus it
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
+      // Otherwise open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

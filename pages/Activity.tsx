@@ -67,19 +67,28 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const updateBookingStatus = async (booking: any, newStatus: string) => {
     if (!profile) return;
     try {
-        // 1. Worker Acceptance Limit Check (For Direct Hires)
-        if (newStatus === 'accepted' && profile.role === 'worker') {
-          const limit = getTierLimit(profile.subscription_tier);
-          if (profile.task_count >= limit) { onUpgrade(); return; }
+        // --- LIMIT CHECKING LOGIC ---
+        if (newStatus === 'accepted') {
+            const limit = getTierLimit(profile.subscription_tier);
+            
+            // 1. Worker accepting a Direct Booking (No Task ID)
+            if (profile.role === 'worker' && !booking.task_id) {
+                if (profile.task_count >= limit) { onUpgrade(); return; }
+            }
+            
+            // 2. Client accepting a Job Application (Has Task ID)
+            // Client pays 1 credit for hiring
+            if (profile.role === 'client' && booking.task_id) {
+                if (profile.task_count >= limit) { onUpgrade(); return; }
+            }
         }
 
-        // 2. Update the Booking Status
+        // --- UPDATE LOGIC ---
         const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
         if (error) throw error;
 
-        // 3. AUTO-HIDE LOGIC: If a Client accepts a Worker for a Job Post
+        // Auto-assign Task if Client accepts Application
         if (newStatus === 'accepted' && booking.task_id && profile.role === 'client') {
-            // Update the Task to 'assigned' so it disappears from the Marketplace
             const { error: taskError } = await supabase
                 .from('posted_tasks')
                 .update({ 
