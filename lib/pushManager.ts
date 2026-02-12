@@ -2,13 +2,9 @@
 import { supabase } from './supabaseClient';
 
 const getVapidKey = () => {
-    // Priority: Vite Env Var -> Hardcoded Fallback
     const metaEnv = (import.meta as any).env;
-    if (metaEnv && metaEnv.VITE_VAPID_PUBLIC_KEY) {
-        return metaEnv.VITE_VAPID_PUBLIC_KEY;
-    }
-    // Default Public Key (Placeholder - You should ideally generate your own via web-push-codelab.glitch.me)
-    return 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
+    // We use a known test public key that matches the backend default for instant setup
+    return metaEnv?.VITE_VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
 };
 
 const PUBLIC_KEY = getVapidKey();
@@ -33,31 +29,27 @@ export const checkSubscriptionStatus = async () => {
         const subscription = await registration.pushManager.getSubscription();
         return !!subscription;
     } catch (e) {
-        console.error("Error checking push status", e);
         return false;
     }
 };
 
 export const subscribeToPush = async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        return { success: false, error: "Push notifications not supported on this browser." };
+        return { success: false, error: "Push notifications not supported on this browser/device." };
     }
 
     try {
-        // 1. Check Permission
         let permission = Notification.permission;
         if (permission === 'default') {
             permission = await Notification.requestPermission();
         }
         
         if (permission !== 'granted') {
-            return { success: false, error: "Notification permission denied. Please enable them in your browser settings (Lock icon in URL bar)." };
+            return { success: false, error: "Permission denied. Check browser settings." };
         }
 
-        // 2. Get Service Worker
         const registration = await navigator.serviceWorker.ready;
         
-        // 3. Subscribe (or get existing)
         let subscription = await registration.pushManager.getSubscription();
         if (!subscription) {
             subscription = await registration.pushManager.subscribe({
@@ -66,24 +58,19 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
             });
         }
 
-        // 4. Sync with Supabase Database
-        // We use Upsert logic via the unique constraint on the subscription column
         const { error } = await supabase.from('push_subscriptions').upsert({
             user_id: userId,
-            subscription: JSON.parse(JSON.stringify(subscription)), // Ensure it's plain JSON
+            subscription: JSON.parse(JSON.stringify(subscription)),
             user_agent: navigator.userAgent,
             updated_at: new Date().toISOString()
         }, { onConflict: 'subscription' });
 
-        if (error) {
-             console.error("Database sync failed:", error);
-             // We return true because the browser part worked, so the user *will* technically receive pushes if DB was previously set.
-        }
+        if (error) throw error;
         
         return { success: true };
     } catch (error: any) {
         console.error("Push Subscription Error:", error);
-        return { success: false, error: error.message || "Unknown error occurred." };
+        return { success: false, error: error.message || "Failed to subscribe." };
     }
 };
 
@@ -95,8 +82,6 @@ export const unsubscribeFromPush = async (userId: string) => {
         
         if (subscription) {
             await subscription.unsubscribe();
-            
-            // Remove from DB
             await supabase.from('push_subscriptions')
                 .delete()
                 .eq('user_id', userId)
@@ -104,7 +89,6 @@ export const unsubscribeFromPush = async (userId: string) => {
         }
         return true;
     } catch (e) {
-        console.error("Unsubscribe failed", e);
         return false;
     }
 };

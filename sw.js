@@ -1,10 +1,9 @@
 
 /// <reference lib="webworker" />
 // @ts-nocheck
-const CACHE_NAME = 'velgo-v1.0.8';
+const CACHE_NAME = 'velgo-v1.0.9';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 
-// Assets to pre-cache immediately
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -39,7 +38,6 @@ self.addEventListener('fetch', (event) => {
 
   if (!isSameOrigin && !isSupabase) return;
 
-  // Cache First for Navigation (HTML)
   if (event.request.mode === 'navigate' && isSameOrigin) {
       event.respondWith(
           fetch(event.request).catch(() => {
@@ -49,7 +47,6 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  // Network First for API calls (Supabase)
   if (isSupabase && event.request.method === 'GET' && !url.href.includes('/auth/v1/')) {
       event.respondWith(
           fetch(event.request).then((networkResponse) => {
@@ -69,7 +66,6 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  // Stale-While-Revalidate for Assets
   if (event.request.method === 'GET' && isSameOrigin) {
       event.respondWith(
           caches.match(event.request).then((response) => {
@@ -87,13 +83,22 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// --- PUSH NOTIFICATION HANDLERS (FREE SYSTEM) ---
+// --- PUSH NOTIFICATION LOGIC ---
 self.addEventListener('push', function(event) {
-  let data = { title: 'Velgo Update', body: 'You have a new activity.', url: '/' };
+  let data = { title: 'Velgo', body: 'New Activity', url: '/' };
   
   if (event.data) {
     try {
-        data = event.data.json();
+        const payload = event.data.json();
+        // Handle both structure formats (direct or nested)
+        if (payload.record) {
+             // If payload is raw DB record, format it here (fallback)
+             data.title = 'Velgo Update';
+             data.body = 'Check your activity.';
+        } else {
+             // If payload is pre-formatted by Edge Function
+             data = payload;
+        }
     } catch(e) {
         data.body = event.data.text();
     }
@@ -105,12 +110,10 @@ self.addEventListener('push', function(event) {
     badge: 'https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png',
     vibrate: [100, 50, 100],
     data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1,
       url: data.url || '/'
     },
     actions: [
-        { action: 'open', title: 'View Now' }
+        { action: 'open', title: 'Open App' }
     ]
   };
   
@@ -128,14 +131,12 @@ self.addEventListener('notificationclick', function(event) {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       const urlToOpen = new URL(event.notification.data.url || '/', self.location.origin).href;
       
-      // If a window is already open, focus it
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // Otherwise open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
