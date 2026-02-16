@@ -1,31 +1,63 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Profile } from './lib/types';
+
+// Critical Pages (Keep Static for instant first paint)
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import Home from './pages/Home';
-import Activity from './pages/Activity';
-import Messages from './pages/Messages';
-import ProfilePage from './pages/Profile';
-import Subscription from './pages/Subscription';
-import Chat from './pages/Chat';
-import WorkerDetail from './pages/WorkerDetail';
-import TaskDetail from './pages/TaskDetail';
-import Settings from './pages/Settings';
-import ResetPassword from './pages/ResetPassword';
-import PostTask from './pages/PostTask';
-import CompleteProfile from './pages/CompleteProfile';
-import Legal from './pages/Legal';
-import Safety from './pages/Safety';
-import AdminDashboard from './pages/AdminDashboard';
-import About from './pages/About';
-import { ShieldIcon, VelgoLogo } from './components/Brand';
+
+// Lazy Load Secondary Pages (Reduces initial bundle size significantly)
+const Home = React.lazy(() => import('./pages/Home'));
+const Activity = React.lazy(() => import('./pages/Activity'));
+const Messages = React.lazy(() => import('./pages/Messages'));
+const ProfilePage = React.lazy(() => import('./pages/Profile'));
+const Subscription = React.lazy(() => import('./pages/Subscription'));
+const Chat = React.lazy(() => import('./pages/Chat'));
+const WorkerDetail = React.lazy(() => import('./pages/WorkerDetail'));
+const TaskDetail = React.lazy(() => import('./pages/TaskDetail'));
+const Settings = React.lazy(() => import('./pages/Settings'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const PostTask = React.lazy(() => import('./pages/PostTask'));
+const CompleteProfile = React.lazy(() => import('./pages/CompleteProfile'));
+const Legal = React.lazy(() => import('./pages/Legal'));
+const Safety = React.lazy(() => import('./pages/Safety'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const About = React.lazy(() => import('./pages/About'));
+
+import { VelgoLogo } from './components/Brand';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { InstallPWA } from './components/InstallPWA';
 import { NotificationToast } from './components/NotificationToast';
 import { UserGuide } from './components/UserGuide';
+
+// Extracted Skeleton for reuse in Suspense fallback
+const PageSkeleton = () => (
+  <div className="h-screen w-full flex flex-col md:flex-row bg-white dark:bg-gray-900 overflow-hidden animate-pulse">
+      <div className="hidden md:flex w-72 border-r border-gray-100 dark:border-gray-800 p-6 flex-col gap-8">
+         <div className="h-10 w-32 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
+         <div className="space-y-4">
+            {[1,2,3,4].map(i => <div key={i} className="h-12 w-full bg-gray-50 dark:bg-gray-800 rounded-xl"></div>)}
+         </div>
+      </div>
+      <div className="flex-1 p-6 space-y-8">
+         <div className="md:hidden flex justify-between items-center mb-8">
+            <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
+            <div className="flex gap-2">
+               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl"></div>
+               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl"></div>
+            </div>
+         </div>
+         <div className="w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-[32px]"></div>
+         <div className="space-y-4">
+            {[1,2,3].map(i => (
+                <div key={i} className="h-24 w-full bg-gray-50 dark:bg-gray-800 rounded-[24px]"></div>
+            ))}
+         </div>
+      </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -142,39 +174,7 @@ const App: React.FC = () => {
   }, [fetchProfile]); 
 
   // Skeleton Loader for Initialization
-  if (loading || isInitializingProfile) return (
-    <div className="h-screen w-screen flex flex-col md:flex-row bg-white dark:bg-gray-900 overflow-hidden">
-      {/* Desktop Sidebar Skeleton */}
-      <div className="hidden md:flex w-72 border-r border-gray-100 dark:border-gray-800 p-6 flex-col gap-8">
-         <div className="h-10 w-32 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>
-         <div className="space-y-4">
-            {[1,2,3,4].map(i => <div key={i} className="h-12 w-full bg-gray-50 dark:bg-gray-800 rounded-xl animate-pulse"></div>)}
-         </div>
-      </div>
-      
-      {/* Main Content Skeleton */}
-      <div className="flex-1 p-6 space-y-8">
-         {/* Mobile Header Skeleton */}
-         <div className="md:hidden flex justify-between items-center mb-8">
-            <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>
-            <div className="flex gap-2">
-               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse"></div>
-               <div className="h-10 w-10 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse"></div>
-            </div>
-         </div>
-
-         {/* Hero/Card Skeleton */}
-         <div className="w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-[32px] animate-pulse"></div>
-         
-         {/* List Items Skeleton */}
-         <div className="space-y-4">
-            {[1,2,3].map(i => (
-                <div key={i} className="h-24 w-full bg-gray-50 dark:bg-gray-800 rounded-[24px] animate-pulse"></div>
-            ))}
-         </div>
-      </div>
-    </div>
-  );
+  if (loading || isInitializingProfile) return <PageSkeleton />;
 
   const renderContent = () => {
     // 1. Not Logged In
@@ -182,19 +182,21 @@ const App: React.FC = () => {
       switch (view) {
         case 'login': return <Login onToggle={() => navigate('signup')} />;
         case 'signup': return <SignUp onToggle={() => navigate('login')} initialRole={viewData || 'client'} />;
-        case 'reset-password': return <ResetPassword onSuccess={() => navigate('login')} onBack={() => handleBackNavigation('login')} />;
-        case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} />;
-        case 'about': return <About onBack={() => handleBackNavigation('landing')} />;
+        // Wrapped in Suspense just in case, though usually static
+        case 'reset-password': return <Suspense fallback={<PageSkeleton />}><ResetPassword onSuccess={() => navigate('login')} onBack={() => handleBackNavigation('login')} /></Suspense>;
+        case 'legal': return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} /></Suspense>;
+        case 'about': return <Suspense fallback={<PageSkeleton />}><About onBack={() => handleBackNavigation('landing')} /></Suspense>;
         default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
       }
     }
 
     // 2. Logged In but Profile Record Missing or Incomplete
     if (!profile || !profile.role || !profile.phone_number) {
-      return <CompleteProfile session={session} onComplete={() => fetchProfile(session.user.id)} />;
+      return <Suspense fallback={<PageSkeleton />}><CompleteProfile session={session} onComplete={() => fetchProfile(session.user.id)} /></Suspense>;
     }
 
     // 3. Authenticated & Profile Fully Synced
+    // NOTE: Suspense wrapper added to main content to handle lazy loading
     switch (view) {
       case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
       case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewTask={(id) => navigate('task-detail', id)} onViewWorker={(id) => navigate('worker-detail', id)} />;
@@ -230,7 +232,12 @@ const App: React.FC = () => {
             </aside>
         )}
         <main className={`flex-1 w-full relative ${session ? 'max-w-md mx-auto md:max-w-none md:mx-0' : 'w-full'}`}>
-          <div className={`${session ? 'md:max-w-6xl md:mx-auto md:p-6 md:pb-12' : 'w-full'}`}>{renderContent()}</div>
+          <div className={`${session ? 'md:max-w-6xl md:mx-auto md:p-6 md:pb-12' : 'w-full'}`}>
+            {/* Suspense Wrapper handles the loading state for lazy components */}
+            <Suspense fallback={<PageSkeleton />}>
+                {renderContent()}
+            </Suspense>
+          </div>
         </main>
         {toast && <NotificationToast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
         {showGuide && <UserGuide onClose={() => setShowGuide(false)} />}

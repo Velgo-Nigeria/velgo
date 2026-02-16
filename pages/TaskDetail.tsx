@@ -273,7 +273,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
             <div className="flex justify-between items-center border-b border-gray-100 pb-6">
                 <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Budget</p>
-                    <p className="text-2xl font-black text-brand">₦{task.budget.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-brand">₦{(task.budget || 0).toLocaleString()}</p>
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</p>

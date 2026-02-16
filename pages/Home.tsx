@@ -22,6 +22,8 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [selectedLGA, setSelectedLGA] = useState('All');
   
   // viewMode: 'jobs' shows tasks, 'market' shows workers
+  // Default for Worker: 'jobs' (Live Jobs)
+  // Default for Client: 'market' (Hire Now)
   const [viewMode, setViewMode] = useState<'jobs' | 'market'>(profile?.role === 'worker' ? 'jobs' : 'market');
   
   // Broadcast State
@@ -165,8 +167,21 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
   const isFilterActive = category !== 'All' || subcategory !== 'All' || selectedState !== 'All' || selectedLGA !== 'All' || searchTerm !== '';
 
+  const firstName = profile?.full_name?.split(' ')[0] || 'User';
+
   return (
     <div className="bg-white dark:bg-[#0f172a] min-h-screen transition-colors duration-200">
+      
+      {/* Floating Action Button (Client Only) */}
+      {profile?.role === 'client' && (
+        <button 
+            onClick={onPostTask}
+            className="fixed bottom-24 right-6 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-40 active:scale-90 transition-transform md:hidden animate-fadeIn"
+        >
+            <i className="fa-solid fa-plus text-xl"></i>
+        </button>
+      )}
+
       {/* Insights Modal */}
       {showInsights && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
@@ -199,230 +214,238 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       )}
 
       {/* Header */}
-      <header className="px-6 pt-10 pb-4 sticky top-0 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-md z-30 flex justify-between items-center border-b border-gray-50 dark:border-slate-800 transition-colors duration-200">
-        <VelgoLogo className="h-10" />
+      <div className="px-6 pt-10 pb-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-end sticky top-0 bg-white dark:bg-[#0f172a] z-10">
+        <VelgoLogo className="h-8" />
         <div className="flex gap-3">
-            <button onClick={onShowGuide} className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 shadow-sm transition-all"><i className="fa-solid fa-question-circle"></i></button>
-            <button onClick={() => setShowInsights(true)} className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700 shadow-sm transition-all"><i className="fa-solid fa-magnifying-glass-chart"></i></button>
-            <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-slate-800 overflow-hidden border border-gray-100 dark:border-slate-700 shadow-sm">
-                <img src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=008000&color=fff`} className="w-full h-full object-cover" alt="Profile" />
-            </div>
+            <button onClick={() => setShowInsights(true)} className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center animate-pulse"><i className="fa-solid fa-wand-magic-sparkles"></i></button>
+            <button onClick={() => onShowGuide()} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white"><i className="fa-regular fa-circle-question"></i></button>
         </div>
-      </header>
+      </div>
 
-      <div className="px-6 space-y-6 mt-6 pb-24 max-w-2xl mx-auto">
-        {/* Announcement Banner */}
-        {activeBroadcast && (
-            <div className="bg-emerald-600 text-white p-6 rounded-[32px] shadow-2xl relative animate-fadeIn border border-white/20">
-                <button onClick={dismissBroadcast} className="absolute top-4 right-4 text-white/50 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
-                <div className="flex items-start gap-4 pr-6">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><i className="fa-solid fa-bullhorn text-xl"></i></div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[8px] font-black uppercase tracking-[2px] bg-black/20 px-2 py-0.5 rounded-full">Velgo Official</span>
-                            <span className="text-[8px] opacity-60 font-bold uppercase">{new Date(activeBroadcast.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <h4 className="font-black text-lg tracking-tight leading-none mb-1">{activeBroadcast.title}</h4>
-                        <p className="text-xs font-medium opacity-90 leading-relaxed">{activeBroadcast.message}</p>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Search & Filter Bar */}
-        <div className="flex gap-2">
-            <div className="relative group flex-1">
-                <input 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={viewMode === 'market' ? "Find workers by name..." : "Search for live jobs..."}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand/30 py-4 px-12 rounded-2xl text-sm font-bold dark:text-white outline-none transition-all shadow-sm"
-                />
-                <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            </div>
-            <button 
-                onClick={() => setShowFilters(!showFilters)} 
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${showFilters || isFilterActive ? 'bg-brand text-white shadow-lg' : 'bg-gray-50 dark:bg-slate-800 text-gray-400'}`}
-            >
-                <i className="fa-solid fa-sliders text-lg"></i>
-            </button>
-        </div>
-
-        {/* Filter Panel */}
-        {showFilters && (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-xl border border-gray-100 dark:border-slate-700 animate-fadeIn space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide">Filter Options</h3>
-                    <button onClick={clearFilters} className="text-[10px] font-bold text-red-500 uppercase">Clear All</button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Location */}
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Location (State / LGA)</label>
-                        <div className="flex gap-2">
-                            <select value={selectedState} onChange={e => handleStateChange(e.target.value)} className="flex-1 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none">
-                                <option value="All">All States</option>
-                                {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                            <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} disabled={selectedState === 'All'} className="flex-1 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none disabled:opacity-50">
-                                <option value="All">All LGAs</option>
-                                {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Category */}
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Industry & Role</label>
-                        <select value={category} onChange={e => handleCategoryChange(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none mb-2">
-                            <option value="All">All Industries</option>
-                            {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select value={subcategory} onChange={e => setSubcategory(e.target.value)} disabled={category === 'All'} className="w-full bg-gray-50 dark:bg-slate-900 p-3 rounded-xl text-xs font-bold dark:text-white outline-none disabled:opacity-50">
-                            <option value="All">All Specializations</option>
-                            {CATEGORY_MAP[category]?.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* View Toggle for Workers and Admin */}
-        {(profile?.role === 'worker' || profile?.role === 'admin') && (
-             <div className="bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl flex text-[10px] font-black uppercase tracking-widest max-w-sm mx-auto shadow-inner transition-colors duration-200">
-                 <button onClick={() => setViewMode('jobs')} className={`flex-1 py-3 rounded-xl transition-all ${viewMode === 'jobs' ? 'bg-white dark:bg-slate-700 text-brand shadow-lg' : 'text-gray-400'}`}>Live Jobs</button>
-                 <button onClick={() => setViewMode('market')} className={`flex-1 py-3 rounded-xl transition-all ${viewMode === 'market' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-lg' : 'text-gray-400'}`}>
-                    {profile?.role === 'worker' ? 'Competitors' : 'Workers'}
-                 </button>
-             </div>
-        )}
-
-        {/* Welcome Card */}
-        <div className="bg-[#0f172a] dark:bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group border border-white/5 transition-colors duration-200">
-            {/* The 3D Watermark */}
-            <img 
-                src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
-                className="absolute -right-6 -bottom-8 w-48 h-48 opacity-20 rotate-12 pointer-events-none grayscale-[0.2]"
-                alt=""
-            />
-            
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand/10 rounded-full blur-3xl group-hover:bg-brand/20 transition-all"></div>
-            
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-1">
-                    <p className="text-[10px] font-black uppercase tracking-[4px] text-brand">
-                      {isAdmin ? 'ADMIN CONTROL PANEL' : 'NIGERIA HUB ACTIVE'}
-                    </p>
-                    {!isAdmin && (
-                      <span className="text-[8px] font-black uppercase bg-white/10 px-2 py-1 rounded-md text-gray-400 border border-white/5">
-                        {profile?.subscription_tier} Plan
-                      </span>
-                    )}
-                </div>
-                
-                <h2 className="text-3xl font-black tracking-tighter leading-none mb-3">Hello, {profile?.full_name.split(' ')[0]}</h2>
-                
-                {/* Plan Usage Indicator */}
-                {!isAdmin && (
-                  <div className="mb-6 w-full max-w-[220px]">
-                    <div className="flex justify-between items-end text-[8px] font-black uppercase tracking-widest text-gray-400 mb-2">
-                      <div className="flex flex-col">
-                         <span>Monthly Limit</span>
-                         <span className={isHighUsage ? 'text-yellow-400 animate-pulse' : 'text-brand-light'}>
-                            {usageStatus}
-                         </span>
-                      </div>
-                      <div className="text-right">
-                         <span className="text-white text-[10px]">{usageCount}</span>
-                         <span className="opacity-50"> / {usageLimit > 999 ? '∞' : usageLimit}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden relative">
-                      {isHighUsage && <div className="absolute inset-0 bg-yellow-400/20 animate-pulse"></div>}
-                      
-                      <div 
-                        className={`h-full rounded-full transition-all duration-1000 ease-out relative ${usageColor}`} 
-                        style={{ width: `${usagePercent}%` }}
-                      />
-                    </div>
-
-                    {isHighUsage && (
-                        <button onClick={onUpgrade} className="mt-3 w-full text-center text-[9px] font-black uppercase text-gray-900 bg-yellow-400 rounded-lg py-1.5 hover:bg-white transition-colors shadow-lg">
-                            Upgrade Now
-                        </button>
-                    )}
+      {/* Broadcast Banner */}
+      {activeBroadcast && (
+          <div className="px-6 mt-4 animate-fadeIn">
+              <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-4 rounded-2xl flex items-start gap-3 shadow-xl relative overflow-hidden">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0"><i className="fa-solid fa-bullhorn text-xs"></i></div>
+                  <div className="flex-1">
+                      <h4 className="text-xs font-black uppercase tracking-widest">{activeBroadcast.title}</h4>
+                      <p className="text-[10px] font-medium opacity-90 mt-1">{activeBroadcast.message}</p>
                   </div>
-                )}
-
-                {profile?.role === 'client' || isAdmin ? (
-                    <div className="flex gap-3 animate-fadeIn">
-                        <button 
-                            onClick={onPostTask} 
-                            className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
-                        >
-                            {isAdmin ? 'Post Admin Alert' : 'Post a Job Request'}
-                        </button>
-                        {!isAdmin && (
-                          <button 
-                              onClick={onPostTask} 
-                              className="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl shadow-xl shadow-brand/20 active:scale-95 transition-all shrink-0"
-                              aria-label="Quick post job"
-                          >
-                              <i className="fa-solid fa-plus"></i>
-                          </button>
-                        )}
-                    </div>
-                ) : <p className="text-xs font-medium text-gray-400">Ready for your next gig?</p>}
-            </div>
-        </div>
-
-        {/* Results */}
-        {loading ? (
-          <div className="py-20 text-center text-gray-300 font-black uppercase tracking-[5px] animate-pulse">Syncing Hub...</div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {items.map((item) => (
-              <div 
-                key={item.id} 
-                onClick={() => viewMode === 'market' ? onViewWorker(item.id) : onViewTask(item.id)}
-                className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 shadow-sm">
-                    <img 
-                      src={item.avatar_url || item.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.full_name || item.title)}&background=008000&color=fff`} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                      alt="" 
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-black text-gray-900 dark:text-white truncate">{item.full_name || item.title}</h3>
-                      {(item.is_verified || item.profiles?.is_verified) && <VerificationBadge />}
-                    </div>
-                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
-                      {item.category && item.category !== 'All' ? item.category.split(',')[0] : 'Gig'} • {item.state || item.location?.split(',').pop()?.trim() || 'Nigeria'}
-                    </p>
-                    {item.subcategory && (
-                        <p className="text-[10px] font-medium text-brand mt-1 truncate">{item.subcategory}</p>
-                    )}
-                  </div>
-                  <i className="fa-solid fa-chevron-right text-gray-200 dark:text-slate-700 group-hover:text-brand transition-colors"></i>
-                </div>
+                  <button onClick={dismissBroadcast} className="text-white/50 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
               </div>
-            ))}
-            {items.length === 0 && (
-              <div className="py-20 text-center opacity-30">
-                <i className="fa-solid fa-cloud-moon text-6xl text-gray-200 mb-6"></i>
-                <p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">
-                  No {viewMode === 'market' ? (profile?.role === 'worker' ? 'competitors' : 'workers') : 'jobs'} found
-                </p>
-              </div>
-            )}
           </div>
-        )}
+      )}
+
+      {/* Dashboard / Status Card */}
+      <div className="px-6 mt-6">
+          <div onClick={onUpgrade} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
+              
+              {/* Background Pattern */}
+              <div className="absolute right-0 top-0 opacity-5 pointer-events-none">
+                  <VelgoLogo className="h-40 w-40 grayscale" />
+              </div>
+
+              <div className="relative z-10 space-y-4">
+                  <div>
+                      <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Hello, {firstName}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                          <span className="inline-flex items-center gap-1.5 bg-brand/10 text-brand px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                              <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse"></div>
+                              {profile?.subscription_tier || 'Basic'} • Nigeria Hub Active
+                          </span>
+                      </div>
+                  </div>
+
+                  <div>
+                      <div className="flex justify-between items-end mb-2">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Monthly Limit</span>
+                          <span className={`text-[10px] font-black uppercase ${rawPercent >= 100 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {usageCount} / {usageLimit} {profile?.role === 'client' ? 'Hires' : 'Jobs'}
+                          </span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-1000 ease-out ${usageColor}`} style={{ width: `${usagePercent}%` }}></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* Action Buttons - Compact Horizontal Layout */}
+      <div className="px-6 mt-6 grid grid-cols-2 gap-3">
+          
+          {/* WORKER VIEW BUTTONS */}
+          {profile?.role === 'worker' && (
+              <>
+                <button 
+                    onClick={() => { setViewMode('jobs'); clearFilters(); fetchData(); }} 
+                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'jobs' ? 'bg-brand text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+                >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'jobs' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                        <i className="fa-solid fa-briefcase text-xs"></i>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Live Jobs</span>
+                </button>
+
+                <button 
+                    onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
+                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+                >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                        <i className="fa-solid fa-ranking-star text-xs"></i>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Top Earners</span>
+                </button>
+              </>
+          )}
+
+          {/* CLIENT VIEW BUTTONS */}
+          {profile?.role === 'client' && (
+              <>
+                <button 
+                    onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
+                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+                >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Hire Now</span>
+                </button>
+
+                <button 
+                    onClick={onPostTask} 
+                    className="py-4 px-2 rounded-[20px] bg-brand text-white border-transparent shadow-lg flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 transition-transform"
+                >
+                    <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-plus text-xs"></i>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Post Job</span>
+                </button>
+              </>
+          )}
+      </div>
+
+      {/* Search & Filter */}
+      <div className="px-6 mt-6 sticky top-20 z-10 bg-white dark:bg-[#0f172a] pb-2 transition-colors duration-200">
+          <div className="flex gap-3">
+              <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center px-4 py-3 border border-transparent focus-within:border-brand focus-within:bg-white dark:focus-within:bg-gray-800 transition-all">
+                  <i className="fa-solid fa-search text-gray-400 mr-3"></i>
+                  <input 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={viewMode === 'market' ? "Search..." : "Search jobs..."} 
+                    className="bg-transparent w-full text-sm font-bold text-gray-900 dark:text-white outline-none placeholder-gray-400"
+                  />
+              </div>
+              <button 
+                onClick={() => setShowFilters(!showFilters)} 
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isFilterActive ? 'bg-brand text-white shadow-lg' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}
+              >
+                  <i className="fa-solid fa-sliders"></i>
+              </button>
+          </div>
+
+          {showFilters && (
+              <div className="mt-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-[24px] border border-gray-100 dark:border-gray-700 space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-2 gap-3">
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Category</label>
+                          <select value={category} onChange={e => handleCategoryChange(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white">
+                              <option value="All">All Categories</option>
+                              {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                      </div>
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Subcategory</label>
+                          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white">
+                              <option value="All">All Types</option>
+                              {CATEGORY_MAP[category]?.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                      </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">State</label>
+                          <select value={selectedState} onChange={e => handleStateChange(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white">
+                              <option value="All">All Nigeria</option>
+                              {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                      </div>
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">LGA</label>
+                          <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white" disabled={selectedState === 'All'}>
+                              <option value="All">All Areas</option>
+                              {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                      </div>
+                  </div>
+                  <button onClick={clearFilters} className="w-full py-3 text-[10px] font-black uppercase text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl">Clear Filters</button>
+              </div>
+          )}
+      </div>
+
+      {/* List Content */}
+      <div className="px-6 pb-24 space-y-4 min-h-[50vh]">
+          {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-300 space-y-4">
+                  <div className="w-10 h-10 border-4 border-gray-200 border-t-brand rounded-full animate-spin"></div>
+                  <p className="text-[10px] font-black uppercase tracking-[3px]">Loading...</p>
+              </div>
+          ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-300 space-y-4 text-center">
+                  <i className="fa-solid fa-wind text-4xl"></i>
+                  <p className="text-[10px] font-black uppercase tracking-[3px]">No results found</p>
+                  <button onClick={clearFilters} className="text-brand text-xs font-bold underline">Clear Filters</button>
+              </div>
+          ) : (
+              items.map((item) => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => viewMode === 'market' ? onViewWorker(item.id) : onViewTask(item.id)}
+                    className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm flex items-start gap-4 active:scale-[0.98] transition-all cursor-pointer group"
+                  >
+                      <div className="relative shrink-0">
+                          {viewMode === 'market' ? (
+                              <img 
+                                src={item.avatar_url || `https://ui-avatars.com/api/?name=${item.full_name}`} 
+                                className="w-14 h-14 rounded-2xl object-cover bg-gray-100 dark:bg-gray-700" 
+                                loading="lazy" 
+                                decoding="async"
+                              />
+                          ) : (
+                              <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl text-gray-400">
+                                  {item.image_url ? (
+                                    <img src={item.image_url} className="w-full h-full object-cover rounded-2xl" loading="lazy" decoding="async" />
+                                  ) : (
+                                    <i className="fa-solid fa-briefcase"></i>
+                                  )}
+                              </div>
+                          )}
+                          {item.is_verified && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 border-white dark:border-gray-800"><i className="fa-solid fa-check"></i></div>}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                              <h3 className="font-black text-sm text-gray-900 dark:text-white truncate pr-2">{viewMode === 'market' ? item.full_name : item.title}</h3>
+                              {viewMode === 'jobs' && <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg ${item.urgency === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{item.urgency}</span>}
+                          </div>
+                          
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5">
+                              {viewMode === 'market' ? (item.subcategory || item.category || 'General Worker') : `Budget: ₦${(item.budget || 0).toLocaleString()}`}
+                          </p>
+                          
+                          <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400">
+                              <i className="fa-solid fa-location-dot text-brand"></i>
+                              <span className="truncate">{viewMode === 'market' ? `${item.lga}, ${item.state}` : item.location}</span>
+                          </div>
+                      </div>
+                      
+                      <div className="self-center">
+                          <i className="fa-solid fa-chevron-right text-gray-300 text-xs group-hover:text-brand transition-colors"></i>
+                      </div>
+                  </div>
+              ))
+          )}
       </div>
     </div>
   );

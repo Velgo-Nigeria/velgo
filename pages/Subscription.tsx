@@ -63,7 +63,7 @@ const SubscriptionCard: React.FC<{
       <div className="flex justify-between items-start relative z-10">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400">{tier.name}</span>
-          <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{tier.price.toLocaleString()} <span className="text-sm font-medium text-gray-400 dark:text-gray-500">/mo</span></h3>
+          <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{(tier.price || 0).toLocaleString()} <span className="text-sm font-medium text-gray-400 dark:text-gray-500">/mo</span></h3>
         </div>
       </div>
 
@@ -131,7 +131,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
 
   const handleWhatsAppConfirmation = () => {
       if (!selectedTier || !profile) return;
-      const message = `Hello Velgo Admin, I have just transferred ₦${selectedTier.price.toLocaleString()} for the ${selectedTier.name} Plan.\n\nMy Email: ${profile.email}\nMy Name: ${profile.full_name}`;
+      const message = `Hello Velgo Admin, I have just transferred ₦${(selectedTier.price || 0).toLocaleString()} for the ${selectedTier.name} Plan.\n\nMy Email: ${profile.email}\nMy Name: ${profile.full_name}`;
       const url = `https://wa.me/${VELGO_BANK.supportPhone}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
   };
@@ -152,7 +152,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
                   <div>
                       <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase">Bank Transfer</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                          Transfer <span className="text-brand font-black">₦{selectedTier.price.toLocaleString()}</span> to the account below.
+                          Transfer <span className="text-brand font-black">₦{(selectedTier.price || 0).toLocaleString()}</span> to the account below.
                       </p>
                   </div>
 

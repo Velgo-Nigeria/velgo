@@ -374,6 +374,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png"
                         className="absolute -right-4 -bottom-4 w-24 h-24 opacity-[0.05] rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-500"
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                     />
 
                     {/* Interaction Hint */}
@@ -384,7 +386,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     <div className="flex items-center gap-4 relative z-10">
                       <div className="w-16 h-16 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden shrink-0">
                           {item.profiles?.avatar_url ? (
-                              <img src={item.profiles.avatar_url} className="w-full h-full object-cover"/>
+                              <img src={item.profiles.avatar_url} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                           ) : isOpenTask ? (
                               <i className="fa-solid fa-briefcase text-brand text-2xl"></i>
                           ) : (
