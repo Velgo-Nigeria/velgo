@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../types';
@@ -58,7 +59,7 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
                 avatar_url: 'https://ui-avatars.com/api/?name=Velgo+Support&background=000000&color=fff', 
                 role: 'admin' 
             },
-            lastMessage: 'Tap here to contact support.',
+            lastMessage: 'Tap here to chat with us on WhatsApp.',
             time: new Date().toISOString(),
             isSupport: true
         };
@@ -70,6 +71,15 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
 
     fetchConversations();
   }, [profile]);
+
+  const handleChatClick = (conv: any) => {
+      if (conv.isSupport) {
+          const message = encodeURIComponent(`Hello Velgo Support, I need assistance.\n\nMy Name: ${profile?.full_name}\nMy ID: ${profile?.id}`);
+          window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+      } else {
+          onOpenChat(conv.id);
+      }
+  };
 
   return (
     <div className="bg-white min-h-screen pb-24">
@@ -85,11 +95,17 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
              conversations.map(conv => (
                  <div 
                     key={conv.id} 
-                    onClick={() => onOpenChat(conv.id)} 
+                    onClick={() => handleChatClick(conv)} 
                     className={`flex items-center gap-4 p-4 rounded-2xl border shadow-sm active:scale-[0.98] transition-all cursor-pointer ${conv.isSupport ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-50'}`}
                  >
                      <div className="relative">
-                         <img src={conv.profile?.avatar_url || `https://ui-avatars.com/api/?name=${conv.profile?.full_name || 'User'}`} className="w-12 h-12 rounded-full object-cover border border-gray-100" />
+                         {conv.isSupport ? (
+                             <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white border-2 border-white shadow-sm">
+                                 <i className="fa-brands fa-whatsapp text-2xl"></i>
+                             </div>
+                         ) : (
+                             <img src={conv.profile?.avatar_url || `https://ui-avatars.com/api/?name=${conv.profile?.full_name || 'User'}`} className="w-12 h-12 rounded-full object-cover border border-gray-100" />
+                         )}
                          {conv.profile?.role === 'admin' && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[8px] px-1 rounded-full border border-white">SUP</div>}
                      </div>
                      <div className="flex-1 min-w-0">
@@ -99,7 +115,7 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
                          </div>
                          <p className={`text-xs truncate ${conv.isSupport ? 'text-gray-400' : 'text-gray-500'}`}>{conv.lastMessage}</p>
                      </div>
-                     {conv.isSupport && <i className="fa-solid fa-chevron-right text-gray-600 text-xs"></i>}
+                     {conv.isSupport && <i className="fa-solid fa-arrow-up-right-from-square text-gray-500 text-xs"></i>}
                  </div>
              ))
             }

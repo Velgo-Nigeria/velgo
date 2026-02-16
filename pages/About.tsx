@@ -37,7 +37,8 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
   ];
 
   const handleContactSupport = () => {
-    window.location.href = "mailto:velgonigeria.uni@gmail.com?subject=Velgo%20Support%20Inquiry";
+    const message = encodeURIComponent("Hello Velgo, I have an inquiry regarding...");
+    window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
   };
 
   return (
@@ -145,9 +146,9 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-4">Still have questions?</p>
                      <button 
                         onClick={handleContactSupport}
-                        className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-6 py-3 rounded-xl text-xs font-black uppercase shadow-lg active:scale-95 transition-transform"
+                        className="w-full bg-green-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
                      >
-                        Contact Support
+                        <i className="fa-brands fa-whatsapp text-lg"></i> Contact Support
                      </button>
                  </div>
              </div>
