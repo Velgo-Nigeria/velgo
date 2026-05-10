@@ -21,6 +21,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false); // <--- Still used if we don't do OTP, but let's change it
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [otpToken, setOtpToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -33,11 +36,19 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
     if (password !== confirmPassword) { setError("Passwords do not match."); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
     
+    // Strict Nigerian phone number validation
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const phoneRegex = /^(\+234|0)[789][01]\d{8}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setError("Please enter a valid Nigerian phone number (e.g., 080..., 090..., or +234...).");
+      return;
+    }
+    
     setLoading(true);
 
     const metaData = {
       full_name: fullName.trim(),
-      phone_number: phone.trim(),
+      phone_number: cleanPhone,
       role: role,
       client_type: role === 'client' ? clientType : 'personal',
     };
@@ -61,10 +72,11 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
         }
       } else {
         if (data.session) {
-             // Successfully logged in immediately
+             // Successfully logged in immediately (if auto-confirm is enabled)
+             setSuccess(true);
         } else if (data.user) {
-            alert("Registration successful! Please check your email to confirm your account before signing in.");
-            onToggle();
+             // Require email confirmation - switch to OTP view
+             setAwaitingOtp(true);
         }
       }
     } catch (err: any) {
@@ -73,6 +85,115 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'client' }) => 
       setLoading(false);
     }
   };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otpToken.trim(),
+        type: 'signup'
+      });
+
+      if (verifyError) {
+        setError(verifyError.message);
+      } else if (data.session) {
+        // Success! The session will be picked up by the auth listener in App.tsx/Home.tsx
+        setSuccess(true);
+      } else {
+        // Sometimes it succeeds but doesn't return a session automatically depending on Supabase settings
+        setSuccess(true);
+      }
+    } catch (err: any) {
+      setError("Connectivity issue. Please check your internet and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success && !awaitingOtp) {
+    return (
+      <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm space-y-10 animate-fadeIn text-center">
+          <VelgoLogo variant="light" className="h-12 mx-auto mb-8" />
+          
+          <div className="bg-emerald-500/10 p-10 rounded-[40px] text-center border border-emerald-500/20 shadow-2xl">
+            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-xl shadow-emerald-500/30">
+              <i className="fa-solid fa-check text-4xl"></i>
+            </div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-4">You're In!</h2>
+            <p className="text-sm text-gray-300 font-medium leading-relaxed mb-8">
+              Your account has been created successfully. Welcome to Velgo.
+            </p>
+            <button 
+              onClick={onToggle} 
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-900/40 transition-all active:scale-95"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (awaitingOtp && !success) {
+    return (
+      <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm space-y-10 animate-fadeIn text-center">
+          <VelgoLogo variant="light" className="h-12 mx-auto mb-8" />
+          
+          <div className="bg-emerald-500/10 p-10 rounded-[40px] text-center border border-emerald-500/20 shadow-2xl">
+            <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i className="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-4">Enter OTP</h2>
+            <p className="text-xs text-gray-300 font-medium leading-relaxed mb-8">
+              We've sent a 6-digit code to <span className="text-white font-bold">{email}</span>. Please enter it below.
+            </p>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              {error && (
+                <div className="p-3 bg-red-500/10 text-red-400 text-[10px] font-bold rounded-2xl border border-red-500/20 text-left flex items-start gap-2">
+                  <i className="fa-solid fa-xmark mt-0.5"></i>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <input 
+                required 
+                type="text" 
+                maxLength={6}
+                value={otpToken} 
+                onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                className="w-full bg-slate-800 border-2 border-slate-700/50 focus:border-emerald-500 rounded-[24px] py-4 px-6 text-white text-center text-2xl tracking-[0.5em] font-black outline-none transition-all placeholder-gray-600"
+                placeholder="------"
+              />
+
+              <button 
+                type="submit" 
+                disabled={loading || otpToken.length < 6} 
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-900/40 transition-all active:scale-95"
+              >
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => setAwaitingOtp(false)} 
+                className="w-full text-center text-gray-500 font-black text-[10px] uppercase tracking-widest mt-4 opacity-60 hover:opacity-100 transition-opacity"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12">

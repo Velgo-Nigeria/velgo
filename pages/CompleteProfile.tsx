@@ -39,11 +39,23 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
     
     setError(null);
 
+    // Strict Nigerian phone number validation
+    const cleanPhone = phone.replace(/\s+/g, '');
+    if (!isAuto) {
+      const phoneRegex = /^(\+234|0)[789][01]\d{8}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        setError("Please enter a valid Nigerian phone number (e.g., 080..., 090..., or +234...).");
+        setLoading(false);
+        setIsAutoCompleting(false);
+        return;
+      }
+    }
+
     const updates = {
       id: session.user.id,
       email: session.user.email,
       full_name: fullName.trim(),
-      phone_number: phone.trim(),
+      phone_number: cleanPhone,
       role: role,
       client_type: role === 'client' ? clientType : 'personal',
       subscription_tier: 'basic',
