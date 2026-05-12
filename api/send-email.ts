@@ -33,23 +33,56 @@ export default async function handler(req: any, res: any) {
     let subject = '';
     let html = '';
 
-    // 1. New Booking (Notify Worker)
-    if (table === 'bookings' && type === 'INSERT' && record.status === 'pending') {
-       userIdToNotify = record.worker_id;
-       subject = 'You have a new Job Request on Velgo! 🚀';
-       html = `<p>A client wants to hire you for a job. Log in to Velgo to view the details and accept the request.</p>`;
-    }
-    // 2. Booking Accepted (Notify Client)
-    else if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
+    // 1. Booking Accepted (Notify Client)
+    if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
        userIdToNotify = record.client_id;
        subject = 'Job Accepted! ✅';
        html = `<p>Your worker has accepted your job. You can now chat with them to discuss further details.</p>`;
     }
-    // 3. New Message
+    // 2. New Message
     else if (table === 'messages' && type === 'INSERT') {
        userIdToNotify = record.receiver_id;
        subject = 'New Message received on Velgo 💬';
        html = `<p>You received a new message. Log in to your Velgo account to view and reply.</p>`;
+    }
+    // 3. ID Verification Status
+    else if (table === 'profiles' && type === 'UPDATE') {
+       const oldRecord = payload.old_record || {};
+       if (record.is_verified === true && oldRecord.is_verified === false) {
+           userIdToNotify = record.id;
+           subject = 'Your ID has been Verified! ✅';
+           html = `<p>Congratulations! Your identity verification was successful. You can now fully utilize Velgo.</p>`;
+       } else if (record.is_verified === false && oldRecord.is_verified === true) {
+           userIdToNotify = record.id;
+           subject = 'Important: ID Verification Revoked ❌';
+           html = `<p>There is an issue with your identity verification. Please contact support.</p>`;
+       }
+    }
+    // 4. Task Update
+    else if (table === 'posted_tasks' && type === 'UPDATE') {
+       // Notify the client about task status change
+       const oldRecord = payload.old_record || {};
+       if (record.status !== oldRecord.status) {
+           userIdToNotify = record.client_id;
+           subject = `Your Task Status is now ${record.status.toUpperCase()} 🔄`;
+           html = `<p>Your task "${record.title}" has moved to the ${record.status} status.</p>`;
+       }
+    }
+    // 5. Admin Broadcasts
+    else if (table === 'broadcasts' && type === 'INSERT') {
+       subject = record.title || 'New Announcement from Velgo 📢';
+       html = `<p>${record.message || 'Check Velgo for details.'}</p>`;
+       // For broadcasts, we need to send to everyone. For simplicity here, we might just not provide userIdToNotify.
+       // In a real Vercel setup, doing mass emails here directly can timeout. 
+       // If you want me to write code to batch all users, I can do so, but it's tricky in a single serverless function without timeouts.
+       // We will pass a specific flag.
+       return res.status(200).json({ message: 'Broadcasts via email requires a batch emailing service setup.' });
+    }
+    // 6. Review Request (Example: Triggered manually or by a specific event)
+    else if (table === 'review_requests' && type === 'INSERT') {
+       userIdToNotify = record.user_id;
+       subject = 'How did we do? Please leave a review! ⭐';
+       html = `<p>We hope you are enjoying Velgo. Please take a moment to leave a review on your recent experience.</p>`;
     }
 
     if (!userIdToNotify) {
