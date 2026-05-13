@@ -193,6 +193,92 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             )}
         </div>
 
+        {/* User Reputation & Metrics */}
+        <div className="space-y-6">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">My Reputation</h3>
+            
+            {isWorker ? (
+                // Worker Metrics Overview
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                    <div className="flex justify-between items-end mb-2">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Average Rating</p>
+                            <p className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-1">{profile?.worker_avg_rating || 5.0} <i className="fa-solid fa-star text-yellow-400 text-lg"></i></p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Jobs Done</p>
+                            <p className="text-xl font-black text-green-500">{profile?.worker_rating_count || 0}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Communication</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{profile?.worker_avg_communication || 5.0}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-yellow-400 h-1.5 rounded-full" style={{ width: `${((profile?.worker_avg_communication || 5) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Quality of Work</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{profile?.worker_avg_quality || 5.0}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-yellow-400 h-1.5 rounded-full" style={{ width: `${((profile?.worker_avg_quality || 5) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Punctuality</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{profile?.worker_avg_punctuality || 5.0}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-yellow-400 h-1.5 rounded-full" style={{ width: `${((profile?.worker_avg_punctuality || 5) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                // Client Reputation Overview
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                    <div className="flex justify-between items-end mb-2">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Client Rating</p>
+                            <p className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-1">{profile?.client_avg_rating || 5.0} <i className="fa-solid fa-star text-blue-500 text-lg"></i></p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Reviews</p>
+                            <p className="text-xl font-black text-gray-900 dark:text-white">{profile?.client_rating_count || 0}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Communication</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{profile?.client_avg_communication || 5.0}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((profile?.client_avg_communication || 5) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Fairness/Respect</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{profile?.client_avg_fairness || 5.0}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((profile?.client_avg_fairness || 5) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+
         {/* Identity Verification Section */}
         <div className="space-y-6">
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Identity Verification</h3>

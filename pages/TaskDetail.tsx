@@ -186,29 +186,56 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
 
   const ReviewsModal = () => (
       <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center sm:p-6 backdrop-blur-sm animate-fadeIn">
-        <div className="bg-white rounded-t-[32px] sm:rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-t-[32px] sm:rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-black text-gray-900">Reviews on {client?.full_name}</h3>
-                <button onClick={() => setShowReviewsModal(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white">Reviews on {client?.full_name}</h3>
+                <button onClick={() => setShowReviewsModal(false)} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
             </div>
+
+            {/* Client Detailed Client Performance */}
+            {(client?.client_rating_count || 0) > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[20px] p-4 space-y-3 mb-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Client Reputation</h4>
+                    <div className="space-y-2">
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Communication</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{client?.client_avg_communication || (clientRating?.avg || 5)}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((client?.client_avg_communication || (clientRating?.avg || 5)) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Fairness/Respect</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{client?.client_avg_fairness || (clientRating?.avg || 5)}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((client?.client_avg_fairness || (clientRating?.avg || 5)) / 5) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {clientReviews.length === 0 ? (
                 <div className="text-center py-10 text-gray-400 text-xs italic">No reviews yet.</div>
             ) : (
                 clientReviews.map((r, i) => (
-                    <div key={i} className="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-2">
+                    <div key={i} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-2">
                         <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">
                                     {r.profiles?.avatar_url ? <img src={r.profiles.avatar_url} className="w-full h-full object-cover"/> : <i className="fa-solid fa-user text-gray-400 text-xs p-1"></i>}
                                 </div>
-                                <span className="text-xs font-bold text-gray-800">{r.profiles?.full_name || 'Worker'}</span>
+                                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{r.profiles?.full_name || 'Worker'}</span>
                             </div>
                             <div className="flex text-yellow-400 text-[10px] gap-0.5">
                                 {Array(Math.round(r.client_rating || 5)).fill(0).map((_, idx) => <i key={idx} className="fa-solid fa-star"></i>)}
                             </div>
                         </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">"{r.client_review}"</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">"{r.client_review}"</p>
                         <p className="text-[9px] text-gray-400 font-bold mt-2 text-right">{new Date(r.created_at).toLocaleDateString()}</p>
                     </div>
                 ))

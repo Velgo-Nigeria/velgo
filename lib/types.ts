@@ -57,6 +57,15 @@ export interface Profile {
   emergency_contact_phone?: string;
   theme_mode?: 'light' | 'dark' | 'auto';
   notification_preferences?: NotificationPreferences;
+  worker_rating_count?: number;
+  worker_avg_rating?: number;
+  worker_avg_communication?: number;
+  worker_avg_quality?: number;
+  worker_avg_punctuality?: number;
+  client_rating_count?: number;
+  client_avg_rating?: number;
+  client_avg_communication?: number;
+  client_avg_fairness?: number;
 }
 
 export interface PostedTask {
@@ -87,9 +96,14 @@ export interface Booking {
   quote_price?: number;
   rating?: number; 
   review?: string;
+  worker_communication_rating?: number;
+  worker_quality_rating?: number;
+  worker_punctuality_rating?: number;
   is_punctual?: boolean;
   client_rating?: number; 
   client_review?: string;
+  client_communication_rating?: number;
+  client_fairness_rating?: number;
   profiles?: Profile; 
 }
 

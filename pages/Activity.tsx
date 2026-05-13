@@ -23,12 +23,17 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [completingBooking, setCompletingBooking] = useState<any>(null);
   const [rating, setRating] = useState(5);
+  const [communicationRating, setCommunicationRating] = useState(5);
+  const [qualityRating, setQualityRating] = useState(5);
+  const [punctualityRating, setPunctualityRating] = useState(5);
   const [review, setReview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Worker-to-Client Rating Modal State
   const [showWorkerRatingModal, setShowWorkerRatingModal] = useState(false);
   const [ratingToClient, setRatingToClient] = useState(5);
+  const [clientCommunicationRating, setClientCommunicationRating] = useState(5);
+  const [clientFairnessRating, setClientFairnessRating] = useState(5);
   const [reviewToClient, setReviewToClient] = useState('');
 
   const fetchActivity = useCallback(async () => {
@@ -108,6 +113,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const handleOpenCompleteModal = (item: any) => {
       setCompletingBooking(item);
       setRating(5);
+      setCommunicationRating(5);
+      setQualityRating(5);
+      setPunctualityRating(5);
       setReview('');
       setShowCompleteModal(true);
   };
@@ -115,6 +123,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const handleOpenWorkerRatingModal = (item: any) => {
       setCompletingBooking(item);
       setRatingToClient(5);
+      setClientCommunicationRating(5);
+      setClientFairnessRating(5);
       setReviewToClient('');
       setShowWorkerRatingModal(true);
   };
@@ -134,6 +144,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
               .update({ 
                   status: 'completed',
                   rating: rating,
+                  worker_communication_rating: communicationRating,
+                  worker_quality_rating: qualityRating,
+                  worker_punctuality_rating: punctualityRating,
                   review: review.trim()
               })
               .eq('id', completingBooking.id);
@@ -166,6 +179,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
               .from('bookings')
               .update({ 
                   client_rating: ratingToClient,
+                  client_communication_rating: clientCommunicationRating,
+                  client_fairness_rating: clientFairnessRating,
                   client_review: reviewToClient.trim()
               })
               .eq('id', completingBooking.id);
@@ -267,14 +282,42 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     </div>
 
                     <div className="space-y-6 pt-4">
-                        <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-3">Rate {completingBooking?.profiles?.full_name.split(' ')[0]}'s Service</p>
-                            <div className="flex justify-center gap-4">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <button key={star} onClick={() => setRating(star)} className={`text-3xl transition-all active:scale-125 ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
-                                        <i className="fa-solid fa-star"></i>
-                                    </button>
-                                ))}
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-1">Overall Satisfaction</p>
+                                <div className="flex justify-center gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button key={star} onClick={() => setRating(star)} className={`text-2xl transition-all active:scale-125 ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
+                                            <i className="fa-solid fa-star"></i>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide text-center mb-1">Communication</p>
+                                    <div className="flex justify-center gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button key={star} onClick={() => setCommunicationRating(star)} className={`text-lg ${star <= communicationRating ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'}`}><i className="fa-solid fa-star"></i></button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide text-center mb-1">Quality of Work</p>
+                                    <div className="flex justify-center gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button key={star} onClick={() => setQualityRating(star)} className={`text-lg ${star <= qualityRating ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'}`}><i className="fa-solid fa-star"></i></button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide text-center mb-1">Punctuality (On Time)</p>
+                                    <div className="flex justify-center gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button key={star} onClick={() => setPunctualityRating(star)} className={`text-lg ${star <= punctualityRating ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'}`}><i className="fa-solid fa-star"></i></button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -312,14 +355,36 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-gray-50 dark:bg-gray-900 p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 text-center">
-                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-4">How was working with {completingBooking?.profiles?.full_name}?</p>
-                        <div className="flex justify-center gap-4">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button key={star} onClick={() => setRatingToClient(star)} className={`text-3xl transition-all active:scale-125 ${star <= ratingToClient ? 'text-blue-500 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
-                                    <i className="fa-solid fa-star"></i>
-                                </button>
-                            ))}
+                    <div className="bg-gray-50 dark:bg-gray-900 p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 space-y-4">
+                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 text-center">How was working with {completingBooking?.profiles?.full_name}?</p>
+                        
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-1">Overall Experience</p>
+                            <div className="flex justify-center gap-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button key={star} onClick={() => setRatingToClient(star)} className={`text-2xl transition-all active:scale-125 ${star <= ratingToClient ? 'text-blue-500 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`}>
+                                        <i className="fa-solid fa-star"></i>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide text-center mb-1">Communication</p>
+                                <div className="flex justify-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button key={star} onClick={() => setClientCommunicationRating(star)} className={`text-lg ${star <= clientCommunicationRating ? 'text-blue-500' : 'text-gray-200 dark:text-gray-700'}`}><i className="fa-solid fa-star"></i></button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide text-center mb-1">Fairness/Respect</p>
+                                <div className="flex justify-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button key={star} onClick={() => setClientFairnessRating(star)} className={`text-lg ${star <= clientFairnessRating ? 'text-blue-500' : 'text-gray-200 dark:text-gray-700'}`}><i className="fa-solid fa-star"></i></button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
