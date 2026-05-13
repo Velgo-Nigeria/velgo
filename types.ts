@@ -80,6 +80,7 @@ export interface PostedTask {
   longitude?: number;
   status: TaskStatus;
   urgency: TaskUrgency;
+  due_date?: string;
   assigned_worker_id?: string;
   category: string;
   subcategory?: string;

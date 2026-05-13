@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS posted_tasks (
   longitude DOUBLE PRECISION,
   status TEXT CHECK (status IN ('open', 'assigned', 'completed')) DEFAULT 'open',
   urgency TEXT CHECK (urgency IN ('normal', 'urgent', 'emergency')) DEFAULT 'normal',
+  due_date TIMESTAMP WITH TIME ZONE,
   assigned_worker_id UUID REFERENCES profiles(id),
   category TEXT NOT NULL,
   subcategory TEXT,

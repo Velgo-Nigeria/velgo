@@ -15,6 +15,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [category, setCategory] = useState(Object.keys(CATEGORY_MAP)[0]);
   const [subcategory, setSubcategory] = useState('');
   const [urgency, setUrgency] = useState('normal');
+  const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -103,6 +104,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         category,
         subcategory,
         urgency,
+        due_date: dueDate ? dueDate : null,
         image_url: imageUrl
       }]);
 
@@ -181,7 +183,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   contents: {
                       parts: [
                           { inlineData: { mimeType: 'audio/webm', data: base64data } },
-                          { text: "Extract job details into JSON: title, description (detailed), budget (number), urgency (normal/urgent/emergency), state (Nigeria), lga (Nigeria), category. Map vague inputs to the nearest valid Nigerian State/LGA and Category." }
+                          { text: "Extract job details into JSON: title, description (detailed), budget (number), urgency (normal/urgent/emergency), due_date (YYYY-MM-DDTHH:mm), state (Nigeria), lga (Nigeria), category. Map vague inputs to the nearest valid Nigerian State/LGA and Category." }
                       ]
                   },
                   config: {
@@ -193,6 +195,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                               description: { type: Type.STRING },
                               budget: { type: Type.INTEGER },
                               urgency: { type: Type.STRING },
+                              due_date: { type: Type.STRING },
                               state: { type: Type.STRING },
                               lga: { type: Type.STRING },
                               category: { type: Type.STRING }
@@ -207,6 +210,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   if (data.description) setDescription(data.description);
                   if (data.budget) setBudget(data.budget.toString());
                   if (data.urgency && ['normal', 'urgent', 'emergency'].includes(data.urgency.toLowerCase())) setUrgency(data.urgency.toLowerCase());
+                  if (data.due_date) setDueDate(data.due_date);
                   
                   if (data.category && CATEGORY_MAP[data.category]) {
                       setCategory(data.category);
@@ -347,6 +351,11 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                </button>
              ))}
            </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Due Date (Optional)</label>
+          <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 text-gray-700" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

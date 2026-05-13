@@ -281,9 +281,16 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
         </div>
         
         <div className="absolute bottom-6 left-6 right-6 text-white z-20">
-            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${task.urgency === 'emergency' ? 'bg-red-500' : 'bg-brand'}`}>
-                {task.urgency}
-            </span>
+            <div className="flex gap-2">
+                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${task.urgency === 'emergency' ? 'bg-red-500' : 'bg-brand'}`}>
+                    {task.urgency}
+                </span>
+                {task.due_date && (
+                    <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-900 border border-gray-700/50 flex items-center gap-1 text-gray-200">
+                        <i className="fa-regular fa-calendar"></i> Due: {new Date(task.due_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                )}
+            </div>
             <h1 className="text-3xl font-black mt-3 leading-tight shadow-sm drop-shadow-md">{task.title}</h1>
             <div className="flex items-center gap-2 mt-2 opacity-90 text-sm font-bold">
                 <i className="fa-solid fa-location-dot text-brand-light"></i> {task.location}
