@@ -92,7 +92,7 @@ export interface Booking {
   id: string;
   client_id: string;
   worker_id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  status: 'pending' | 'accepted' | 'completed' | 'cancelled' | 'declined';
   task_id?: string;
   created_at: string;
   quote_price?: number;

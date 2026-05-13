@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   client_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   worker_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   task_id UUID REFERENCES posted_tasks(id) ON DELETE SET NULL,
-  status TEXT CHECK (status IN ('pending', 'accepted', 'completed', 'cancelled')) DEFAULT 'pending',
+  status TEXT CHECK (status IN ('pending', 'accepted', 'completed', 'cancelled', 'declined')) DEFAULT 'pending',
   quote_price INTEGER,
   rating INTEGER,
   review TEXT,
@@ -120,6 +120,18 @@ BEGIN
   IF NEW.status = 'accepted' AND OLD.status = 'pending' THEN
     UPDATE profiles SET task_count = task_count + 1 WHERE id = NEW.worker_id;
     UPDATE profiles SET task_count = task_count + 1 WHERE id = NEW.client_id;
+    
+    IF NEW.task_id IS NOT NULL THEN
+      UPDATE bookings 
+      SET status = 'declined' 
+      WHERE task_id = NEW.task_id 
+        AND id != NEW.id 
+        AND status = 'pending';
+        
+      UPDATE posted_tasks
+      SET status = 'assigned', assigned_worker_id = NEW.worker_id
+      WHERE id = NEW.task_id AND status = 'open';
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -129,19 +141,6 @@ CREATE TRIGGER trg_increment_task_count
 AFTER UPDATE ON bookings
 FOR EACH ROW
 EXECUTE FUNCTION handle_task_count_on_acceptance();
-
-CREATE OR REPLACE FUNCTION handle_task_count_on_post()
-RETURNS TRIGGER AS $$
-BEGIN
-  UPDATE profiles SET task_count = task_count + 1 WHERE id = NEW.client_id;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_increment_on_post
-AFTER INSERT ON posted_tasks
-FOR EACH ROW
-EXECUTE FUNCTION handle_task_count_on_post();
 
 -- 4. RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;

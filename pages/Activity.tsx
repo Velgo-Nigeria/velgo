@@ -221,7 +221,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   // Helper to determine what to show in the list
   const currentItems = activeTab === 'requests' ? bookings.filter(b => b.status === 'pending').concat(tasks.filter(t => t.status === 'open')) 
                      : activeTab === 'ongoing' ? bookings.filter(b => b.status === 'accepted').concat(tasks.filter(t => t.status === 'assigned'))
-                     : bookings.filter(b => ['completed', 'cancelled'].includes(b.status)).concat(tasks.filter(t => t.status === 'completed'));
+                     : bookings.filter(b => ['completed', 'cancelled', 'declined'].includes(b.status)).concat(tasks.filter(t => t.status === 'completed'));
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
