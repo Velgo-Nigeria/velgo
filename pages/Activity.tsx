@@ -588,7 +588,24 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         </div>
                     )}
                 </div>
-            )}) : <div className="col-span-full text-center py-20 flex flex-col items-center opacity-30"><i className="fa-solid fa-cloud text-6xl text-gray-200 mb-6"></i><p className="text-gray-400 text-[10px] font-black uppercase tracking-[5px]">No Gigs in this tab</p></div>}
+            )}) : (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 px-6 text-gray-400 text-center">
+                    <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                        <i className="fa-solid fa-cloud text-2xl"></i>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-300 text-xs font-bold mb-2">No Gigs in this tab</p>
+                    
+                    {profile?.role === 'worker' ? (
+                        <p className="text-[11px] max-w-[200px] leading-relaxed">
+                            Looking for work? Head over to the Home tab to browse available jobs, or enhance your profile to rank higher.
+                        </p>
+                    ) : (
+                        <p className="text-[11px] max-w-[200px] leading-relaxed">
+                            Need something done? Head over to the Home tab to post a new task or hire a worker directly.
+                        </p>
+                    )}
+                </div>
+            )}
           </div>
         }
       </div>

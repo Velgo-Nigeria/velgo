@@ -113,7 +113,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
             if (selectedLGA !== 'All') query = query.eq('lga', selectedLGA);
-            if (searchTerm) query = query.ilike('full_name', `%${searchTerm}%`);
+            if (searchTerm) query = query.or(`full_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,subcategory.ilike.%${searchTerm}%`);
         } else {
             query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
             if (category !== 'All') query = query.eq('category', category);
@@ -392,10 +392,27 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                   <p className="text-[10px] font-black uppercase tracking-[3px]">Loading...</p>
               </div>
           ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-300 space-y-4 text-center">
-                  <i className="fa-solid fa-wind text-4xl"></i>
-                  <p className="text-[10px] font-black uppercase tracking-[3px]">No results found</p>
-                  <button onClick={clearFilters} className="text-brand text-xs font-bold underline">Clear Filters</button>
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-gray-400 space-y-4 text-center">
+                  <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-2">
+                      <i className="fa-solid fa-wind text-2xl"></i>
+                  </div>
+                  <p className="text-xs font-bold text-gray-600 dark:text-gray-300">No {viewMode === 'market' ? 'workers' : 'jobs'} found here.</p>
+                  
+                  {selectedLGA !== 'All' ? (
+                      <div className="space-y-3 flex flex-col items-center">
+                          <p className="text-[11px] max-w-[200px] leading-relaxed">There are currently no matches in <b>{selectedLGA}</b>.</p>
+                          <button onClick={() => setSelectedLGA('All')} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                              Broaden to whole {selectedState}
+                          </button>
+                      </div>
+                  ) : (
+                      <div className="space-y-3 flex flex-col items-center">
+                          <p className="text-[11px] max-w-[200px] leading-relaxed">Check back later or adjust your filters.</p>
+                          <button onClick={clearFilters} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                              Clear Filters
+                          </button>
+                      </div>
+                  )}
               </div>
           ) : (
               items.map((item) => (
