@@ -2,9 +2,14 @@
 DROP TRIGGER IF EXISTS trg_increment_on_post ON posted_tasks;
 DROP FUNCTION IF EXISTS handle_task_count_on_post();
 
--- 2. Update the check constraint to allow 'declined'
+-- 2. Update the booking_status ENUM (if applicable) and constraints
+-- We will catch 'booking_status does not exist' if it doesn't, but usually it works.
+ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'declined';
+
 ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
-ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'completed', 'cancelled', 'declined'));
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check1;
+-- Just in case it's a text check on some instances (casting to text to avoid enum mismatch):
+ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status::text IN ('pending', 'accepted', 'completed', 'cancelled', 'declined'));
 
 -- 3. Replace the booking acceptance trigger
 CREATE OR REPLACE FUNCTION handle_task_count_on_acceptance()
