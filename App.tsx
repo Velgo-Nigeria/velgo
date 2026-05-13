@@ -69,6 +69,7 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{msg: string, type: 'info'|'success'|'alert'} | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const viewRef = useRef(view);
   const hasLoadedProfileRef = useRef(false);
@@ -76,6 +77,17 @@ const App: React.FC = () => {
   useEffect(() => { 
     viewRef.current = view; 
   }, [view]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const applyTheme = (mode: string) => {
@@ -220,8 +232,14 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 flex flex-col md:flex-row overflow-x-hidden">
+        {!isOnline && (
+          <div className="fixed top-0 left-0 right-0 z-[100] bg-[#FF3B30] text-white text-center py-2 px-4 text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-2 shadow-lg backdrop-blur-md bg-opacity-90">
+            <i className="fa-solid fa-triangle-exclamation"></i>
+            Offline Mode
+          </div>
+        )}
         {session && profile && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
-            <aside className="hidden md:flex flex-col w-72 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 p-6 bg-white dark:bg-gray-900 z-50">
+            <aside className={`hidden md:flex flex-col w-72 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 p-6 bg-white dark:bg-gray-900 z-40 ${!isOnline ? 'pt-14' : ''}`}>
                 <div className="mb-10 pl-2"><VelgoLogo /></div>
                 <nav className="space-y-3 flex-1">
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navigate('home')} />
@@ -231,7 +249,7 @@ const App: React.FC = () => {
                 </nav>
             </aside>
         )}
-        <main className={`flex-1 w-full relative ${session ? 'max-w-md mx-auto md:max-w-none md:mx-0' : 'w-full'}`}>
+        <main className={`flex-1 w-full relative ${session ? 'max-w-md mx-auto md:max-w-none md:mx-0' : 'w-full'} ${!isOnline ? 'pt-8' : ''}`}>
           <div className={`${session ? 'md:max-w-6xl md:mx-auto md:p-6 md:pb-12' : 'w-full'}`}>
             {/* Suspense Wrapper handles the loading state for lazy components */}
             <Suspense fallback={<PageSkeleton />}>
