@@ -66,6 +66,7 @@ export interface Profile {
   client_avg_rating?: number;
   client_avg_communication?: number;
   client_avg_fairness?: number;
+  profile_score?: number;
 }
 
 export interface PostedTask {

@@ -108,7 +108,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     try {
         let query;
         if (isFetchingWorkers) {
-            query = supabase.from('profiles').select('*').eq('role', 'worker');
+            query = supabase.from('profiles').select('*').eq('role', 'worker').order('profile_score', { ascending: false, nullsFirst: false });
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);

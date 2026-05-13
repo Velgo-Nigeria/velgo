@@ -57,6 +57,16 @@ export interface Profile {
   emergency_contact_phone?: string;
   theme_mode?: 'light' | 'dark' | 'auto';
   notification_preferences?: NotificationPreferences;
+  worker_rating_count?: number;
+  worker_avg_rating?: number;
+  worker_avg_communication?: number;
+  worker_avg_quality?: number;
+  worker_avg_punctuality?: number;
+  client_rating_count?: number;
+  client_avg_rating?: number;
+  client_avg_communication?: number;
+  client_avg_fairness?: number;
+  profile_score?: number;
 }
 
 export interface PostedTask {

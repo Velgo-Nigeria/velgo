@@ -157,37 +157,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
 
           <p className="text-sm text-gray-500 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory} available in ${worker?.address}.`}</p>
           
-          {/* Trust Badges */}
-          <div className="flex flex-wrap gap-2">
-              {(worker?.worker_rating_count || reviewCount) >= 10 && (
-                  <div className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-purple-100">
-                      <i className="fa-solid fa-award text-sm"></i>
-                      <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Top Rated Pro</p>
-                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Highly reliable</p>
-                      </div>
-                  </div>
-              )}
-              {worker?.worker_avg_punctuality && worker.worker_avg_punctuality >= 4.5 && (
-                  <div className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-blue-100">
-                      <i className="fa-solid fa-clock-rotate-left text-sm"></i>
-                      <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Always on Time</p>
-                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Punctual worker</p>
-                      </div>
-                  </div>
-              )}
-              {worker?.worker_avg_quality && worker.worker_avg_quality >= 4.5 && (
-                  <div className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-orange-100">
-                      <i className="fa-solid fa-gem text-sm"></i>
-                      <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Premium Quality</p>
-                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Exceptional work</p>
-                      </div>
-                  </div>
-              )}
-          </div>
-
           {/* Detailed Performance Metrics */}
           {(worker?.worker_rating_count || reviewCount) > 0 && (
               <div className="bg-white dark:bg-gray-800 border-2 border-gray-50 dark:border-gray-700 rounded-3xl p-5 space-y-4 shadow-sm">
@@ -225,6 +194,42 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                           </div>
                       </div>
                   </div>
+
+                  {/* Trust Badges */}
+                  {(worker?.worker_rating_count || reviewCount) >= 10 || (worker?.worker_avg_punctuality && worker.worker_avg_punctuality >= 4.5) || (worker?.worker_avg_quality && worker.worker_avg_quality >= 4.5) ? (
+                      <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-700">
+                          <h3 className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3">Earned Badges</h3>
+                          <div className="flex flex-wrap gap-2">
+                              {(worker?.worker_rating_count || reviewCount) >= 10 && (
+                                  <div className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-purple-100 dark:bg-purple-900/10 dark:border-purple-800/30">
+                                      <i className="fa-solid fa-award text-sm"></i>
+                                      <div>
+                                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Top Rated Pro</p>
+                                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Highly reliable</p>
+                                      </div>
+                                  </div>
+                              )}
+                              {worker?.worker_avg_punctuality && worker.worker_avg_punctuality >= 4.5 && (
+                                  <div className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800/30">
+                                      <i className="fa-solid fa-clock-rotate-left text-sm"></i>
+                                      <div>
+                                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Always on Time</p>
+                                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Punctual worker</p>
+                                      </div>
+                                  </div>
+                              )}
+                              {worker?.worker_avg_quality && worker.worker_avg_quality >= 4.5 && (
+                                  <div className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl flex items-center gap-2 border border-orange-100 dark:bg-orange-900/10 dark:border-orange-800/30">
+                                      <i className="fa-solid fa-gem text-sm"></i>
+                                      <div>
+                                          <p className="text-[9px] font-black uppercase tracking-widest leading-none">Premium Quality</p>
+                                          <p className="text-[8px] font-medium opacity-80 mt-0.5">Exceptional work</p>
+                                      </div>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  ) : null}
               </div>
           )}
           

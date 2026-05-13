@@ -193,6 +193,47 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             )}
         </div>
 
+        {isWorker && (
+            <div className="bg-gradient-to-br from-brand/5 to-brand/10 dark:from-brand/10 dark:to-brand/20 border border-brand/20 rounded-[32px] p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-brand tracking-wide uppercase">Your Visibility Score</h3>
+                    <div className="bg-brand text-white px-3 py-1 rounded-full text-xs font-black">
+                        {(profile?.profile_score || 0).toFixed(0)} Pts
+                    </div>
+                </div>
+                
+                <p className="text-xs text-gray-600 dark:text-gray-300 font-medium leading-relaxed">
+                    A higher score means you appear higher in search results. Higher-scoring accounts get more views and book more jobs.
+                </p>
+
+                <div className="space-y-3 pt-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">How to Boost Your Rank:</h4>
+                    <ul className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+                        <li className="flex items-center gap-2">
+                            <i className={`fa-solid ${profile?.is_verified ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
+                            <span className={profile?.is_verified ? 'line-through opacity-60' : ''}>Verify your ID (+20 Pts)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <i className={`fa-solid ${(profile?.bank_name && profile?.account_number) ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
+                            <span className={(profile?.bank_name && profile?.account_number) ? 'line-through opacity-60' : ''}>Add bank details (+10 Pts)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <i className={`fa-solid ${(profile?.avatar_url && profile?.bio) ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
+                            <span className={(profile?.avatar_url && profile?.bio) ? 'line-through opacity-60' : ''}>Complete Bio & Avatar (+10 Pts)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <i className={`fa-solid ${['pro', 'enterprise'].includes(profile?.subscription_tier || '') ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
+                            <span className={['pro', 'enterprise'].includes(profile?.subscription_tier || '') ? 'line-through opacity-60' : ''}>Upgrade to Pro/Enterprise Tier (Up to +25 Pts)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <i className="fa-solid fa-star text-yellow-400 w-4 text-center"></i>
+                            <span>Maintain 5-Star Ratings & Badges (Up to +50 Pts)</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        )}
+
         {/* User Reputation & Metrics */}
         <div className="space-y-6">
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">My Reputation</h3>
