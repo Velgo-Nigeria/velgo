@@ -64,13 +64,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    
-    // Check Client Limit before Posting
-    const limit = getTierLimit(profile.subscription_tier);
-    if (profile.task_count >= limit) {
-      setShowUpgradeModal(true);
-      return;
-    }
 
     setLoading(true);
     let imageUrl = null;

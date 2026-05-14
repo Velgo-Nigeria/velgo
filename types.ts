@@ -32,7 +32,6 @@ export interface Profile {
   role: UserRole;
   client_type?: ClientType;
   subscription_tier: SubscriptionTier;
-  task_count: number;
   bank_name?: string;
   account_number?: string;
   account_name?: string;

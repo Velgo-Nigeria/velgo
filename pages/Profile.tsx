@@ -166,8 +166,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             
             <div className="mt-4 text-center">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">{profile?.full_name}</h2>
-                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
-                    {profile?.role} • {profile?.subscription_tier}
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-2 flex items-center justify-center gap-2">
+                    <span>{profile?.role}</span>
+                    <span>•</span>
+                    <span>{profile?.subscription_tier}</span>
+                    <span>•</span>
+                    <span className="text-brand flex items-center gap-1 bg-brand/10 px-2 py-1 rounded-md">
+                        <i className="fa-solid fa-coins"></i> {profile?.tokens || 0}
+                    </span>
                 </p>
                 {profile?.is_verified && (
                     <div className="mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">

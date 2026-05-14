@@ -107,11 +107,16 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
     if (!profile) return;
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 30);
+    
+    const addedTokens = TIERS.find(t => t.id === tier)?.limit || 0;
 
+    // 1. Add tokens securely
+    await supabase.rpc('add_tokens', { p_user_id: profile.id, p_amount: addedTokens });
+
+    // 2. Update the tier and badge (Valid for 30 days)
     const { error } = await supabase.from('profiles').update({ 
       subscription_tier: tier, 
       is_verified: true,
-      task_count: 0, 
       subscription_end_date: endDate.toISOString()
     }).eq('id', profile.id);
     

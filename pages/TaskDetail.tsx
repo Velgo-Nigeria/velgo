@@ -93,15 +93,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   const handleApply = async () => {
       if (!profile || !task) return;
       
-      // Check Worker Limit
-      if (profile.role === 'worker') {
-         const limit = getTierLimit(profile.subscription_tier);
-         if (profile.task_count >= limit) {
-             setShowUpgradeModal(true);
-             return;
-         }
-      }
-      
       setApplying(true);
       
       const { error } = await supabase.from('bookings').insert({

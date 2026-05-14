@@ -29,6 +29,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [review, setReview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Upgrade Modal State
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   // Worker-to-Client Rating Modal State
   const [showWorkerRatingModal, setShowWorkerRatingModal] = useState(false);
   const [ratingToClient, setRatingToClient] = useState(5);
@@ -47,7 +50,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         .select(`
           *, 
           profiles:${partnerColumn}(
-            id, full_name, avatar_url, subscription_tier, task_count, 
+            id, full_name, avatar_url, subscription_tier, 
             bank_name, account_number, account_name
           ), 
           posted_tasks:task_id(title, description, budget)
@@ -72,25 +75,23 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const updateBookingStatus = async (booking: any, newStatus: string) => {
     if (!profile) return;
     try {
-        // --- LIMIT CHECKING LOGIC ---
         if (newStatus === 'accepted') {
-            const limit = getTierLimit(profile.subscription_tier);
-            
-            // 1. Worker accepting a Direct Booking (No Task ID)
-            if (profile.role === 'worker' && !booking.task_id) {
-                if (profile.task_count >= limit) { onUpgrade(); return; }
+            const { error } = await supabase.rpc('accept_booking_with_token', { 
+                p_booking_id: booking.id, 
+                p_user_id: profile.id 
+            });
+            if (error) {
+                if (error.message.includes('INSUFFICIENT_TOKENS')) {
+                    setShowUpgradeModal(true);
+                    return;
+                } else {
+                    throw error;
+                }
             }
-            
-            // 2. Client accepting a Job Application (Has Task ID)
-            // Client pays 1 credit for hiring
-            if (profile.role === 'client' && booking.task_id) {
-                if (profile.task_count >= limit) { onUpgrade(); return; }
-            }
+        } else {
+            const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+            if (error) throw error;
         }
-
-        // --- UPDATE LOGIC ---
-        const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
-        if (error) throw error;
 
         // Auto-assign Task if Client accepts Application
         if (newStatus === 'accepted' && booking.task_id && profile.role === 'client') {
@@ -105,7 +106,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
             if (taskError) console.error("Failed to auto-assign task:", taskError.message);
         }
 
-        if (newStatus === 'accepted') onRefreshProfile();
+        if (newStatus === 'accepted' && onRefreshProfile) onRefreshProfile(); // Refresh profile to show deducted tokens
         fetchActivity();
     } catch (err: any) { alert("Action failed: " + err.message); }
   };
@@ -608,6 +609,36 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
             )}
           </div>
         }
+        
+        {/* Upgrade / Token Refill Modal */}
+        {showUpgradeModal && (
+            <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 mb-4">
+                <i className="fa-solid fa-coins text-2xl"></i>
+                </div>
+                <h3 className="text-xl font-black text-gray-900 leading-tight">Out of Tokens!</h3>
+                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                You need a Token to accept this job. Please buy a refill pack to continue.
+                </p>
+                <div className="pt-2 flex flex-col gap-3">
+                <button 
+                    onClick={() => { setShowUpgradeModal(false); onUpgrade(); }} 
+                    className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:bg-brand-dark active:scale-95 transition-all text-[11px]"
+                >
+                    Buy Tokens
+                </button>
+                <button 
+                    onClick={() => setShowUpgradeModal(false)} 
+                    className="w-full text-gray-400 py-3 font-black uppercase tracking-widest hover:text-gray-600 transition-colors text-[10px]"
+                >
+                    Cancel
+                </button>
+                </div>
+            </div>
+            </div>
+        )}
+
       </div>
     </div>
   );

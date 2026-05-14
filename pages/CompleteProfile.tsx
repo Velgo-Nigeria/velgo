@@ -60,7 +60,6 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
       client_type: role === 'client' ? clientType : 'personal',
       subscription_tier: 'basic',
       is_verified: false,
-      task_count: 0,
       avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.trim())}&background=10b981&color=fff`,
       updated_at: new Date().toISOString(),
     };

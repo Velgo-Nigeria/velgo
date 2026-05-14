@@ -195,10 +195,13 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       try {
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 30);
+        
+        const addedTokens = TIERS.find(t => t.id === newTier)?.limit || 0;
+        await supabase.rpc('add_tokens', { p_user_id: userId, p_amount: addedTokens });
+
         const { error } = await supabase.from('profiles').update({
             subscription_tier: newTier,
-            subscription_end_date: endDate.toISOString(),
-            task_count: 0 
+            subscription_end_date: endDate.toISOString()
         }).eq('id', userId);
         if (error) throw error;
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription_tier: newTier } : u));

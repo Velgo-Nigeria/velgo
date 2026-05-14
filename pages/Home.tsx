@@ -37,23 +37,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
   const isAdmin = profile?.role === 'admin';
 
-  // Usage Calculation & Animation
-  const usageCount = profile?.task_count || 0;
-  const usageLimit = getTierLimit(profile?.subscription_tier);
-  const rawPercent = Math.min((usageCount / usageLimit) * 100, 100);
-  
-  const [usagePercent, setUsagePercent] = useState(0);
-  
-  // Animate the progress bar on mount/update
-  useEffect(() => {
-    const timer = setTimeout(() => setUsagePercent(rawPercent), 400);
-    return () => clearTimeout(timer);
-  }, [rawPercent]);
-
-  const isHighUsage = rawPercent >= 80;
-  const usageColor = rawPercent >= 100 ? 'bg-red-500' : isHighUsage ? 'bg-yellow-400' : 'bg-brand';
-  const usageStatus = rawPercent >= 100 ? 'Maxed Out' : isHighUsage ? 'Running Low' : 'Active';
-
   const fetchBroadcast = useCallback(async () => {
     if (!profile) return;
     try {
@@ -248,23 +231,11 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className="relative z-10 space-y-4">
                   <div>
                       <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Hello, {firstName}</h2>
-                      <div className="flex items-center gap-2 mt-1">
-                          <span className="inline-flex items-center gap-1.5 bg-brand/10 text-brand px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                      <div className="flex flex-col gap-2 mt-1">
+                          <span className="inline-flex w-fit items-center gap-1.5 bg-brand/10 text-brand px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                               <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse"></div>
                               {profile?.subscription_tier || 'Basic'} • Nigeria Hub Active
                           </span>
-                      </div>
-                  </div>
-
-                  <div>
-                      <div className="flex justify-between items-end mb-2">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Monthly Limit</span>
-                          <span className={`text-[10px] font-black uppercase ${rawPercent >= 100 ? 'text-red-500' : 'text-gray-500'}`}>
-                              {usageCount} / {usageLimit} {profile?.role === 'client' ? 'Hires' : 'Jobs'}
-                          </span>
-                      </div>
-                      <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-1000 ease-out ${usageColor}`} style={{ width: `${usagePercent}%` }}></div>
                       </div>
                   </div>
               </div>

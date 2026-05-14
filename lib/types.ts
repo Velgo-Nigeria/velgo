@@ -32,7 +32,6 @@ export interface Profile {
   role: UserRole;
   client_type?: ClientType;
   subscription_tier: SubscriptionTier;
-  task_count: number;
   bank_name?: string;
   account_number?: string;
   account_name?: string;
@@ -67,6 +66,7 @@ export interface Profile {
   client_avg_communication?: number;
   client_avg_fairness?: number;
   profile_score?: number;
+  tokens?: number;
 }
 
 export interface PostedTask {
