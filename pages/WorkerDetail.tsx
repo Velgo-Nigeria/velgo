@@ -15,12 +15,27 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [page, setPage] = useState(0);
   const reviewsPerPage = 5;
   const [hasMoreReviews, setHasMoreReviews] = useState(true);
+  const [hasRequested, setHasRequested] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any).then(({data}) => setWorker(data));
     
+    // Check if profile has already requested this worker
+    if (profile && profile.role === 'client') {
+        supabase.from('bookings')
+            .select('id')
+            .eq('client_id', profile.id)
+            .eq('worker_id', workerId)
+            .in('status', ['pending', 'accepted', 'assigned'])
+            .maybeSingle()
+            .then(({data}) => {
+                if (data) setHasRequested(true);
+            });
+    }
+
     const fetchRating = async () => {
         const { data: ratingData } = await supabase.from('bookings').select('rating').eq('worker_id', workerId).not('rating', 'is', null);
         if (ratingData && ratingData.length > 0) {
@@ -63,15 +78,21 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
 
   const handleBooking = async () => {
     if (!profile) return;
+    if (hasRequested) return;
 
+    setRequesting(true);
     const { error } = await safeFetch(async () => await supabase.from('bookings').insert([{ client_id: profile.id, worker_id: workerId, status: 'pending' }]));
+    setRequesting(false);
     
     if (!error) { 
       if (profile.role === 'client') {
         if (onRefreshProfile) onRefreshProfile();
       }
+
+      setHasRequested(true);
       alert("Request Sent!"); 
-      onBook(workerId); 
+    } else {
+      alert("Failed to initiate booking: " + error.message);
     }
   };
 
@@ -257,7 +278,19 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
               )}
           </div>
 
-          {profile?.role === 'client' && <button onClick={handleBooking} className="w-full bg-brand text-white py-5 rounded-[28px] font-black shadow-2xl uppercase tracking-widest active:scale-95 transition-transform">INITIATE BOOKING</button>}
+          {profile?.role === 'client' && (
+            <button 
+                onClick={handleBooking} 
+                disabled={hasRequested || requesting}
+                className={`w-full py-5 rounded-[28px] font-black shadow-xl uppercase tracking-widest transition-all ${
+                    hasRequested 
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                        : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
+                }`}
+            >
+                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : 'INITIATE BOOKING'}
+            </button>
+          )}
         </div>
       </div>
     </div>

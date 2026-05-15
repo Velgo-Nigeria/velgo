@@ -107,6 +107,18 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         }
 
         if (newStatus === 'accepted' && onRefreshProfile) onRefreshProfile(); // Refresh profile to show deducted tokens
+
+        if (newStatus === 'accepted') {
+            const partnerId = profile.id === booking.client_id ? booking.worker_id : booking.client_id;
+            const jobText = booking.posted_tasks?.title ? ` on '${booking.posted_tasks.title}'` : "";
+            
+            await supabase.from('messages').insert([{
+                sender_id: profile.id,
+                receiver_id: partnerId,
+                content: `Hello! I have just accepted your request${jobText}.`
+            }]);
+        }
+        
         fetchActivity();
     } catch (err: any) { alert("Action failed: " + err.message); }
   };

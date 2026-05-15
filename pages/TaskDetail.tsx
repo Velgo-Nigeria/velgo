@@ -80,7 +80,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                 .select('id')
                 .eq('task_id', taskId)
                 .eq('worker_id', profile.id)
-                .single();
+                .maybeSingle();
             if (booking) setHasApplied(true);
         }
       }
