@@ -55,6 +55,12 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Review Modal State
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const isAdmin = profile?.role === 'admin' || profile?.email === 'admin.velgo@gmail.com'; 
 
   // Check Push Status on Mount
@@ -113,6 +119,31 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       } catch (err: any) {
           alert(`Failed to delete account.\n\nReason: ${err.message || 'Unknown Error'}`);
           setIsDeleting(false);
+      }
+  };
+
+  const handleSubmitReview = async () => {
+      if (!profile?.is_verified) {
+          alert('You need to be verified to submit an app review.');
+          return;
+      }
+      if (!reviewText.trim()) return;
+
+      setSubmittingReview(true);
+      const { error } = await supabase.from('app_reviews').insert([{
+          user_id: profile.id,
+          rating: reviewRating,
+          review_text: reviewText
+      }]);
+      setSubmittingReview(false);
+
+      if (error) {
+          alert("Error submitting review: " + error.message);
+      } else {
+          alert("Thank you for your review!");
+          setShowReviewModal(false);
+          setReviewText('');
+          setReviewRating(5);
       }
   };
 
@@ -357,6 +388,14 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                      </div>
                      <button onClick={handleClearCache} className="text-[10px] font-black uppercase text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg">Clear Data</button>
                 </div>
+
+                <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                        <i className="fa-solid fa-star text-yellow-400"></i>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Rate Velgo</span>
+                     </div>
+                     <button onClick={() => setShowReviewModal(true)} className="text-[10px] font-black uppercase text-brand bg-brand/10 hover:bg-brand hover:text-white transition-colors px-3 py-1.5 rounded-lg">Review App</button>
+                </div>
             </div>
         </section>
 
@@ -507,6 +546,59 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                               className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50"
                           >
                               {bankSaving ? 'Saving...' : 'Save Details'}
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && (
+          <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
+              <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-6">
+                  <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-black text-gray-900 dark:text-white">Review Velgo</h3>
+                      <button onClick={() => setShowReviewModal(false)} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
+                  </div>
+
+                  {!profile?.is_verified ? (
+                      <div className="text-center py-6 space-y-4">
+                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto text-gray-400 text-2xl">
+                              <i className="fa-solid fa-lock"></i>
+                          </div>
+                          <h4 className="font-bold text-gray-900 dark:text-white">Verification Required</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">You must be a verified user to submit an app review. Please complete your profile verification first.</p>
+                      </div>
+                  ) : (
+                      <div className="space-y-4">
+                          <div className="flex justify-center gap-4 mb-4">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                  <button 
+                                      key={star} 
+                                      type="button"
+                                      onClick={() => setReviewRating(star)}
+                                      className={`text-4xl transition-all duration-200 active:scale-125 ${star <= reviewRating ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]' : 'text-gray-200 dark:text-gray-700'}`}
+                                  >
+                                      <i className="fa-solid fa-star"></i>
+                                  </button>
+                              ))}
+                          </div>
+                          
+                          <textarea 
+                              value={reviewText}
+                              onChange={(e) => setReviewText(e.target.value)}
+                              placeholder="What do you think about Velgo?"
+                              rows={4}
+                              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl p-4 text-sm font-medium outline-none dark:text-white dark:placeholder-gray-400 resize-none focus:ring-2 focus:ring-brand/20 transition-all"
+                          />
+
+                          <button 
+                              onClick={handleSubmitReview}
+                              disabled={submittingReview || !reviewText.trim()}
+                              className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50 active:scale-95 transition-all shadow-xl shadow-brand/20"
+                          >
+                              {submittingReview ? 'Submitting...' : 'Post Review'}
                           </button>
                       </div>
                   )}
