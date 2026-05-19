@@ -14,7 +14,8 @@ interface ActivityProps {
 }
 
 const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onRefreshProfile, onViewTask, onViewWorker }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'ongoing' | 'history'>('requests');
+  const [viewMode, setViewMode] = useState<'working' | 'hiring'>('working');
+  const [statusFilter, setStatusFilter] = useState<'requests' | 'ongoing' | 'history'>('requests');
   const [bookings, setBookings] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,10 +238,21 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     }
   };
 
-  // Helper to determine what to show in the list
-  const currentItems = activeTab === 'requests' ? bookings.filter(b => b.status === 'pending').concat(tasks.filter(t => t.status === 'open')) 
-                     : activeTab === 'ongoing' ? bookings.filter(b => b.status === 'accepted').concat(tasks.filter(t => t.status === 'assigned'))
-                     : bookings.filter(b => ['completed', 'cancelled', 'declined'].includes(b.status)).concat(tasks.filter(t => t.status === 'completed'));
+  // Filter by viewMode first
+  const viewBookings = viewMode === 'hiring' ? bookings.filter(b => b.client_id === profile?.id) : bookings.filter(b => b.worker_id === profile?.id);
+  
+  // Note: For tasks, if viewMode == 'hiring', tasks where user is client.
+  // If viewMode == 'working', tasks where user is assigned_worker.
+  const viewTasks = viewMode === 'hiring' ? tasks.filter(t => t.client_id === profile?.id) : tasks.filter(t => t.assigned_worker_id === profile?.id);
+
+  const currentItems = statusFilter === 'requests' 
+      ? viewBookings.filter(b => b.status === 'pending').concat(viewTasks.filter(t => t.status === 'open')) 
+      : statusFilter === 'ongoing' 
+      ? viewBookings.filter(b => b.status === 'accepted').concat(viewTasks.filter(t => t.status === 'assigned'))
+      : viewBookings.filter(b => ['completed', 'cancelled', 'declined', 'disputed'].includes(b.status)).concat(viewTasks.filter(t => t.status === 'completed' || t.status === 'cancelled'));
+
+  const hiringBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'pending' && b.task_id != null);
+  const workingBadge = bookings.some(b => b.worker_id === profile?.id && b.status === 'pending' && b.task_id == null);
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
@@ -427,24 +439,64 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         </div>
       )}
 
-      <div className="px-6 pt-10 pb-4 border-b border-gray-50 dark:border-gray-800 flex justify-between items-end sticky top-0 bg-white dark:bg-gray-900 z-10">
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white">My Gigs</h1>
+      <div className="px-6 pt-10 pb-4 flex justify-between items-end sticky top-0 bg-white dark:bg-gray-900 z-20">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Gigs</h1>
       </div>
 
-      <div className="px-6 mt-6">
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-[22px] border border-gray-200 dark:border-gray-700">
-            {['requests', 'ongoing', 'history'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-[18px] transition-all ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-brand shadow-lg' : 'text-gray-400 dark:text-gray-500'}`}>{tab}</button>
+      <div className="px-6 sticky top-[72px] bg-white dark:bg-gray-900 z-10 pb-2">
+        {/* Main Tabs: Hiring vs Working */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-[22px] border border-gray-200 dark:border-gray-700 relative">
+            <button 
+                onClick={() => { setViewMode('working'); setStatusFilter('requests'); }} 
+                className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded-[18px] transition-all relative ${viewMode === 'working' ? 'bg-white dark:bg-gray-700 text-brand shadow-lg' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+                Working
+                {workingBadge && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+            </button>
+            <button 
+                onClick={() => { setViewMode('hiring'); setStatusFilter('requests'); }} 
+                className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded-[18px] transition-all relative ${viewMode === 'hiring' ? 'bg-white dark:bg-gray-700 text-brand shadow-lg' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+                Hiring
+                {hiringBadge && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+            </button>
+        </div>
+
+        {/* Sub Filters: Requests, Ongoing, History */}
+        <div className="flex gap-2 mt-4">
+            {['requests', 'ongoing', 'history'].map(filter => (
+                <button 
+                    key={filter} 
+                    onClick={() => setStatusFilter(filter as any)} 
+                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border outline-none ${statusFilter === filter ? 'bg-brand/10 border-brand/20 text-brand shadow-sm' : 'bg-transparent border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'}`}
+                >
+                    {filter}
+                </button>
             ))}
         </div>
       </div>
 
       <div className="p-6 pb-24">
         {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Gigs...</div> :
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
             {currentItems.length > 0 ? currentItems.map(item => {
                 // Logic to identify if item is an Open Task (no worker assigned yet)
                 const isOpenTask = item.budget !== undefined && !item.worker_id; 
+
+                const renderItemTypeLabel = () => {
+                    if (statusFilter === 'history') {
+                        return <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${item.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>{item.status}</span>;
+                    }
+                    if (viewMode === 'hiring') {
+                        if (isOpenTask) return <span className="text-[9px] font-black text-brand uppercase tracking-widest bg-brand/10 px-2 py-0.5 rounded-lg">Job Posted</span>;
+                        if (item.task_id) return <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg">Applicant</span>;
+                        return <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg">Direct Request Sent</span>;
+                    } else {
+                        if (isOpenTask || (item.status === 'assigned' && item.title)) return <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-lg">Assigned Job</span>;
+                        if (item.task_id) return <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg">Application Sent</span>;
+                        return <span className="text-[9px] font-black text-purple-500 uppercase tracking-widest bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-lg">Direct Request Recv</span>;
+                    }
+                };
                 
                 return (
                 <div 
@@ -471,7 +523,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                       <div className="w-16 h-16 rounded-3xl border-2 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shadow-xl overflow-hidden shrink-0">
                           {item.profiles?.avatar_url ? (
                               <img src={item.profiles.avatar_url} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
-                          ) : isOpenTask ? (
+                          ) : (isOpenTask || item.title) ? (
                               <i className="fa-solid fa-briefcase text-brand text-2xl"></i>
                           ) : (
                               <span className="font-black text-gray-300 dark:text-gray-600 text-xl">{(item.profiles?.full_name || item.title || 'U')[0]}</span>
@@ -479,42 +531,38 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                       </div>
                       <div className="flex-1 min-w-0">
                           <h3 className="font-black text-gray-900 dark:text-white text-[15px] truncate tracking-tight">{item.title || item.posted_tasks?.title || 'Direct Request'}</h3>
-                          <div className="flex items-center gap-2">
-                             {isOpenTask ? (
-                                <span className="text-[10px] font-bold text-brand uppercase tracking-widest bg-brand/10 px-2 py-0.5 rounded-lg">Open for Applications</span>
-                             ) : (
-                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{item.profiles?.full_name || 'User'}</span>
-                             )}
-                             {item.status === 'completed' && <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">Completed</span>}
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                             {renderItemTypeLabel()}
+                             {!isOpenTask && <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{item.profiles?.full_name || 'User'}</span>}
                           </div>
                       </div>
                     </div>
 
                     {item.status === 'pending' && (
-                        <div className="w-full relative z-10">
+                        <div className="w-full relative z-10 mt-4">
                             {/* CASE 1: JOB APPLICATION (HAS TASK ID) */}
                             {item.task_id ? (
                                 profile?.id === item.client_id ? (
-                                    // Client View: Accept/Decline Worker's Application
+                                    // Hiring View: Accept/Decline Worker's Application
                                     <div className="flex gap-3">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
                                         >
                                             Decline
                                         </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
-                                            className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                                            className="flex-1 bg-brand text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
                                         >
-                                            Accept
+                                            Hire Worker
                                         </button>
                                     </div>
                                 ) : (
-                                    // Worker View: Withdraw Application
+                                    // Working View: Withdraw Application
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
-                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
                                     >
                                         Withdraw Application
                                     </button>
@@ -522,26 +570,26 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                             ) : (
                                 /* CASE 2: DIRECT BOOKING (NO TASK ID) */
                                 profile?.id === item.worker_id ? (
-                                    // Worker View: Accept/Decline Client's Request
+                                    // Working View: Accept/Decline Client's Request
                                     <div className="flex gap-3">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
                                         >
                                             Decline
                                         </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'accepted'); }} 
-                                            className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
+                                            className="flex-1 bg-brand text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-brand-dark transition-colors"
                                         >
-                                            Accept
+                                            Accept Job
                                         </button>
                                     </div>
                                 ) : (
-                                    // Client View: Cancel Request
+                                    // Hiring View: Cancel Request
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
-                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors"
                                     >
                                         Cancel Request
                                     </button>
