@@ -20,11 +20,10 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [subcategory, setSubcategory] = useState('All');
   const [selectedState, setSelectedState] = useState('All');
   const [selectedLGA, setSelectedLGA] = useState('All');
+  const [jobsSort, setJobsSort] = useState<'latest' | 'urgency' | 'budget'>('latest');
   
   // viewMode: 'jobs' shows tasks, 'market' shows workers
-  // Default for Worker: 'jobs' (Live Jobs)
-  // Default for Client: 'market' (Hire Now)
-  const [viewMode, setViewMode] = useState<'jobs' | 'market'>('market');
+  const [viewMode, setViewMode] = useState<'jobs' | 'market'>('jobs');
   
   // Broadcast State
   const [activeBroadcast, setActiveBroadcast] = useState<Broadcast | null>(null);
@@ -98,7 +97,14 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (selectedLGA !== 'All') query = query.eq('lga', selectedLGA);
             if (searchTerm) query = query.or(`full_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,subcategory.ilike.%${searchTerm}%`);
         } else {
-            query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open').order('created_at', { ascending: false });
+            query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open');
+            
+            if (jobsSort === 'budget') {
+                query = query.order('budget', { ascending: false });
+            } else {
+                query = query.order('created_at', { ascending: false });
+            }
+
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.ilike('location', `%${selectedState}%`);
@@ -107,13 +113,42 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         }
         
         const { data } = await safeFetch<any[]>(async () => await query.limit(50));
-        setItems(data || []);
+        let results = data || [];
+        
+        if (!isFetchingWorkers) {
+            results = results.sort((a, b) => {
+                // Hardcoded Primary Sort: Verified clients first
+                const vA = a.profiles?.is_verified ? 1 : 0;
+                const vB = b.profiles?.is_verified ? 1 : 0;
+                if (vA !== vB) {
+                    return vB - vA;
+                }
+                
+                // Secondary Sort: Based on selected option
+                if (jobsSort === 'urgency') {
+                    const uA = a.urgency === 'urgent' || a.urgency === 'emergency' ? 1 : 0;
+                    const uB = b.urgency === 'urgent' || b.urgency === 'emergency' ? 1 : 0;
+                    if (uA !== uB) {
+                        return uB - uA;
+                    }
+                } else if (jobsSort === 'budget') {
+                    if ((b.budget || 0) !== (a.budget || 0)) {
+                        return (b.budget || 0) - (a.budget || 0);
+                    }
+                }
+                
+                // Fallback to Latest
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+        }
+
+        setItems(results);
     } catch (e) { 
         console.error(e); 
     } finally { 
         setLoading(false); 
     }
-  }, [category, subcategory, selectedState, selectedLGA, profile, viewMode, searchTerm]);
+  }, [category, subcategory, selectedState, selectedLGA, profile, viewMode, searchTerm, jobsSort]);
 
   useEffect(() => { 
     fetchData(); 
@@ -136,6 +171,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     setSelectedState('All');
     setSelectedLGA('All');
     setSearchTerm('');
+    setJobsSort('latest');
   };
 
   const handleStateChange = (state: string) => {
@@ -319,6 +355,18 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                           </select>
                       </div>
                   </div>
+                  
+                  {viewMode === 'jobs' && (
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Sort By</label>
+                          <select value={jobsSort} onChange={e => setJobsSort(e.target.value as any)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white">
+                              <option value="latest">Latest First</option>
+                              <option value="urgency">Urgency (Urgent First)</option>
+                              <option value="budget">Budget (Highest to Lowest)</option>
+                          </select>
+                      </div>
+                  )}
+
                   <button onClick={clearFilters} className="w-full py-3 text-[10px] font-black uppercase text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl">Clear Filters</button>
               </div>
           )}
