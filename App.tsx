@@ -172,6 +172,10 @@ const App: React.FC = () => {
       if (currentSession) {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             fetchProfile(currentSession.user.id, 2, hasLoadedProfileRef.current);
+            if (viewRef.current === 'login' || viewRef.current === 'signup' || viewRef.current === 'landing') {
+                setView('home');
+                window.history.replaceState({ view: 'home', data: null }, '', '');
+            }
         }
       } else {
         setProfile(null);
@@ -193,12 +197,12 @@ const App: React.FC = () => {
     if (!session) {
       switch (view) {
         case 'login': return <Login onToggle={() => navigate('signup')} />;
-        case 'signup': return <SignUp onToggle={() => navigate('login')} initialRole={viewData || 'client'} />;
+        case 'signup': return <SignUp onToggle={() => navigate('login')} />;
         // Wrapped in Suspense just in case, though usually static
         case 'reset-password': return <Suspense fallback={<PageSkeleton />}><ResetPassword onSuccess={() => navigate('login')} onBack={() => handleBackNavigation('login')} /></Suspense>;
         case 'legal': return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         case 'about': return <Suspense fallback={<PageSkeleton />}><About onBack={() => handleBackNavigation('landing')} /></Suspense>;
-        default: return <Landing onGetStarted={(role) => navigate('signup', role)} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
+        default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
       }
     }
 

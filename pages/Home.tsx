@@ -24,7 +24,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   // viewMode: 'jobs' shows tasks, 'market' shows workers
   // Default for Worker: 'jobs' (Live Jobs)
   // Default for Client: 'market' (Hire Now)
-  const [viewMode, setViewMode] = useState<'jobs' | 'market'>(profile?.role === 'worker' ? 'jobs' : 'market');
+  const [viewMode, setViewMode] = useState<'jobs' | 'market'>('market');
   
   // Broadcast State
   const [activeBroadcast, setActiveBroadcast] = useState<Broadcast | null>(null);
@@ -91,7 +91,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     try {
         let query;
         if (isFetchingWorkers) {
-            query = supabase.from('profiles').select('*').eq('role', 'worker').order('profile_score', { ascending: false, nullsFirst: false });
+            query = supabase.from('profiles').select('*').order('profile_score', { ascending: false, nullsFirst: false });
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
@@ -155,15 +155,13 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   return (
     <div className="bg-white dark:bg-[#0f172a] min-h-screen transition-colors duration-200">
       
-      {/* Floating Action Button (Client Only) */}
-      {profile?.role === 'client' && (
-        <button 
-            onClick={onPostTask}
-            className="fixed bottom-24 right-6 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-40 active:scale-90 transition-transform md:hidden animate-fadeIn"
-        >
-            <i className="fa-solid fa-plus text-xl"></i>
-        </button>
-      )}
+      {/* Floating Action Button (Mobile) */}
+      <button 
+          onClick={onPostTask}
+          className="fixed bottom-24 right-6 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-40 active:scale-90 transition-transform md:hidden animate-fadeIn"
+      >
+          <i className="fa-solid fa-plus text-xl"></i>
+      </button>
 
       {/* Insights Modal */}
       {showInsights && (
@@ -242,58 +240,37 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
           </div>
       </div>
 
-      {/* Action Buttons - Compact Horizontal Layout */}
-      <div className="px-6 mt-6 grid grid-cols-2 gap-3">
-          
-          {/* WORKER VIEW BUTTONS */}
-          {profile?.role === 'worker' && (
-              <>
-                <button 
-                    onClick={() => { setViewMode('jobs'); clearFilters(); fetchData(); }} 
-                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'jobs' ? 'bg-brand text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
-                >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'jobs' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                        <i className="fa-solid fa-briefcase text-xs"></i>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Live Jobs</span>
-                </button>
+      {/* Action Buttons - Unified Layout */}
+      <div className="px-6 mt-6 grid grid-cols-3 gap-2">
+          <button 
+              onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
+              className={`py-4 px-2 rounded-[20px] border transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+          >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                  <i className="fa-solid fa-users text-xs"></i>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Talent</span>
+          </button>
 
-                <button 
-                    onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
-                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
-                >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                        <i className="fa-solid fa-ranking-star text-xs"></i>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Top Earners</span>
-                </button>
-              </>
-          )}
+          <button 
+              onClick={() => { setViewMode('jobs'); clearFilters(); fetchData(); }} 
+              className={`py-4 px-2 rounded-[20px] border transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'jobs' ? 'bg-brand text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+          >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'jobs' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                  <i className="fa-solid fa-briefcase text-xs"></i>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Live Jobs</span>
+          </button>
 
-          {/* CLIENT VIEW BUTTONS */}
-          {profile?.role === 'client' && (
-              <>
-                <button 
-                    onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
-                    className={`py-4 px-2 rounded-[20px] border transition-all flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
-                >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Hire Now</span>
-                </button>
-
-                <button 
-                    onClick={onPostTask} 
-                    className="py-4 px-2 rounded-[20px] bg-brand text-white border-transparent shadow-lg flex flex-row items-center justify-center gap-2 relative overflow-hidden group active:scale-95 transition-transform"
-                >
-                    <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
-                        <i className="fa-solid fa-plus text-xs"></i>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Post Job</span>
-                </button>
-              </>
-          )}
+          <button 
+              onClick={onPostTask} 
+              className="py-4 px-2 rounded-[20px] bg-brand text-white border-transparent shadow-lg flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 transition-transform"
+          >
+              <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-plus text-xs"></i>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Post Job</span>
+          </button>
       </div>
 
       {/* Search & Filter */}

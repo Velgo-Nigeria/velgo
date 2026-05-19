@@ -34,7 +34,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
   const [instagram, setInstagram] = useState(profile?.instagram_handle || '');
   const [portfolio, setPortfolio] = useState(profile?.portfolio_url || '');
 
-  const isWorker = profile?.role === 'worker';
+  const isWorker = true; // All users are essentially both workers and clients now
 
   useEffect(() => {
     // Reset LGA if state changes and current LGA is invalid for new state
@@ -167,8 +167,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             <div className="mt-4 text-center">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">{profile?.full_name}</h2>
                 <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-2 flex items-center justify-center gap-2">
-                    <span>{profile?.role}</span>
-                    <span>•</span>
                     <span>{profile?.subscription_tier}</span>
                     <span>•</span>
                     <span className="text-brand flex items-center gap-1 bg-brand/10 px-2 py-1 rounded-md">

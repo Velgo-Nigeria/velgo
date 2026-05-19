@@ -1,8 +1,6 @@
 
-export type UserRole = 'client' | 'worker' | 'admin';
-export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
-export type ClientType = 'personal' | 'enterprise';
-export type TaskStatus = 'open' | 'assigned' | 'completed';
+export type UserRole = 'user' | 'admin';
+export type TaskStatus = 'open' | 'assigned' | 'completed' | 'cancelled';
 export type TaskUrgency = 'normal' | 'urgent' | 'emergency';
 export type DisputeStatus = 'pending' | 'resolved' | 'dismissed';
 
@@ -19,7 +17,7 @@ export interface Broadcast {
   admin_id: string;
   title: string;
   message: string;
-  target_role: 'all' | 'worker' | 'client';
+  target_role: 'all' | 'worker' | 'client' | 'user';
   created_at: string;
   expires_at?: string;
 }
@@ -28,10 +26,9 @@ export interface Profile {
   id: string;
   email?: string;
   full_name: string;
-  phone_number: string;
+  phone_number?: string;
   role: UserRole;
-  client_type?: ClientType;
-  subscription_tier: SubscriptionTier;
+  tokens: number;
   bank_name?: string;
   account_number?: string;
   account_name?: string;
@@ -41,8 +38,7 @@ export interface Profile {
   latitude?: number;
   longitude?: number;
   bio?: string;
-  service_title?: string;
-  starting_price?: number;
+  hourly_rate?: number;
   avatar_url?: string;
   nin_image_url?: string;
   instagram_handle?: string;
@@ -50,22 +46,17 @@ export interface Profile {
   is_verified: boolean;
   category?: string;
   subcategory?: string;
-  last_reset_date: string;
-  subscription_end_date?: string;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
   theme_mode?: 'light' | 'dark' | 'auto';
   notification_preferences?: NotificationPreferences;
-  worker_rating_count?: number;
-  worker_avg_rating?: number;
-  worker_avg_communication?: number;
-  worker_avg_quality?: number;
-  worker_avg_punctuality?: number;
-  client_rating_count?: number;
-  client_avg_rating?: number;
-  client_avg_communication?: number;
-  client_avg_fairness?: number;
-  profile_score?: number;
+  
+  task_count: number;
+  job_count: number;
+  rating_count: number;
+  avg_rating: number;
+  avg_communication: number;
+  avg_quality: number;
+  avg_punctuality: number;
+  profile_score: number;
 }
 
 export interface PostedTask {

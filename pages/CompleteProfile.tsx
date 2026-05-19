@@ -13,7 +13,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
   const metadata = session.user.user_metadata || {};
 
   // Initialize state from session metadata if available
-  const [role, setRole] = useState<UserRole>(metadata.role || 'client');
+  const [role, setRole] = useState<UserRole>(metadata.role || 'user');
   const [clientType, setClientType] = useState<ClientType>(metadata.client_type || 'personal');
   const [fullName, setFullName] = useState(metadata.full_name || '');
   const [phone, setPhone] = useState(metadata.phone_number || '');
@@ -51,23 +51,35 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
       }
     }
 
-    const updates = {
-      id: session.user.id,
-      email: session.user.email,
+    const updates: any = {
       full_name: fullName.trim(),
       phone_number: cleanPhone,
-      role: role,
-      client_type: role === 'client' ? clientType : 'personal',
-      subscription_tier: 'basic',
-      is_verified: false,
-      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.trim())}&background=10b981&color=fff`,
-      updated_at: new Date().toISOString(),
+      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.trim())}&background=10b981&color=fff`
     };
 
-    const { error } = await supabase.from('profiles').upsert(updates);
+    // First check if profile exists to decide between update or insert
+    const { data: existingProfile } = await supabase.from('profiles').select('id, role').eq('id', session.user.id).maybeSingle();
+    
+    let dbError;
+    if (existingProfile) {
+       // If the existing user somehow doesn't have a role, enforce 'user'
+       if (!existingProfile.role) {
+         updates.role = 'user';
+       }
+       const { error } = await supabase.from('profiles').update(updates).eq('id', session.user.id);
+       dbError = error;
+    } else {
+       const { error } = await supabase.from('profiles').insert({
+         ...updates,
+         id: session.user.id,
+         email: session.user.email,
+         is_verified: false
+       });
+       dbError = error;
+    }
 
-    if (error) {
-      console.error("Profile Sync Error:", error);
+    if (dbError) {
+      console.error("Profile Sync Error:", dbError);
       // If auto-complete fails, fall back to manual form so user isn't stuck
       if (isAuto) {
         setIsAutoCompleting(false);
@@ -110,36 +122,11 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && <div className="p-4 bg-red-500/10 text-red-400 text-xs font-bold rounded-2xl border border-red-500/20">{error}</div>}
 
-          <div className="bg-slate-800/40 p-1.5 rounded-[32px] border border-white/10 flex gap-2">
-            <button type="button" onClick={() => setRole('client')} className={`flex-1 py-4 rounded-[26px] text-[10px] font-black uppercase tracking-widest transition-all ${role === 'client' ? 'bg-white text-emerald-600 shadow-xl' : 'text-gray-500 hover:text-white'}`}>Hire Help</button>
-            <button type="button" onClick={() => setRole('worker')} className={`flex-1 py-4 rounded-[26px] text-[10px] font-black uppercase tracking-widest transition-all ${role === 'worker' ? 'bg-white text-emerald-600 shadow-xl' : 'text-gray-500 hover:text-white'}`}>Earn Money</button>
-          </div>
-
-          {role === 'client' && (
-            <div className="flex justify-center gap-10 py-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input type="radio" className="hidden" checked={clientType === 'personal'} onChange={() => setClientType('personal')} />
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${clientType === 'personal' ? 'border-emerald-500' : 'border-slate-700'}`}>
-                  {clientType === 'personal' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
-                </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'personal' ? 'text-white' : 'text-gray-500'}`}>Personal</span>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input type="radio" className="hidden" checked={clientType === 'enterprise'} onChange={() => setClientType('enterprise')} />
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${clientType === 'enterprise' ? 'border-emerald-500' : 'border-slate-700'}`}>
-                  {clientType === 'enterprise' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
-                </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'enterprise' ? 'text-white' : 'text-gray-500'}`}>Business</span>
-              </label>
-            </div>
-          )}
-
           <div className="space-y-4">
             <input 
               required value={fullName} onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
-              placeholder={clientType === 'enterprise' && role === 'client' ? "Business Name" : "Full Name"}
+              placeholder="Full Name"
             />
             <input 
               required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}

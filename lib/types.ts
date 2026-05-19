@@ -1,5 +1,5 @@
 
-export type UserRole = 'client' | 'worker' | 'admin';
+export type UserRole = 'user' | 'admin';
 export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
 export type ClientType = 'personal' | 'enterprise';
 export type TaskStatus = 'open' | 'assigned' | 'completed';
@@ -19,7 +19,7 @@ export interface Broadcast {
   admin_id: string;
   title: string;
   message: string;
-  target_role: 'all' | 'worker' | 'client';
+  target_role: 'all' | 'user' | 'admin';
   created_at: string;
   expires_at?: string;
 }

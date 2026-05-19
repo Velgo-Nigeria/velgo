@@ -42,30 +42,36 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const fetchActivity = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
-    const partnerColumn = profile.role === 'client' ? 'worker_id' : 'client_id';
     
-    // Fetch Bookings (Direct hires or applications)
+    // Fetch Bookings (Direct hires or applications) where user is client OR worker
     const { data: bookingsData } = await safeFetch<any[]>(async () => 
       await supabase.from('bookings')
         .select(`
           *, 
-          profiles:${partnerColumn}(
-            id, full_name, avatar_url, subscription_tier, 
-            bank_name, account_number, account_name
-          ), 
+          client:client_id(id, full_name, avatar_url, subscription_tier),
+          worker:worker_id(id, full_name, avatar_url, subscription_tier, bank_name, account_number, account_name), 
           posted_tasks:task_id(title, description, budget)
         `)
-        .eq(profile.role === 'client' ? 'client_id' : 'worker_id', profile.id)
+        .or(`client_id.eq.${profile.id},worker_id.eq.${profile.id}`)
         .order('created_at', { ascending: false })
     );
-    setBookings(bookingsData || []);
+
+    // Map profiles column back for compatibility with existing code
+    const processedBookings = (bookingsData || []).map((b: any) => ({
+      ...b,
+      profiles: b.client_id === profile.id ? b.worker : b.client
+    }));
     
-    // Fetch Tasks (Jobs posted by the client or assigned to the worker)
-    let taskQuery = supabase.from('posted_tasks').select('*, profiles:assigned_worker_id(*)').order('created_at', { ascending: false });
-    if (profile.role === 'client') taskQuery = taskQuery.eq('client_id', profile.id);
-    else taskQuery = taskQuery.eq('assigned_worker_id', profile.id);
+    setBookings(processedBookings);
     
-    const { data: tasksData } = await safeFetch<any[]>(async () => await taskQuery);
+    // Fetch Tasks (Jobs posted by the user or assigned to the user)
+    const { data: tasksData } = await safeFetch<any[]>(async () => 
+      await supabase.from('posted_tasks')
+        .select('*, profiles:assigned_worker_id(*)')
+        .or(`client_id.eq.${profile.id},assigned_worker_id.eq.${profile.id}`)
+        .order('created_at', { ascending: false })
+    );
+
     setTasks(tasksData || []);
     setLoading(false);
   }, [profile]);
@@ -94,7 +100,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         }
 
         // Auto-assign Task if Client accepts Application
-        if (newStatus === 'accepted' && booking.task_id && profile.role === 'client') {
+        if (newStatus === 'accepted' && booking.task_id && profile.id === booking.client_id) {
             const { error: taskError } = await supabase
                 .from('posted_tasks')
                 .update({ 
@@ -224,7 +230,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     }
 
     // 3. Is it a Direct Hire? (No task_id)
-    if (profile?.role === 'client') {
+    if (profile?.id === item.client_id) {
         onViewWorker(item.worker_id);
     } else {
         onViewWorker(item.client_id);
@@ -488,7 +494,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         <div className="w-full relative z-10">
                             {/* CASE 1: JOB APPLICATION (HAS TASK ID) */}
                             {item.task_id ? (
-                                profile?.role === 'client' ? (
+                                profile?.id === item.client_id ? (
                                     // Client View: Accept/Decline Worker's Application
                                     <div className="flex gap-3">
                                         <button 
@@ -515,7 +521,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 )
                             ) : (
                                 /* CASE 2: DIRECT BOOKING (NO TASK ID) */
-                                profile?.role === 'worker' ? (
+                                profile?.id === item.worker_id ? (
                                     // Worker View: Accept/Decline Client's Request
                                     <div className="flex gap-3">
                                         <button 
@@ -546,7 +552,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
                     {['accepted', 'assigned'].includes(item.status) && (
                         <div className="space-y-3 relative z-10">
-                            {profile?.role === 'client' && (
+                            {profile?.id === item.client_id && (
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(item); }} 
                                     className="w-full bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-yellow-200 active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -555,7 +561,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 </button>
                             )}
                             <button 
-                                onClick={(e) => { e.stopPropagation(); onOpenChat(profile?.role === 'client' ? (item.worker_id || item.assigned_worker_id) : item.client_id); }} 
+                                onClick={(e) => { e.stopPropagation(); onOpenChat(profile?.id === item.client_id ? (item.worker_id || item.assigned_worker_id) : item.client_id); }} 
                                 className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                             >
                                 Open Chat
@@ -586,7 +592,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                             </div>
 
                             {/* Show Worker Feedback Button if missing */}
-                            {profile?.role === 'worker' && !item.client_rating && (
+                            {profile?.id === item.worker_id && !item.client_rating && (
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleOpenWorkerRatingModal(item); }}
                                     className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors"
@@ -608,15 +614,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     </div>
                     <p className="text-gray-600 dark:text-gray-300 text-xs font-bold mb-2">No Gigs in this tab</p>
                     
-                    {profile?.role === 'worker' ? (
-                        <p className="text-[11px] max-w-[200px] leading-relaxed">
-                            Looking for work? Head over to the Home tab to browse available jobs, or enhance your profile to rank higher.
-                        </p>
-                    ) : (
-                        <p className="text-[11px] max-w-[200px] leading-relaxed">
-                            Need something done? Head over to the Home tab to post a new task or hire a worker directly.
-                        </p>
-                    )}
+                    <p className="text-[11px] max-w-[250px] leading-relaxed">
+                        Looking for work or need something done? Head over to the Home tab to browse available jobs, hire talent, or post a new task!
+                    </p>
                 </div>
             )}
           </div>

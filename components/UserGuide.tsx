@@ -6,7 +6,7 @@ interface UserGuideProps {
 }
 
 export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
-  const [role, setRole] = useState<'client' | 'worker' | null>(null);
+  const [role, setRole] = useState<'employer' | 'worker' | null>(null);
   const [step, setStep] = useState(0);
 
   const clientSlides = [
@@ -63,7 +63,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
     }
   ];
 
-  const activeSlides = role === 'client' ? clientSlides : workerSlides;
+  const activeSlides = role === 'employer' ? clientSlides : workerSlides;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-fadeIn">
@@ -79,11 +79,11 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                 <h2 className="text-2xl font-black text-gray-900 dark:text-white">Velgo App Guide</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Step-by-step instructions for using the platform safely.</p>
                 
-                <button onClick={() => setRole('client')} className="w-full bg-brand text-white p-5 rounded-[24px] shadow-xl flex items-center gap-4 active:scale-95 transition-transform text-left">
+                <button onClick={() => setRole('employer')} className="w-full bg-brand text-white p-5 rounded-[24px] shadow-xl flex items-center gap-4 active:scale-95 transition-transform text-left">
                     <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl"><i className="fa-solid fa-user-tie"></i></div>
                     <div>
                         <p className="text-xs font-black uppercase opacity-80 text-white/70">Guide for</p>
-                        <p className="text-lg font-black">Clients / Employers</p>
+                        <p className="text-lg font-black">Hiring Talent</p>
                     </div>
                 </button>
 
@@ -91,7 +91,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                     <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl"><i className="fa-solid fa-helmet-safety"></i></div>
                     <div>
                         <p className="text-xs font-black uppercase opacity-80 text-white/70">Guide for</p>
-                        <p className="text-lg font-black">Workers / Artisans</p>
+                        <p className="text-lg font-black">Earning Money</p>
                     </div>
                 </button>
             </div>

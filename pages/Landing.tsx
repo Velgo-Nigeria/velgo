@@ -2,11 +2,10 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { UserRole } from '../types';
 import { VelgoLogo } from '../components/Brand';
 
 interface LandingProps {
-  onGetStarted: (role: UserRole) => void;
+  onGetStarted: () => void;
   onLogin: () => void;
   onViewLegal: (tab: string) => void;
   onViewAbout: () => void;
@@ -139,16 +138,10 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
           
           <div className="flex gap-4 pt-4">
             <button 
-              onClick={() => onGetStarted('client')}
+              onClick={() => onGetStarted('user')}
               className="flex-1 bg-brand text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-brand/30 active:scale-95 transition-transform border border-white/10"
             >
-              Hire Help
-            </button>
-            <button 
-              onClick={() => onGetStarted('worker')}
-              className="flex-1 velgo-glass text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-transform"
-            >
-              Earn Money
+              Get Started
             </button>
           </div>
         </div>

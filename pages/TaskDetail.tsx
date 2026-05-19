@@ -345,7 +345,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
             </div>
 
             {/* Action Area */}
-            {profile?.role === 'worker' ? (
+            {!isOwner ? (
                 <div className="pt-4">
                     <button 
                         onClick={handleApply} 
@@ -358,9 +358,9 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                     >
                         {hasApplied ? 'Application Sent' : (applying ? 'Sending...' : 'Apply Now')}
                     </button>
-                    {hasApplied && <p className="text-center text-[10px] text-gray-400 font-bold mt-3 uppercase">Check 'Gigs' tab for status updates.</p>}
+                    {hasApplied && <p className="text-center text-[10px] text-gray-400 font-bold mt-3 uppercase">Check 'Live Jobs' tab for status updates.</p>}
                 </div>
-            ) : isOwner ? (
+            ) : (
                 <div className="pt-4">
                      <button 
                         onClick={handleDelete} 
@@ -369,10 +369,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                     >
                         {deleting ? 'Deleting...' : 'Delete Job'}
                     </button>
-                </div>
-            ) : (
-                <div className="pt-4 text-center">
-                    <p className="text-xs text-gray-400 font-bold bg-gray-50 p-4 rounded-xl">Clients cannot apply to tasks.</p>
                 </div>
             )}
         </div>

@@ -21,7 +21,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Broadcast Form
   const [bTitle, setBTitle] = useState('');
   const [bMessage, setBMessage] = useState('');
-  const [bTarget, setBTarget] = useState<'all' | 'worker' | 'client'>('all');
+  const [bTarget, setBTarget] = useState<'all' | 'user' | 'admin'>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
   // Branding / Logo Gen
@@ -334,7 +334,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <input value={bTitle} onChange={e => setBTitle(e.target.value)} placeholder="Title (e.g. Server Maintenance)" className="w-full bg-gray-50 dark:bg-slate-900 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white" />
                         <textarea value={bMessage} onChange={e => setBMessage(e.target.value)} placeholder="Message text..." rows={3} className="w-full bg-gray-50 dark:bg-slate-900 p-4 rounded-2xl text-sm font-medium outline-none dark:text-white resize-none" />
                         <div className="flex bg-gray-100 dark:bg-slate-700 p-1 rounded-xl">
-                            {['all', 'worker', 'client'].map(t => (
+                            {['all', 'user', 'admin'].map(t => (
                                 <button key={t} onClick={() => setBTarget(t as any)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${bTarget === t ? 'bg-white dark:bg-slate-600 text-brand shadow-sm' : 'text-gray-400'}`}>{t}</button>
                             ))}
                         </div>
@@ -458,7 +458,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 </span>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-slate-700">
-                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'worker' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>
+                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>
                                 <div className="flex items-center gap-1">
                                     <select value={user.subscription_tier || 'basic'} onChange={(e) => handleManualTierUpdate(user.id, e.target.value as SubscriptionTier)} className="bg-gray-100 dark:bg-slate-700 text-[10px] font-bold py-1 px-2 rounded-lg outline-none dark:text-white">
                                         {TIERS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}

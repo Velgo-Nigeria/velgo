@@ -24,7 +24,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any).then(({data}) => setWorker(data));
     
     // Check if profile has already requested this worker
-    if (profile && profile.role === 'client') {
+    if (profile && profile.id !== workerId) {
         supabase.from('bookings')
             .select('id')
             .eq('client_id', profile.id)
@@ -85,9 +85,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     setRequesting(false);
     
     if (!error) { 
-      if (profile.role === 'client') {
-        if (onRefreshProfile) onRefreshProfile();
-      }
+      if (onRefreshProfile) onRefreshProfile();
 
       setHasRequested(true);
       alert("Request Sent!"); 
@@ -278,7 +276,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
               )}
           </div>
 
-          {profile?.role === 'client' && (
+          {profile && profile.id !== workerId && (
             <button 
                 onClick={handleBooking} 
                 disabled={hasRequested || requesting}

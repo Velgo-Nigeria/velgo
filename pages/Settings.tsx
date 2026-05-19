@@ -268,15 +268,13 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                     </div>
                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                 </button>
-                {profile?.role === 'worker' && (
-                    <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); setAuthError(null); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-solid fa-building-columns text-xs"></i></div>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Bank Details</span>
-                        </div>
-                        <i className="fa-solid fa-pen text-gray-300 text-xs"></i>
-                    </button>
-                )}
+                <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); setAuthError(null); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-solid fa-building-columns text-xs"></i></div>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Bank Details</span>
+                    </div>
+                    <i className="fa-solid fa-pen text-gray-300 text-xs"></i>
+                </button>
             </div>
         </section>
 
