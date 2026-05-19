@@ -1,7 +1,5 @@
 
 export type UserRole = 'user' | 'admin';
-export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
-export type ClientType = 'personal' | 'enterprise';
 export type TaskStatus = 'open' | 'assigned' | 'completed';
 export type TaskUrgency = 'normal' | 'urgent' | 'emergency';
 export type DisputeStatus = 'pending' | 'resolved' | 'dismissed';
@@ -30,8 +28,6 @@ export interface Profile {
   full_name: string;
   phone_number: string;
   role: UserRole;
-  client_type?: ClientType;
-  subscription_tier: SubscriptionTier;
   bank_name?: string;
   account_number?: string;
   account_name?: string;
@@ -51,10 +47,10 @@ export interface Profile {
   category?: string;
   subcategory?: string;
   last_reset_date: string;
-  subscription_end_date?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   theme_mode?: 'light' | 'dark' | 'auto';
+  updated_at?: string;
   notification_preferences?: NotificationPreferences;
   worker_rating_count?: number;
   worker_avg_rating?: number;

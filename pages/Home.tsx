@@ -91,7 +91,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     try {
         let query;
         if (isFetchingWorkers) {
-            query = supabase.from('profiles').select('*').order('profile_score', { ascending: false, nullsFirst: false });
+            query = supabase.from('profiles').select('*').eq('role', 'user').order('profile_score', { ascending: false, nullsFirst: false });
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
@@ -155,14 +155,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   return (
     <div className="bg-white dark:bg-[#0f172a] min-h-screen transition-colors duration-200">
       
-      {/* Floating Action Button (Mobile) */}
-      <button 
-          onClick={onPostTask}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-40 active:scale-90 transition-transform md:hidden animate-fadeIn"
-      >
-          <i className="fa-solid fa-plus text-xl"></i>
-      </button>
-
       {/* Insights Modal */}
       {showInsights && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
@@ -243,16 +235,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       {/* Action Buttons - Unified Layout */}
       <div className="px-6 mt-6 grid grid-cols-3 gap-2">
           <button 
-              onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
-              className={`py-4 px-2 rounded-[20px] border transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
-          >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                  <i className="fa-solid fa-users text-xs"></i>
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Talent</span>
-          </button>
-
-          <button 
               onClick={() => { setViewMode('jobs'); clearFilters(); fetchData(); }} 
               className={`py-4 px-2 rounded-[20px] border transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'jobs' ? 'bg-brand text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
           >
@@ -260,6 +242,16 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                   <i className="fa-solid fa-briefcase text-xs"></i>
               </div>
               <span className="text-[9px] font-black uppercase tracking-widest text-center">Live Jobs</span>
+          </button>
+
+          <button 
+              onClick={() => { setViewMode('market'); clearFilters(); fetchData(); }} 
+              className={`py-4 px-2 rounded-[20px] border transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group active:scale-95 ${viewMode === 'market' ? 'bg-gray-900 text-white border-transparent shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700'}`}
+          >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                  <i className="fa-solid fa-users text-xs"></i>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Talent</span>
           </button>
 
           <button 

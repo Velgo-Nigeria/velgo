@@ -264,6 +264,18 @@ const App: React.FC = () => {
         {toast && <NotificationToast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
         {showGuide && <UserGuide onClose={() => setShowGuide(false)} />}
         <InstallPWA />
+        
+        {/* Global Floating Action Button */}
+        {session && profile && !['admin', 'chat', 'post-task', 'reset-password', 'change-password'].includes(view) && (
+            <button 
+                onClick={() => navigate('post-task')}
+                className="fixed bottom-28 md:bottom-10 right-6 md:right-10 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-50 active:scale-90 transition-transform animate-fadeIn hover:scale-105"
+                title="Post a Job"
+            >
+                <i className="fa-solid fa-plus text-xl"></i>
+            </button>
+        )}
+
         {session && profile && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
           <nav className="md:hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 flex justify-around items-center h-20 safe-bottom z-50 shadow-lg transition-colors duration-200">
             <button onClick={() => navigate('home')} className={`flex flex-col items-center flex-1 ${['home', 'worker-detail', 'task-detail', 'post-task'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>

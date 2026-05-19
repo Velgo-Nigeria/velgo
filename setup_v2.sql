@@ -28,6 +28,19 @@ CREATE TABLE profiles (
     nin_image_url TEXT,
     instagram_handle TEXT,
     portfolio_url TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    starting_price INTEGER,
+    bank_name TEXT,
+    account_number TEXT,
+    account_name TEXT,
+    service_title TEXT,
+    last_reset_date TIMESTAMP WITH TIME ZONE,
+    emergency_contact_name TEXT,
+    emergency_contact_phone TEXT,
+    theme_mode TEXT DEFAULT 'auto',
+    notification_preferences JSONB,
+    worker_rating_count INTEGER DEFAULT 0,
+    worker_avg_rating NUMERIC(3,2) DEFAULT 0.00,
     
     -- Metrics
     task_count INTEGER DEFAULT 0, -- Tasks they requested

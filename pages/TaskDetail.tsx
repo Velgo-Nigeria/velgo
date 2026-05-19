@@ -119,10 +119,13 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
 
     setDeleting(true);
 
-    const { error } = await supabase.from('posted_tasks').delete().eq('id', task.id);
+    const { data, error } = await supabase.from('posted_tasks').delete().eq('id', task.id).select();
 
     if (error) {
         alert("Failed to delete: " + error.message);
+        setDeleting(false);
+    } else if (!data || data.length === 0) {
+        alert("Failed to delete: Permission denied or task not found. Make sure you are the owner.");
         setDeleting(false);
     } else {
         alert("Job deleted successfully.");
