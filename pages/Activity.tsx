@@ -48,8 +48,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       await supabase.from('bookings')
         .select(`
           *, 
-          client:client_id(id, full_name, avatar_url, subscription_tier),
-          worker:worker_id(id, full_name, avatar_url, subscription_tier, bank_name, account_number, account_name), 
+          client:client_id(id, full_name, avatar_url),
+          worker:worker_id(id, full_name, avatar_url, bank_name, account_number, account_name), 
           posted_tasks:task_id(title, description, budget)
         `)
         .or(`client_id.eq.${profile.id},worker_id.eq.${profile.id}`)
