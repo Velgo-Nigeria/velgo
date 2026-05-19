@@ -354,3 +354,20 @@ CREATE TRIGGER trg_calculate_visibility_score
 BEFORE INSERT OR UPDATE ON profiles
 FOR EACH ROW EXECUTE PROCEDURE calculate_profile_score();
 
+-- ==========================================
+-- APP REVIEWS
+-- ==========================================
+CREATE TABLE app_reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+    review_text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE app_reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can view app reviews" ON app_reviews FOR SELECT USING (true);
+CREATE POLICY "Verified users can insert app reviews" ON app_reviews FOR INSERT WITH CHECK (
+    auth.uid() = user_id 
+    AND EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_verified = true)
+);

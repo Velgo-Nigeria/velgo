@@ -30,15 +30,21 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
   }, []);
 
   const fetchReviews = async () => {
-    const { data } = await supabase.from('app_reviews').select('*').order('created_at', { ascending: false }).limit(6);
+    const { data } = await supabase.from('app_reviews').select('*, profiles:user_id(full_name, role)').order('created_at', { ascending: false }).limit(6);
     
     if (data && data.length > 0) {
-      setReviews(data);
+      setReviews(data.map(d => ({
+          id: d.id,
+          user_name: d.profiles?.full_name || 'Verified User',
+          comment: d.review_text,
+          rating: d.rating,
+          is_worker: d.profiles?.role === 'user'
+      })));
     } else {
       setReviews([
-        { id: 1, user_name: "Ose Architecture", comment: "Velgo has changed how I hire artisans. The zero-commission model means my money goes straight to the worker's family.", rating: 5 },
-        { id: 2, user_name: "Moriah Indo", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5 },
-        { id: 3, user_name: "Tega Design", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5 }
+        { id: 1, user_name: "Ose Architecture", comment: "Velgo has changed how I hire artisans. The zero-commission model means my money goes straight to the worker's family.", rating: 5, is_worker: true },
+        { id: 2, user_name: "Moriah Indo", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5, is_worker: true },
+        { id: 3, user_name: "Tega Design", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5, is_worker: true }
       ]);
     }
   };
@@ -148,103 +154,103 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
       </div>
 
       {/* 2. Trust Affirmations (Guarantees) */}
-      <div className="py-6 bg-white">
-         <div className="px-6">
-            <p className="text-center text-[10px] font-black uppercase tracking-[4px] text-gray-400 mb-6">Platform Guarantees</p>
-            <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x">
-                <div className="snap-center shrink-0 w-72 p-6 bg-brand-light/30 rounded-[32px] border border-brand/10 space-y-4">
+      <div className="py-12 bg-white border-b border-gray-100">
+         <div className="max-w-6xl mx-auto px-6">
+            <p className="text-center text-[10px] font-black uppercase tracking-[4px] text-gray-400 mb-8">Platform Guarantees</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="p-8 bg-brand-light/30 rounded-[32px] border border-brand/10 space-y-4 shadow-sm">
                     <div className="w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center text-xl shadow-lg shadow-brand/20"><i className="fa-solid fa-bolt-lightning"></i></div>
                     <div>
-                        <h3 className="font-black text-gray-900 text-lg leading-none">0% Fee</h3>
-                        <p className="text-xs text-gray-500 font-medium mt-2">Workers take home every single Kobo earned. No middleman cuts.</p>
+                        <h3 className="font-black text-gray-900 text-xl leading-none">0% Fee</h3>
+                        <p className="text-sm text-gray-500 font-medium mt-3 leading-relaxed">Workers take home every single Kobo earned. No middleman cuts.</p>
                     </div>
                 </div>
-                <div className="snap-center shrink-0 w-72 p-6 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-4">
+                <div className="p-8 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-4 shadow-sm">
                     <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-200"><i className="fa-solid fa-user-shield"></i></div>
                     <div>
-                        <h3 className="font-black text-gray-900 text-lg leading-none">Verified ID</h3>
-                        <p className="text-xs text-gray-500 font-medium mt-2">NIN-verified profiles ensure you always hire real, local professionals.</p>
+                        <h3 className="font-black text-gray-900 text-xl leading-none">Verified ID</h3>
+                        <p className="text-sm text-gray-500 font-medium mt-3 leading-relaxed">NIN-verified profiles ensure you always hire real, local professionals.</p>
                     </div>
                 </div>
-                <div className="snap-center shrink-0 w-72 p-6 bg-purple-50/50 rounded-[32px] border border-purple-100 space-y-4">
+                <div className="p-8 bg-purple-50/50 rounded-[32px] border border-purple-100 space-y-4 shadow-sm">
                     <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-lg shadow-purple-200"><i className="fa-solid fa-handshake"></i></div>
                     <div>
-                        <h3 className="font-black text-gray-900 text-lg leading-none">Safe Gigs</h3>
-                        <p className="text-xs text-gray-500 font-medium mt-2">A strict community code ensures mutual respect and service quality.</p>
+                        <h3 className="font-black text-gray-900 text-xl leading-none">Safe Gigs</h3>
+                        <p className="text-sm text-gray-500 font-medium mt-3 leading-relaxed">A strict community code ensures mutual respect and service quality.</p>
                     </div>
                 </div>
             </div>
          </div>
       </div>
 
-      {/* 3. Pricing & Transparency Section (Sliding Row) */}
-      <div className="py-12 bg-gray-50 border-y border-gray-100">
-         <div className="space-y-8">
-            <div className="text-center space-y-2 px-6">
+      {/* 3. Pricing & Transparency Section (Side-by-Side) */}
+      <div className="py-16 bg-gray-50">
+         <div className="max-w-6xl mx-auto space-y-12">
+            <div className="text-center space-y-3 px-6">
                 <p className="text-[10px] font-black uppercase tracking-[5px] text-brand">Simple Pricing</p>
-                <h2 className="text-4xl font-black text-gray-900 tracking-tighter italic">How Velgo Works</h2>
-                <p className="text-sm text-gray-500 font-medium">Swipe to see how we empower both sides of the hub.</p>
+                <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter italic lg:max-w-2xl lg:mx-auto">How Velgo Works</h2>
+                <p className="text-base text-gray-500 font-medium max-w-xl mx-auto">We empower both sides of the hub with full transparency.</p>
             </div>
 
-            {/* Sliding Container */}
-            <div className="flex gap-6 overflow-x-auto px-6 pb-10 scrollbar-hide snap-x snap-mandatory">
+            {/* Comparison Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 px-6">
                 
                 {/* For Workers Card */}
-                <div className="snap-center shrink-0 w-[85vw] md:w-[400px] bg-white p-8 rounded-[40px] border-2 border-brand/10 shadow-xl space-y-6 flex flex-col">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-xl"><i className="fa-solid fa-coins"></i></div>
-                        <h3 className="font-black text-gray-900 text-xl tracking-tight">For Workers</h3>
+                <div className="bg-white p-10 md:p-12 rounded-[48px] border-2 border-brand/10 shadow-xl space-y-8 flex flex-col hover:shadow-2xl hover:border-brand/30 transition-all">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-3xl bg-brand/10 text-brand flex items-center justify-center text-2xl"><i className="fa-solid fa-coins"></i></div>
+                        <h3 className="font-black text-gray-900 text-3xl tracking-tight">For Workers</h3>
                     </div>
-                    <div className="flex-1 space-y-4">
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-700">Keep <span className="text-brand">100%</span> of your labor fee.</p>
+                    <div className="flex-1 space-y-5">
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-700 leading-snug">Keep <span className="text-brand">100%</span> of your labor fee.</p>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-700">No hidden deductions on your earnings.</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-700 leading-snug">No hidden deductions on your earnings.</p>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-700">Small flat subscription for verified access.</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-700 leading-snug">Small flat subscription for verified access.</p>
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-gray-100 text-center">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Starting from</p>
-                        <p className="text-3xl font-black text-gray-900 italic">₦0 <span className="text-sm font-medium text-gray-400">/mo</span></p>
+                    <div className="pt-6 border-t border-gray-100 text-center">
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Starting from</p>
+                        <p className="text-4xl md:text-5xl font-black text-gray-900 italic">₦0 <span className="text-base font-medium text-gray-400">/mo</span></p>
                     </div>
                 </div>
 
                 {/* For Clients Card */}
-                <div className="snap-center shrink-0 w-[85vw] md:w-[400px] bg-gray-900 p-8 rounded-[40px] border-2 border-white/5 shadow-2xl space-y-6 flex flex-col text-white">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center text-xl"><i className="fa-solid fa-shield-check"></i></div>
-                        <h3 className="font-black text-white text-xl tracking-tight">For Clients</h3>
+                <div className="bg-gray-900 p-10 md:p-12 rounded-[48px] border-2 border-white/5 shadow-2xl space-y-8 flex flex-col text-white">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-3xl bg-white/10 text-white flex items-center justify-center text-2xl"><i className="fa-solid fa-shield-check"></i></div>
+                        <h3 className="font-black text-white text-3xl tracking-tight">For Clients</h3>
                     </div>
-                    <div className="flex-1 space-y-4">
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-200">Zero middleman markup on artisan labor.</p>
+                    <div className="flex-1 space-y-5">
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Zero middleman markup on artisan labor.</p>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-200">Pay Workers directly to their bank account.</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Pay Workers directly to their bank account.</p>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[10px] text-brand"></i></div>
-                            <p className="text-sm font-bold text-gray-200">Security-vetted pros for your local needs.</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Security-vetted pros for your local needs.</p>
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-white/10 text-center">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Secure & Direct</p>
-                        <p className="text-3xl font-black text-white italic">Trusted <span className="text-sm font-medium text-gray-500">Hub</span></p>
+                    <div className="pt-6 border-t border-white/10 text-center">
+                        <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1">Secure & Direct</p>
+                        <p className="text-4xl md:text-5xl font-black text-white italic">Trusted <span className="text-lg font-medium text-gray-500">Hub</span></p>
                     </div>
                 </div>
 
             </div>
 
             <div className="text-center px-6">
-                <p className="text-[9px] text-gray-400 font-black uppercase tracking-[3px]">
+                <p className="text-[11px] text-gray-400 font-black uppercase tracking-[4px]">
                     Transparent Economy • Verified Pros • Direct Payouts
                 </p>
             </div>
@@ -313,7 +319,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                                                 <h4 className="font-black text-gray-900 text-lg uppercase tracking-tight">{r.user_name}</h4>
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="px-3 py-1 bg-brand-light text-brand text-[9px] font-black uppercase tracking-[2px] rounded-full">
-                                                        {r.user_name.includes('Architecture') || r.user_name.includes('Design') ? 'Worker' : 'Merchant'}
+                                                        {r.is_worker !== undefined ? (r.is_worker ? 'Worker' : 'Client') : (r.user_name.includes('Architecture') || r.user_name.includes('Design') ? 'Worker' : 'Client')}
                                                     </span>
                                                     <span className="text-xs text-gray-400 font-bold">•</span>
                                                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified User</span>
@@ -381,47 +387,55 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                     <p className="font-black text-brand-light uppercase tracking-widest text-sm">Review Submitted!</p>
                 </div>
             ) : (
-                <form onSubmit={handleSubmitReview} className="space-y-4">
-                    <div className="flex justify-center gap-4 mb-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                            <button 
-                                key={star} 
-                                type="button"
-                                onClick={() => setReviewRating(star)}
-                                className={`text-4xl transition-all duration-300 active:scale-125 ${star <= reviewRating ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]' : 'text-gray-800'}`}
-                            >
-                                <i className="fa-solid fa-star"></i>
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <input 
-                            value={reviewName}
-                            onChange={(e) => setReviewName(e.target.value)}
-                            placeholder="Your Name"
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white placeholder-gray-500 outline-none focus:border-brand focus:bg-white/10 transition-all"
-                            required
-                        />
-                        
-                        <textarea 
-                            value={reviewComment}
-                            onChange={(e) => setReviewComment(e.target.value)}
-                            placeholder="What do you think about Velgo?"
-                            rows={4}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-medium text-white placeholder-gray-500 outline-none focus:border-brand focus:bg-white/10 transition-all resize-none"
-                            required
-                        />
+                <div className="space-y-4 relative">
+                    {/* Locked Form overlay */}
+                    <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm rounded-[32px] flex items-center justify-center flex-col text-center p-6 border border-white/10">
+                        <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white text-xl mb-3">
+                            <i className="fa-solid fa-lock"></i>
+                        </div>
+                        <h4 className="text-white font-black text-lg mb-1">Members Only</h4>
+                        <p className="text-gray-300 text-xs font-medium mb-4">You must be logged in and verified to submit a review.</p>
+                        <button onClick={onLogin} className="bg-white text-gray-900 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-gray-100 transition-colors">
+                            Sign In to Write Review
+                        </button>
                     </div>
 
-                    <button 
-                        type="submit" 
-                        disabled={submitting}
-                        className="w-full bg-brand text-white py-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-brand/20 hover:bg-brand-dark active:scale-95 transition-all"
-                    >
-                        {submitting ? 'Posting...' : 'Post Review'}
-                    </button>
-                </form>
+                    <div className="opacity-40 pointer-events-none p-2 space-y-4">
+                        <div className="flex justify-center gap-4 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button 
+                                    key={star} 
+                                    type="button"
+                                    className="text-4xl text-gray-800"
+                                >
+                                    <i className="fa-solid fa-star"></i>
+                                </button>
+                            ))}
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <input 
+                                placeholder="Your Name"
+                                disabled
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white placeholder-gray-500 outline-none"
+                            />
+                            
+                            <textarea 
+                                placeholder="What do you think about Velgo?"
+                                rows={4}
+                                disabled
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-medium text-white placeholder-gray-500 outline-none resize-none"
+                            />
+                        </div>
+
+                        <button 
+                            disabled
+                            className="w-full bg-brand text-white py-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl opacity-50"
+                        >
+                            Post Review
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
       </div>
