@@ -33,7 +33,6 @@ const SubscriptionCard: React.FC<{
   const initializePayment = usePaystackPayment(config);
 
   const handlePaystack = () => {
-    if (isActive) return;
     if (tier.price === 0) {
       onSuccess('basic');
     } else {
@@ -57,13 +56,11 @@ const SubscriptionCard: React.FC<{
           className="absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.08] -rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-500"
           alt=""
       />
-
-      {isActive && <div className="absolute top-0 right-0 bg-brand text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl z-10">Current Plan</div>}
       
       <div className="flex justify-between items-start relative z-10">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400">{tier.name}</span>
-          <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{(tier.price || 0).toLocaleString()} <span className="text-sm font-medium text-gray-400 dark:text-gray-500">/mo</span></h3>
+          <h3 className="text-2xl font-black pt-1 text-gray-900 dark:text-white">₦{(tier.price || 0).toLocaleString()}</h3>
         </div>
       </div>
 
@@ -79,13 +76,12 @@ const SubscriptionCard: React.FC<{
           <button 
             type="button"
             onClick={handlePaystack}
-            disabled={isActive}
-            className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all ${isActive ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'bg-brand text-white shadow-lg active:scale-95'}`}
+            className="w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all bg-brand text-white shadow-lg active:scale-95"
           >
-            {isActive ? 'Active Plan' : (tier.price === 0 ? 'Downgrade to Basic' : 'Pay with Card')}
+            Pay with Card
           </button>
           
-          {!isActive && tier.price > 0 && (
+          {tier.price > 0 && (
              <button 
                 type="button"
                 onClick={() => onManualPay(tier)}

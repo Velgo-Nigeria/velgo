@@ -17,8 +17,6 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [hasMoreReviews, setHasMoreReviews] = useState(true);
   const [hasRequested, setHasRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any).then(({data}) => setWorker(data));
@@ -105,27 +103,8 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     }
   };
 
-  const UpgradeModal = () => (
-    <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
-        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
-          <i className="fa-solid fa-lock text-2xl"></i>
-        </div>
-        <h3 className="text-xl font-black text-gray-900">Booking Limit Reached</h3>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">
-          You've reached the booking limit for your <b>{profile?.subscription_tier}</b> plan. Upgrade now to hire more workers.
-        </p>
-        <button onClick={onUpgrade} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform">
-          Upgrade Now
-        </button>
-        <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 text-xs font-bold uppercase">Cancel</button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="bg-white min-h-screen pb-24 relative">
-      {showUpgradeModal && <UpgradeModal />}
 
       <div className="relative h-[45vh] bg-gray-900 overflow-hidden">
         

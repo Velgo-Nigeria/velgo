@@ -1,5 +1,6 @@
 
 export type UserRole = 'user' | 'admin';
+export type SubscriptionTier = 'basic' | 'lite' | 'standard' | 'pro' | 'enterprise';
 export type TaskStatus = 'open' | 'assigned' | 'completed';
 export type TaskUrgency = 'normal' | 'urgent' | 'emergency';
 export type DisputeStatus = 'pending' | 'resolved' | 'dismissed';
@@ -63,6 +64,8 @@ export interface Profile {
   client_avg_fairness?: number;
   profile_score?: number;
   tokens?: number;
+  subscription_tier?: SubscriptionTier;
+  subscription_end_date?: string;
 }
 
 export interface PostedTask {

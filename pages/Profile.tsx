@@ -141,8 +141,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             <button onClick={onSettings} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
                 <i className="fa-solid fa-gear"></i>
             </button>
-            <button onClick={onSubscription} className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${profile?.subscription_tier === 'basic' ? 'bg-gray-400' : 'bg-brand'}`}>
-                <i className="fa-solid fa-crown"></i>
+            <button onClick={onSubscription} className="w-10 h-10 rounded-full flex items-center justify-center text-brand bg-brand-light shadow-lg hover:scale-105 transition-transform">
+                <i className="fa-solid fa-coins"></i>
             </button>
         </div>
       </div>
@@ -167,10 +167,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             <div className="mt-4 text-center">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">{profile?.full_name}</h2>
                 <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-2 flex items-center justify-center gap-2">
-                    <span>{profile?.subscription_tier}</span>
-                    <span>•</span>
                     <span className="text-brand flex items-center gap-1 bg-brand/10 px-2 py-1 rounded-md">
-                        <i className="fa-solid fa-coins"></i> {profile?.tokens || 0}
+                        <i className="fa-solid fa-coins"></i> {profile?.tokens || 0} Tokens
                     </span>
                 </p>
                 {profile?.is_verified && (
@@ -224,10 +222,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                         <li className="flex items-center gap-2">
                             <i className={`fa-solid ${(profile?.avatar_url && profile?.bio) ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
                             <span className={(profile?.avatar_url && profile?.bio) ? 'line-through opacity-60' : ''}>Complete Bio & Avatar (+10 Pts)</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <i className={`fa-solid ${['pro', 'enterprise'].includes(profile?.subscription_tier || '') ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
-                            <span className={['pro', 'enterprise'].includes(profile?.subscription_tier || '') ? 'line-through opacity-60' : ''}>Upgrade to Pro/Enterprise Tier (Up to +25 Pts)</span>
                         </li>
                         <li className="flex items-center gap-2">
                             <i className="fa-solid fa-star text-yellow-400 w-4 text-center"></i>

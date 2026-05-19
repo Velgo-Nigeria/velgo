@@ -187,7 +187,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
       <div className="py-16 bg-gray-50">
          <div className="max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-3 px-6">
-                <p className="text-[10px] font-black uppercase tracking-[5px] text-brand">Simple Pricing</p>
+                <p className="text-[10px] font-black uppercase tracking-[5px] text-brand">How It Works</p>
                 <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter italic lg:max-w-2xl lg:mx-auto">How Velgo Works</h2>
                 <p className="text-base text-gray-500 font-medium max-w-xl mx-auto">We empower both sides of the hub with full transparency.</p>
             </div>
@@ -195,11 +195,11 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
             {/* Comparison Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 px-6">
                 
-                {/* For Workers Card */}
+                {/* Service Providers Card */}
                 <div className="bg-white p-10 md:p-12 rounded-[48px] border-2 border-brand/10 shadow-xl space-y-8 flex flex-col hover:shadow-2xl hover:border-brand/30 transition-all">
                     <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 rounded-3xl bg-brand/10 text-brand flex items-center justify-center text-2xl"><i className="fa-solid fa-coins"></i></div>
-                        <h3 className="font-black text-gray-900 text-3xl tracking-tight">For Workers</h3>
+                        <div className="w-16 h-16 rounded-3xl bg-brand/10 text-brand flex items-center justify-center text-2xl"><i className="fa-solid fa-briefcase"></i></div>
+                        <h3 className="font-black text-gray-900 text-3xl tracking-tight">Offering a Service</h3>
                     </div>
                     <div className="flex-1 space-y-5">
                         <div className="flex items-start gap-4">
@@ -208,24 +208,24 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
-                            <p className="text-base font-bold text-gray-700 leading-snug">No hidden deductions on your earnings.</p>
+                            <p className="text-base font-bold text-gray-700 leading-snug">Setup your profile and list your services in minutes.</p>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
-                            <p className="text-base font-bold text-gray-700 leading-snug">Small flat subscription for verified access.</p>
+                            <p className="text-base font-bold text-gray-700 leading-snug">Uses 1 Token only when confirming a booking.</p>
                         </div>
                     </div>
                     <div className="pt-6 border-t border-gray-100 text-center">
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Starting from</p>
-                        <p className="text-4xl md:text-5xl font-black text-gray-900 italic">₦0 <span className="text-base font-medium text-gray-400">/mo</span></p>
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Get Started</p>
+                        <p className="text-4xl font-black text-gray-900 italic">5 Free <span className="text-base font-medium text-gray-400">Tokens</span></p>
                     </div>
                 </div>
 
-                {/* For Clients Card */}
+                {/* Clients Card */}
                 <div className="bg-gray-900 p-10 md:p-12 rounded-[48px] border-2 border-white/5 shadow-2xl space-y-8 flex flex-col text-white">
                     <div className="flex items-center gap-5">
                         <div className="w-16 h-16 rounded-3xl bg-white/10 text-white flex items-center justify-center text-2xl"><i className="fa-solid fa-shield-check"></i></div>
-                        <h3 className="font-black text-white text-3xl tracking-tight">For Clients</h3>
+                        <h3 className="font-black text-white text-3xl tracking-tight">Hiring a Service</h3>
                     </div>
                     <div className="flex-1 space-y-5">
                         <div className="flex items-start gap-4">
@@ -234,16 +234,16 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
-                            <p className="text-base font-bold text-gray-200 leading-snug">Pay Workers directly to their bank account.</p>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Post tasks and receive bids from vetted professionals.</p>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
-                            <p className="text-base font-bold text-gray-200 leading-snug">Security-vetted pros for your local needs.</p>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Uses 1 Token only when confirming a booking.</p>
                         </div>
                     </div>
                     <div className="pt-6 border-t border-white/10 text-center">
-                        <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1">Secure & Direct</p>
-                        <p className="text-4xl md:text-5xl font-black text-white italic">Trusted <span className="text-lg font-medium text-gray-500">Hub</span></p>
+                        <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1">Transparent Value</p>
+                        <p className="text-4xl font-black text-white italic">1 Account. <span className="text-lg font-medium text-gray-500">2 Roles.</span></p>
                     </div>
                 </div>
 
@@ -319,7 +319,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                                                 <h4 className="font-black text-gray-900 text-lg uppercase tracking-tight">{r.user_name}</h4>
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="px-3 py-1 bg-brand-light text-brand text-[9px] font-black uppercase tracking-[2px] rounded-full">
-                                                        {r.is_worker !== undefined ? (r.is_worker ? 'Worker' : 'Client') : (r.user_name.includes('Architecture') || r.user_name.includes('Design') ? 'Worker' : 'Client')}
+                                                        Community Member
                                                     </span>
                                                     <span className="text-xs text-gray-400 font-bold">•</span>
                                                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified User</span>

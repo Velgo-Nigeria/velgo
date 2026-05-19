@@ -2,11 +2,10 @@
 import { SubscriptionTier } from './types';
 
 export const TIERS: { id: SubscriptionTier; name: string; price: number; limit: number; features: string[] }[] = [
-  { id: 'basic', name: 'Basic / Trial', price: 0, limit: 2, features: ['2 Jobs Limit', 'Basic Profile', 'Standard Support'] },
-  { id: 'lite', name: 'Verified Lite', price: 3999, limit: 6, features: ['6 Jobs Limit', 'Higher Visibility', 'Basic Verification Badge'] },
-  { id: 'standard', name: 'Verified Standard', price: 6999, limit: 10, features: ['10 Jobs Limit', 'Mid-Tier Priority', 'Invoice Generator', 'Dedicated Support'] },
-  { id: 'pro', name: 'Verified Pro', price: 9999, limit: 15, features: ['15 Jobs Limit', 'High Priority', 'Premium Alerts', 'Insurance (Coming Soon)'] },
-  { id: 'enterprise', name: 'Enterprise', price: 14999, limit: 999999, features: ['Unlimited Jobs', 'Max Priority', 'Account Manager', 'Bulk Tools'] }
+  { id: 'basic', name: 'Starter Pack', price: 900, limit: 1, features: ['1 Token', '1 Confirmed Job', 'Instant Access'] },
+  { id: 'lite', name: 'Standard Pack', price: 3999, limit: 5, features: ['5 Tokens', '5 Confirmed Jobs', 'Volume Discount'] },
+  { id: 'standard', name: 'Pro Pack', price: 6999, limit: 10, features: ['10 Tokens', 'Best Value', 'Invoice Generator'] },
+  { id: 'pro', name: 'Power Pack', price: 9999, limit: 15, features: ['15 Tokens', 'Maximum Value', 'Premium Alerts'] }
 ];
 
 export const getTierLimit = (tier?: SubscriptionTier) => {

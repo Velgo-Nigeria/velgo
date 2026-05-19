@@ -12,27 +12,27 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
   const faqs = [
       {
           q: "Why don't you take a commission?",
-          a: "We believe the Nigerian Worker deserves 100% of their earnings. We charge a flat monthly subscription fee for access and security instead of a percentage-based commission, ensuring predictable income for us and higher earnings for the Worker."
+          a: "We believe professionals deserve 100% of their earnings. Instead of a percentage-based commission, we use a simple Token system. You only spend a Token when a booking is confirmed, ensuring predictable low costs for you and maximum value."
       },
       {
-          q: "How do I know the Client/Worker will pay/do the job?",
-          a: "Trust is our product. We require full ID verification for all users. Furthermore, both parties pay a subscription fee, meaning they have a financial stake in using the platform professionally. Our Ratings/Reviews system heavily penalizes repeated non-compliance."
+          q: "How does the Token system work?",
+          a: "Every new user gets 5 Free Tokens. A Token is only deducted when a job block (collaboration) is officially accepted by both parties. Once you run out, you can top up at an affordable rate. This single currency powers the whole app, whether you are hiring or working."
       },
       {
-          q: "What if the Client refuses to pay after I complete the job?",
-          a: "As per our Terms of Service, Velgo does not hold or guarantee funds. Your contract for service is directly with the Client. Velgo's role is limited to providing the Client's confirmed identity and detailed communication/job logs to assist the Worker in pursuing the claim against the Client."
+          q: "What if someone refuses to pay or do the job?",
+          a: "Trust is our product. We require full ID verification for users. Furthermore, since confirming a job costs a Token, both parties have a financial stake in acting professionally. You operate under a strict code of conduct, and our Ratings/Reviews system heavily penalizes unreliability."
       },
       {
-          q: "I am a Worker. Which tier is best for me?",
-          a: "If you are new, start with Basic (₦0, 2 jobs). If you regularly get more than 6 jobs a month, upgrade to Verified Standard (₦6,999 for 10 jobs), as the higher limit and priority listing ensure you recoup the subscription cost quickly and profitably."
+          q: "Do I need separate accounts for hiring and working?",
+          a: "No! Velgo uses a unified profile architecture. You can post a task you need done today, and offer your own professional services tomorrow—all from the exact same account using the same Tokens."
       },
       {
-          q: "I am a Client. Why do I have to pay a subscription?",
-          a: "Your subscription fee funds the verification system and gives you priority access to the highest-rated and most professional Workers (who also pay a subscription). Your fee ensures you are accessing a pool of committed, serious service providers."
+          q: "How do you handle dispute resolution?",
+          a: "Velgo provides the verified identities and detailed communication/job logs to assist you. While your contract for service is directly with the other party, we will step in to ban bad actors and mediate disputes if our community guidelines are violated."
       },
       {
-          q: "How do you verify the Workers?",
-          a: "All Workers undergo multi-stage verification, including ID confirmation, bank account ownership matching, and background checks where required. Our Professional Services category often requires proof of certification."
+          q: "How do you verify professionals?",
+          a: "All users undergo multi-stage verification, including NIN/ID confirmation and background checks where required. Professionals offering specialized services may also require proof of certification to maintain high standards."
       }
   ];
 
@@ -90,8 +90,8 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
                          <div className="flex gap-4 items-start">
                              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shrink-0"><i className="fa-solid fa-shield-halved"></i></div>
                              <div>
-                                 <h4 className="font-bold text-gray-900 dark:text-white text-sm">Verified Access</h4>
-                                 <p className="text-xs text-gray-500 dark:text-gray-400">Our subscription model ensures only serious, verified users access the platform, building a safer community.</p>
+                                 <h4 className="font-bold text-gray-900 dark:text-white text-sm">Verified Security</h4>
+                                 <p className="text-xs text-gray-500 dark:text-gray-400">Our Token model ensures only serious, verified users interact on the platform, building a safer community.</p>
                              </div>
                          </div>
                      </div>

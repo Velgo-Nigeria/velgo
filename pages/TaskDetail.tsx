@@ -29,7 +29,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   const [translating, setTranslating] = useState(false);
   
   // Modals
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   useEffect(() => {
@@ -159,24 +158,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
         window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
     }
   };
-  
-  const UpgradeModal = () => (
-    <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
-        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
-          <i className="fa-solid fa-lock text-2xl"></i>
-        </div>
-        <h3 className="text-xl font-black text-gray-900">Job Limit Reached</h3>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">
-          You've reached the application limit for your <b>{profile?.subscription_tier}</b> plan. Upgrade now to apply for more jobs.
-        </p>
-        <button onClick={onUpgrade} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform">
-          Upgrade Now
-        </button>
-        <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 text-xs font-bold uppercase">Cancel</button>
-      </div>
-    </div>
-  );
 
   const ReviewsModal = () => (
       <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center sm:p-6 backdrop-blur-sm animate-fadeIn">
@@ -253,7 +234,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
 
   return (
     <div className="bg-white min-h-screen pb-24 relative">
-      {showUpgradeModal && <UpgradeModal />}
       {showReviewsModal && <ReviewsModal />}
       
       {/* Header / Map Placeholder */}

@@ -355,6 +355,21 @@ BEFORE INSERT OR UPDATE ON profiles
 FOR EACH ROW EXECUTE PROCEDURE calculate_profile_score();
 
 -- ==========================================
+-- TOKENS MANAGEMENT
+-- ==========================================
+CREATE OR REPLACE FUNCTION add_tokens(p_user_id UUID, p_amount INTEGER)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE profiles
+  SET tokens = COALESCE(tokens, 0) + p_amount
+  WHERE id = p_user_id;
+END;
+$$;
+
+-- ==========================================
 -- APP REVIEWS
 -- ==========================================
 CREATE TABLE app_reviews (

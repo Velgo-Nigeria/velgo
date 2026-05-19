@@ -263,7 +263,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                       <div className="flex flex-col gap-2 mt-1">
                           <span className="inline-flex w-fit items-center gap-1.5 bg-brand/10 text-brand px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                               <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse"></div>
-                              {profile?.subscription_tier || 'Basic'} • Nigeria Hub Active
+                              Nigeria Hub Active
                           </span>
                       </div>
                   </div>

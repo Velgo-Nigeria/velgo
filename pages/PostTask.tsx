@@ -25,8 +25,6 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
   
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [processingAudio, setProcessingAudio] = useState(false);
@@ -226,28 +224,8 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
       }
   };
 
-  const UpgradeModal = () => (
-    <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
-        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
-          <i className="fa-solid fa-lock text-2xl"></i>
-        </div>
-        <h3 className="text-xl font-black text-gray-900">Posting Limit Reached</h3>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">
-          You've reached the post limit for your <b>{profile?.subscription_tier}</b> plan. Upgrade now to post more jobs.
-        </p>
-        <button onClick={onUpgrade} className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform">
-          Upgrade Now
-        </button>
-        <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 text-xs font-bold uppercase">Cancel</button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="bg-white min-h-screen pb-24 relative">
-      {showUpgradeModal && <UpgradeModal />}
-      
       <div className="px-6 pt-10 pb-4 border-b border-gray-50 flex items-center gap-4 sticky top-0 bg-white z-10">
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center"><i className="fa-solid fa-chevron-left text-gray-500"></i></button>
         <h1 className="text-2xl font-black">Post a Job</h1>
