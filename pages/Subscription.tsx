@@ -4,6 +4,7 @@ import { usePaystackPayment } from 'react-paystack';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, SubscriptionTier } from '../lib/types';
 import { TIERS } from '../lib/constants';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface SubscriptionProps { profile: Profile | null; sessionEmail?: string; onRefreshProfile: () => void; onBack: () => void; }
 
@@ -133,7 +134,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
   const handleWhatsAppConfirmation = () => {
       if (!selectedTier || !profile) return;
       const message = `Hello Velgo Admin, I have just transferred ₦${(selectedTier.price || 0).toLocaleString()} for the ${selectedTier.name} Plan.\n\nMy Email: ${profile.email}\nMy Name: ${profile.full_name}`;
-      const url = `https://wa.me/${VELGO_BANK.supportPhone}?text=${encodeURIComponent(message)}`;
       
       // Log manual payment request in the support_messages table
       supabase.from('support_messages').insert([{
@@ -142,9 +142,9 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
           status: 'open',
           admin_reply: false
       }]).then(() => {
-          window.open(url, '_blank');
+          openWhatsAppHelper(message, VELGO_BANK.supportPhone);
       }).catch(() => {
-          window.open(url, '_blank');
+          openWhatsAppHelper(message, VELGO_BANK.supportPhone);
       });
   };
 

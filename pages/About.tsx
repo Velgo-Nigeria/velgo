@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { VelgoLogo } from '../components/Brand';
 import { supabase } from '../lib/supabaseClient';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface AboutProps {
   onBack: () => void;
@@ -63,11 +64,11 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
             }]);
         }
         
-        const message = encodeURIComponent(`Hello Velgo, I have an inquiry regarding...\n\nMy Name: ${name}\nMy ID: ${uid}`);
-        window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+        const message = `Hello Velgo, I have an inquiry regarding...\n\nMy Name: ${name}\nMy ID: ${uid}`;
+        openWhatsAppHelper(message);
     } catch (e) {
-        const message = encodeURIComponent("Hello Velgo, I have an inquiry regarding...");
-        window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+        const message = "Hello Velgo, I have an inquiry regarding...";
+        openWhatsAppHelper(message);
     }
   };
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, Message } from '../lib/types';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface ChatProps { profile: Profile | null; partnerId: string; onBack: () => void; }
 
@@ -61,6 +62,9 @@ const Chat: React.FC<ChatProps> = ({ profile, partnerId, onBack }) => {
       await supabase.from('messages').insert([{ sender_id: profile.id, receiver_id: partnerId, content }]);
     } else {
       await supabase.from('support_messages').insert([{ user_id: profile.id, content, status: 'open' }]);
+      // Construct a clean support message and redirect via our robust WhatsApp helper
+      const promptText = `Hello Velgo Support: ${content}\n\nMy Name: ${profile.full_name}\nMy Email: ${profile.email || 'N/A'}`;
+      openWhatsAppHelper(promptText);
     }
   };
 

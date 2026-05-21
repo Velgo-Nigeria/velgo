@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../types';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface SafetyProps {
   profile: Profile | null;
@@ -43,6 +44,12 @@ User ID: ${profile.id}
     if (error) {
         alert("Error submitting report: " + error.message);
     } else {
+        // Construct pre-filled WhatsApp report message
+        const waMessage = `🚨 VELGO SAFETY INCIDENT REPORT 🚨\n\nIncident Type: ${incidentType.toUpperCase()}\nReporter: ${profile.full_name}\nReporter Email: ${profile.email || 'N/A'}\nReporter Phone: ${profile.phone_number}\n\nDETAILS:\n${description}`;
+        
+        // Open WhatsApp using our robust PWA/mobile-compatible redirection helper
+        openWhatsAppHelper(waMessage);
+        
         setSubmitted(true);
     }
   };
