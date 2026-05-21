@@ -6,17 +6,19 @@ import { TIERS } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding' | 'reviews'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [pendingReplies, setPendingReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
   // Broadcast Form
   const [bTitle, setBTitle] = useState('');
@@ -64,6 +66,12 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             return;
         }
 
+        // Fetch current user's profile to inspect database-level role
+        const { data: curProfile } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+        if (curProfile) {
+            setCurrentUserProfile(curProfile);
+        }
+
         if (activeTab === 'users') {
             result = await safeFetch(() => supabase.from('profiles').select('*').order('created_at', { ascending: false }));
         } else if (activeTab === 'verify') {
@@ -76,6 +84,22 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 .order('created_at', { ascending: false }));
         } else if (activeTab === 'broadcast') {
             result = await safeFetch(() => supabase.from('broadcasts').select('*').order('created_at', { ascending: false }));
+        } else if (activeTab === 'reviews') {
+            result = await safeFetch(() => supabase
+                .from('bookings')
+                .select(`
+                    id,
+                    review,
+                    rating,
+                    worker_reply,
+                    worker_reply_at,
+                    worker_reply_approved,
+                    client:client_id(full_name, avatar_url),
+                    worker:worker_id(full_name, avatar_url)
+                `)
+                .not('worker_reply', 'is', null)
+                .neq('worker_reply', '')
+                .order('worker_reply_at', { ascending: false }));
         } else {
             result = await safeFetch(() => supabase
                 .from('support_messages')
@@ -91,6 +115,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else if (activeTab === 'verify') setPendingVerifications(result.data || []);
         else if (activeTab === 'safety') setSafetyReports(result.data || []);
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
+        else if (activeTab === 'reviews') setPendingReplies(result.data || []);
         else setSupportMessages(result.data || []);
 
     } catch (err: any) {
@@ -212,6 +237,47 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       }
   };
 
+  const handleReviewReplyApprove = async (bookingId: string) => {
+      setProcessingId(bookingId);
+      try {
+          const { error } = await supabase
+              .from('bookings')
+              .update({ worker_reply_approved: true })
+              .eq('id', bookingId);
+          if (error) throw error;
+          
+          setPendingReplies(prev => prev.map(item => item.id === bookingId ? { ...item, worker_reply_approved: true } : item));
+          alert("Artisan reply approved! It is now live on their profile.");
+      } catch (err: any) {
+          alert("Action failed: " + err.message);
+      } finally {
+          setProcessingId(null);
+      }
+  };
+
+  const handleReviewReplyReject = async (bookingId: string) => {
+      if (!window.confirm("Are you sure you want to delete and reset this artisan reply? The artisan will be allowed to submit a new response.")) return;
+      setProcessingId(bookingId);
+      try {
+          const { error } = await supabase
+              .from('bookings')
+              .update({ 
+                  worker_reply: null, 
+                  worker_reply_at: null, 
+                  worker_reply_approved: false 
+              })
+              .eq('id', bookingId);
+          if (error) throw error;
+          
+          setPendingReplies(prev => prev.filter(item => item.id !== bookingId));
+          alert("Artisan reply rejected & deleted.");
+      } catch (err: any) {
+          alert("Action failed: " + err.message);
+      } finally {
+          setProcessingId(null);
+      }
+  };
+
   const handleSafetyAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
       const status = action === 'resolve' ? 'resolved' : 'dismissed';
       const { error } = await supabase.from('safety_reports').update({ status }).eq('id', reportId);
@@ -263,15 +329,122 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding'].map(tab => (
-            <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>{tab}</button>
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews'].map(tab => (
+            <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>
+              {tab === 'reviews' ? 'Artisan Replies' : tab}
+            </button>
           ))}
         </div>
       </div>
 
       <div className="p-4 flex-1 overflow-y-auto">
         {activeTab !== 'branding' && loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
-         errorMsg ? <div className="p-6 bg-red-50 text-red-600 rounded-2xl text-center border border-red-100 animate-fadeIn"><p className="text-xs font-bold">{errorMsg}</p></div> :
+         errorMsg ? (
+             activeTab === 'broadcast' && (errorMsg.includes('broadcasts') || errorMsg.includes('schema cache')) ? (
+                 <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[32px] border border-amber-200 dark:border-slate-800 space-y-6 animate-fadeIn font-sans max-w-xl mx-auto">
+                     <div className="flex items-start gap-4">
+                         <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center shrink-0 text-xl">
+                             <i className="fa-solid fa-circle-exclamation animate-bounce"></i>
+                         </div>
+                         <div>
+                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">📢 Activate Admin Broadcasts</h3>
+                             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                 The <code>public.broadcasts</code> table was not found in your Supabase database schema cache. This table stores public announcements sent to students, clients, or artisans.
+                             </p>
+                         </div>
+                     </div>
+
+                     <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/60 space-y-3">
+                         <p className="text-xs font-bold text-slate-700 dark:text-gray-200 flex items-center gap-1.5"><i className="fa-solid fa-magic text-amber-500"></i> How to initialize in 10 seconds:</p>
+                         <ol className="list-decimal pl-4 text-xs text-slate-500 dark:text-gray-400 space-y-1.5">
+                             <li>Open your <strong>Supabase Dashboard</strong>.</li>
+                             <li>Go to the <strong>SQL Editor</strong> in the left sidebar.</li>
+                             <li>Click <strong>New Query</strong>, paste the script below, and click <strong>Run</strong>.</li>
+                             <li>Refresh this dashboard tab to start broadcasting!</li>
+                         </ol>
+                     </div>
+
+                     <div className="space-y-2">
+                         <div className="flex justify-between items-center px-1">
+                             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">SQL Setup Script</span>
+                             <button 
+                                 onClick={() => {
+                                     const sql = `CREATE TABLE IF NOT EXISTS public.broadcasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    target_role TEXT DEFAULT 'all',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    expires_at TIMESTAMP WITH TIME ZONE
+);
+
+ALTER TABLE public.broadcasts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins have full access" ON public.broadcasts;
+CREATE POLICY "Admins have full access" ON public.broadcasts
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND role::text = 'admin'
+        )
+    );
+
+DROP POLICY IF EXISTS "Users view targeted" ON public.broadcasts;
+CREATE POLICY "Users view targeted" ON public.broadcasts
+    FOR SELECT USING (
+        target_role = 'all' OR 
+        target_role = (SELECT role::text FROM public.profiles WHERE id = auth.uid())
+    );
+
+GRANT ALL ON public.broadcasts TO authenticated;
+GRANT ALL ON public.broadcasts TO service_role;`;
+                                     navigator.clipboard.writeText(sql);
+                                     alert("SQL setup code copied to clipboard! Paste and run it in your Supabase SQL Editor.");
+                                 }}
+                                 className="text-[9px] font-black uppercase tracking-wider px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                             >
+                                 <i className="fa-solid fa-copy"></i> Copy Script
+                             </button>
+                         </div>
+                         <pre className="p-4 bg-slate-900 text-slate-300 rounded-2xl text-[10px] font-mono leading-relaxed overflow-x-auto border border-slate-800 max-h-52 overflow-y-auto">
+{`CREATE TABLE IF NOT EXISTS public.broadcasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    target_role TEXT DEFAULT 'all',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    expires_at TIMESTAMP WITH TIME ZONE
+);
+
+ALTER TABLE public.broadcasts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins have full access" ON public.broadcasts;
+CREATE POLICY "Admins have full access" ON public.broadcasts
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND role::text = 'admin'
+        )
+    );
+
+DROP POLICY IF EXISTS "Users view targeted" ON public.broadcasts;
+CREATE POLICY "Users view targeted" ON public.broadcasts
+    FOR SELECT USING (
+        target_role = 'all' OR 
+        target_role = (SELECT role::text FROM public.profiles WHERE id = auth.uid())
+    );
+
+GRANT ALL ON public.broadcasts TO authenticated;
+GRANT ALL ON public.broadcasts TO service_role;`}
+                         </pre>
+                     </div>
+                 </div>
+             ) : (
+                 <div className="p-6 bg-red-50 text-red-600 rounded-2xl text-center border border-red-100 animate-fadeIn"><p className="text-xs font-bold">{errorMsg}</p></div>
+             )
+         ) :
 
          activeTab === 'branding' ? (
              <div className="space-y-6 animate-fadeIn">
@@ -326,7 +499,42 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
          ) :
 
          activeTab === 'broadcast' ? (
-             <div className="space-y-6">
+             <div className="space-y-6 animate-fadeIn">
+                 {/* Current Database Role Warning */}
+                 {currentUserProfile && currentUserProfile.role !== 'admin' && (
+                     <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-[28px] p-6 space-y-4 shadow-sm">
+                         <div className="flex items-start gap-4">
+                             <div className="w-11 h-11 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center shrink-0 text-lg">
+                                 <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                             </div>
+                             <div className="flex-1">
+                                 <h4 className="text-xs font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider">Database Role Restriction Detected</h4>
+                                 <p className="text-xs text-amber-700 dark:text-slate-300 leading-relaxed mt-1">
+                                     Your logged-in account (<strong>{currentUserProfile.email}</strong>) has the database role <strong>"{currentUserProfile.role}"</strong> instead of <strong>"admin"</strong>. 
+                                     Supabase Row Level Security (RLS) rules reject broadcast insertions from profiles that do not have the database-level <code>admin</code> role.
+                                 </p>
+                             </div>
+                         </div>
+                         <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-amber-200/40 dark:border-amber-900/20 space-y-2">
+                             <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300">💡 Promote your profile role in the <strong>Supabase SQL Editor</strong> to fix this:</p>
+                             <div className="flex items-center gap-2">
+                                 <code className="flex-1 bg-slate-900 text-[10px] text-zinc-300 font-mono p-3 rounded-lg select-all break-all border border-slate-800">
+                                     {`UPDATE public.profiles SET role = 'admin'::user_role WHERE id = '${currentUserProfile.id}';`}
+                                 </code>
+                                 <button 
+                                     onClick={() => {
+                                         navigator.clipboard.writeText(`UPDATE public.profiles SET role = 'admin'::user_role WHERE id = '${currentUserProfile.id}';`);
+                                         alert("SQL statement copied! Paste and execute it in your Supabase SQL Editor, then refresh this panel.");
+                                     }}
+                                     className="px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0"
+                                 >
+                                     Copy SQL
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 )}
+
                  {/* Create Broadcast */}
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700 space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-[3px] text-brand">New Broadcast</h3>
@@ -533,7 +741,105 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       ))}
                  </div>
              )
-         ) : null
+         ) :
+
+          activeTab === 'reviews' ? (
+              <div className="space-y-6 animate-fadeIn pb-12">
+                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-[28px] border dark:border-slate-700">
+                      <div>
+                          <h3 className="text-sm font-black text-gray-900 dark:text-white">Artisan Reply Vetting</h3>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Reviewing professional conduct</p>
+                      </div>
+                      <span className="text-[11px] font-black bg-brand/10 text-brand px-3 py-1.5 rounded-xl">
+                          {pendingReplies.filter(r => !r.worker_reply_approved).length} Pending
+                      </span>
+                  </div>
+
+                  {pendingReplies.length === 0 ? (
+                      <div className="text-center py-20 opacity-35 bg-white dark:bg-slate-800 rounded-[28px] border dark:border-slate-700">
+                          <i className="fa-solid fa-circle-check text-6xl mb-4 text-emerald-500"></i>
+                          <p className="font-black uppercase tracking-widest text-xs dark:text-white">All clear! No pending artisan replies.</p>
+                      </div>
+                  ) : (
+                      <div className="space-y-4 font-sans">
+                          {pendingReplies.map((reply) => (
+                              <div key={reply.id} className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4 relative overflow-hidden">
+                                  {/* User details header */}
+                                  <div className="flex justify-between items-center text-xs border-b pb-3 dark:border-slate-700">
+                                      <div className="flex items-center gap-2">
+                                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 shrink-0">
+                                              {reply.worker?.avatar_url ? <img src={reply.worker.avatar_url} className="w-full h-full object-cover" alt=""/> : <span className="font-bold text-gray-400 p-2 text-xs">U</span>}
+                                          </div>
+                                          <div>
+                                              <p className="font-extrabold text-gray-800 dark:text-gray-200">{reply.worker?.full_name || 'Unknown Worker'}</p>
+                                              <p className="text-[8px] font-black uppercase text-brand">Artisan / Worker</p>
+                                          </div>
+                                      </div>
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">
+                                          {reply.worker_reply_at ? new Date(reply.worker_reply_at).toLocaleDateString() : 'Unknown Date'}
+                                      </span>
+                                  </div>
+
+                                  {/* The Original client Review info */}
+                                  <div className="bg-gray-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-gray-100 dark:border-slate-700/50">
+                                      <div className="flex justify-between items-center mb-1">
+                                          <div className="flex items-center gap-1.5">
+                                              <span className="text-[9px] font-bold text-gray-500 uppercase">Client Review by {reply.client?.full_name || 'Client'}</span>
+                                          </div>
+                                          <div className="flex text-yellow-400 text-[8px] gap-0.5">
+                                              {Array(reply.rating || 5).fill(0).map((_, idx) => <i key={idx} className="fa-solid fa-star"></i>)}
+                                          </div>
+                                      </div>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400 italic">"{reply.review || 'No written review text'}"</p>
+                                  </div>
+
+                                  {/* The Worker's actual Reply */}
+                                  <div className="bg-emerald-50/50 dark:bg-emerald-950/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/10 font-sans">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                                          <i className="fa-solid fa-reply"></i> Proposed Artisan Reply
+                                      </p>
+                                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">"{reply.worker_reply}"</p>
+                                  </div>
+
+                                  {/* Verification status and moderation action items */}
+                                  <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
+                                      <div className="flex items-center gap-1.5">
+                                          {reply.worker_reply_approved ? (
+                                              <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border border-green-100 dark:border-green-800/40">
+                                                  <i className="fa-solid fa-circle-check mr-1"></i> Approved & Live
+                                              </span>
+                                          ) : (
+                                              <span className="bg-yellow-50 dark:bg-yellow-905 text-yellow-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest animate-pulse border border-yellow-100 dark:border-yellow-900/30">
+                                                  <i className="fa-solid fa-hourglass-half mr-1"></i> Pending Moderation
+                                              </span>
+                                          )}
+                                      </div>
+
+                                      <div className="flex gap-2">
+                                          <button 
+                                              disabled={processingId === reply.id}
+                                              onClick={() => handleReviewReplyReject(reply.id)} 
+                                              className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wide hover:bg-red-100 active:scale-95 transition-transform"
+                                          >
+                                              Reject & Delete
+                                          </button>
+                                          {!reply.worker_reply_approved && (
+                                              <button 
+                                                  disabled={processingId === reply.id}
+                                                  onClick={() => handleReviewReplyApprove(reply.id)} 
+                                                  className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wide shadow-lg shadow-emerald-500/25 hover:bg-emerald-600 active:scale-95 transition-transform"
+                                              >
+                                                  Approve
+                                              </button>
+                                          )}
+                                      </div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          ) : null
         }
       </div>
     </div>

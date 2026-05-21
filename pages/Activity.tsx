@@ -30,6 +30,12 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [review, setReview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Artisan-to-Client Review Reply State
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [replyingBooking, setReplyingBooking] = useState<any>(null);
+  const [workerReplyText, setWorkerReplyText] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
   // Upgrade Modal State
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -217,6 +223,67 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       }
   };
 
+  const handleOpenArtisanReplyModal = (item: any) => {
+      setReplyingBooking(item);
+      setWorkerReplyText('');
+      setShowReplyModal(true);
+  };
+
+  const submitArtisanReply = async () => {
+      if (!replyingBooking || !profile) return;
+      
+      const textToSubmit = workerReplyText.trim();
+      if (!textToSubmit) {
+          alert("Please write your reply first.");
+          return;
+      }
+      if (textToSubmit.length > 200) {
+          alert("Your reply exceeds the 200 character cap constraint.");
+          return;
+      }
+
+      // Proactive safety checks (Nigerian context, security checks, contact info)
+      const phoneRegex = /(?:\+?234|0)[789][01]\d{8}/; 
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const bannedWords = ['fuck', 'bastard', 'bitch', 'idiot', 'fool', 'mad', 'mumu', 'scam', 'thief', 'ole', 'barawo', 'ashewo', 'oloribu', 'stupid', 'onu', 'oloriburuku'];
+
+      if (phoneRegex.test(textToSubmit) || /\d{10,}/.test(textToSubmit)) {
+          alert("Safety Filter: Adding phone numbers, bank accounts or numeric contact details in review replies is strictly prohibited for your physical safety and privacy. Please remove any contact numbers.");
+          return;
+      }
+      if (emailRegex.test(textToSubmit)) {
+          alert("Safety Filter: Including email addresses or websites is forbidden. Please communicate strictly inside the application.");
+          return;
+      }
+      const lowerText = textToSubmit.toLowerCase();
+      if (bannedWords.some(word => lowerText.includes(word))) {
+          alert("Professionalism Filter: Your response contains terms that violate our community standards. Please rephrase your reply to maintain a polite, commercial, and professional tone.");
+          return;
+      }
+
+      setIsSubmittingReply(true);
+      try {
+          const { error } = await supabase
+              .from('bookings')
+              .update({
+                  worker_reply: textToSubmit,
+                  worker_reply_at: new Date().toISOString(),
+                  worker_reply_approved: false // Pending approval by default
+              })
+              .eq('id', replyingBooking.id);
+
+          if (error) throw error;
+
+          alert("Your reply was submitted successfully! It is now pending administrative review and will be live on your profile once approved.");
+          setShowReplyModal(false);
+          fetchActivity();
+      } catch (err: any) {
+          alert("Submission failed: " + err.message);
+      } finally {
+          setIsSubmittingReply(false);
+      }
+  };
+
   const handleItemClick = (item: any) => {
     // 1. Is it a raw Task Post? (Identified by having a budget but no worker_id in the item root)
     if (item.budget !== undefined && !item.worker_id) {
@@ -256,6 +323,81 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
+      {/* Artisan Review Reply Modal */}
+      {showReplyModal && (
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
+            <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-hidden flex flex-col font-sans">
+                <button onClick={() => setShowReplyModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+
+                <div className="text-center shrink-0">
+                    <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i className="fa-solid fa-reply"></i>
+                    </div>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Artisan Reply</h3>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">One-Time Response Vetting</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+                    {/* Original Review Callout */}
+                    <div className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 relative">
+                        <p className="text-[8px] font-black tracking-widest uppercase text-gray-400 mb-1">Original Review left by Client</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 italic">"{replyingBooking?.review || 'No written comment'}"</p>
+                        <div className="flex text-yellow-400 text-[8px] gap-0.5 mt-2">
+                            {Array(replyingBooking?.rating || 5).fill(0).map((_, idx) => <i key={idx} className="fa-solid fa-star"></i>)}
+                        </div>
+                    </div>
+
+                    {/* Strict Compliance Warning Block */}
+                    <div className="bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-4 rounded-3xl border border-amber-200 dark:border-amber-900/30 text-xs leading-relaxed space-y-1">
+                        <p className="font-bold flex items-center gap-1.5"><i className="fa-solid fa-circle-exclamation text-amber-500 text-sm"></i> Strict Terms of Submission:</p>
+                        <ul className="list-disc pl-4 space-y-1 mt-1 text-[10px] font-medium font-sans">
+                            <li><strong>Strict One-Time Entry:</strong> Once submitted, your reply cannot be edited, changed, or deleted.</li>
+                            <li><strong>Privacy Ban:</strong> Do not include phone numbers, location links, bank info, or specific account names.</li>
+                            <li><strong>Professional Conduct:</strong> Professionalism is required. Slurs or insults are flagged automatically and deleted by moderators.</li>
+                        </ul>
+                    </div>
+
+                    {/* Character limit controlled response box */}
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500">Proposed Reply text</label>
+                        <div className="relative">
+                            <textarea 
+                                value={workerReplyText}
+                                onChange={(e) => setWorkerReplyText(e.target.value.slice(0, 200))}
+                                placeholder="Type your polite response to this rating..."
+                                rows={4}
+                                disabled={isSubmittingReply}
+                                className="w-full bg-gray-50 dark:bg-gray-900/40 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 text-xs text-gray-800 dark:text-gray-200 font-sans leading-relaxed outline-none focus:border-emerald-500 resize-none"
+                            />
+                            <div className={`absolute bottom-3 right-4 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${200 - workerReplyText.length <= 15 ? 'bg-red-50 text-red-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>
+                                {200 - workerReplyText.length} Chars Left
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="shrink-0 flex gap-3 pt-2">
+                    <button 
+                        onClick={() => setShowReplyModal(false)}
+                        disabled={isSubmittingReply}
+                        className="flex-1 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-3.5 rounded-2xl font-bold uppercase text-[10px] tracking-wider transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={submitArtisanReply}
+                        disabled={isSubmittingReply || !workerReplyText.trim()}
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-wider transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                    >
+                        {isSubmittingReply ? 'Submitting...' : 'Submit Response'}
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* Client Completion & Rating Modal */}
       {showCompleteModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
@@ -618,7 +760,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     )}
 
                     {item.status === 'completed' && (
-                        <div className="space-y-4 relative z-10">
+                        <div className="space-y-4 relative z-10 font-sans">
                             {/* Display ratings if both provided */}
                             <div className="pt-2 border-t border-gray-50 dark:border-gray-700 flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
@@ -630,7 +772,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     ) : <span className="text-[9px] text-gray-300 italic font-bold">Pending</span>}
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Client Rating</span>
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Client Rating (Your Rating)</span>
                                     {item.client_rating ? (
                                         <div className="flex text-blue-500 text-[10px] gap-0.5">
                                             {Array(item.client_rating).fill(0).map((_, i) => <i key={i} className="fa-solid fa-star"></i>)}
@@ -638,6 +780,42 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     ) : <span className="text-[9px] text-gray-300 italic font-bold">Pending</span>}
                                 </div>
                             </div>
+
+                            {/* Display client's written review about this worker */}
+                            {item.review && (
+                                <div className="bg-gray-50 dark:bg-gray-950/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800/80">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">Feedback from Client</p>
+                                    <p className="text-xs text-gray-700 dark:text-gray-300 italic">"{item.review}"</p>
+                                </div>
+                            )}
+
+                            {/* Display existing artisan replies, or reply submission details */}
+                            {profile?.id === item.worker_id && item.review && (
+                                <div className="mt-1">
+                                    {item.worker_reply ? (
+                                        <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/40">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                    <i className="fa-solid fa-reply"></i> Your Reply
+                                                </span>
+                                                {item.worker_reply_approved ? (
+                                                    <span className="text-[7px] font-black uppercase tracking-widest bg-emerald-100 dark:bg-emerald-800/45 text-emerald-700 px-1.5 py-0.5 rounded">Live & Approved</span>
+                                                ) : (
+                                                    <span className="text-[7.5px] font-black uppercase tracking-widest bg-yellow-100 dark:bg-yellow-805 text-yellow-700 px-1.5 py-0.5 rounded animate-pulse">Pending Moderation</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-800 dark:text-gray-200">"{item.worker_reply}"</p>
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleOpenArtisanReplyModal(item); }}
+                                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-emerald-500/15 active:scale-95 transition-all"
+                                        >
+                                            <i className="fa-solid fa-reply mr-1"></i> Reply to Client Review
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Show Worker Feedback Button if missing */}
                             {profile?.id === item.worker_id && !item.client_rating && (

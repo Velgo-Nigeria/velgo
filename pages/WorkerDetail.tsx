@@ -50,7 +50,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
       const to = from + reviewsPerPage - 1;
       const { data: reviewsData } = await supabase
           .from('bookings')
-          .select('rating, review, created_at, profiles:client_id(full_name, avatar_url)')
+          .select('rating, review, created_at, worker_reply, worker_reply_at, worker_reply_approved, profiles:client_id(full_name, avatar_url)')
           .eq('worker_id', workerId)
           .not('review', 'is', null)
           .neq('review', '')
@@ -229,12 +229,14 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                   <div className="bg-gray-50 p-4 rounded-2xl text-center text-xs text-gray-400 font-medium italic">No written reviews yet.</div>
               ) : (
                   <>
-                  {reviews.map((r, i) => (
-                      <div key={i} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+                  {reviews.map((r, i) => {
+                      const isWorkerSelf = profile?.id === workerId;
+                      return (
+                      <div key={i} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 font-sans">
                           <div className="flex justify-between items-start mb-2">
                               <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">
-                                      {r.profiles?.avatar_url ? <img src={r.profiles.avatar_url} className="w-full h-full object-cover"/> : <i className="fa-solid fa-user text-gray-400 text-xs p-1"></i>}
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                      {r.profiles?.avatar_url ? <img src={r.profiles.avatar_url} className="w-full h-full object-cover" alt=""/> : <i className="fa-solid fa-user text-gray-400 text-[10px] p-1.5"></i>}
                                   </div>
                                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{r.profiles?.full_name || 'Client'}</span>
                               </div>
@@ -243,9 +245,27 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                               </div>
                           </div>
                           <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">"{r.review}"</p>
+                          
+                          {/* Render Artisan Response */}
+                          {r.worker_reply && (r.worker_reply_approved || isWorkerSelf) && (
+                              <div className="mt-3 ml-4 pl-4 border-l-2 border-emerald-500 dark:border-emerald-600 space-y-1 font-sans bg-gray-100/50 dark:bg-gray-900/40 p-2.5 rounded-xl">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-650 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                          <i className="fa-solid fa-reply"></i> Response from Artisan
+                                      </p>
+                                      {!r.worker_reply_approved && (
+                                          <span className="text-[7px] font-black uppercase tracking-widest bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-405 px-1.5 py-0.5 rounded border border-yellow-101 dark:border-yellow-904 animate-pulse">
+                                              Pending Vetting
+                                          </span>
+                                      )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-700 dark:text-gray-300 italic leading-relaxed">"{r.worker_reply}"</p>
+                              </div>
+                          )}
+
                           <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold mt-2 text-right">{new Date(r.created_at).toLocaleDateString()}</p>
                       </div>
-                  ))}
+                  )})}
                   {hasMoreReviews && (
                       <button onClick={loadMoreReviews} className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-white rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 transition-transform">
                           Load More Reviews
