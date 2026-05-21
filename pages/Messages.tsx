@@ -75,7 +75,22 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
   const handleChatClick = (conv: any) => {
       if (conv.isSupport) {
           const message = encodeURIComponent(`Hello Velgo Support, I need assistance.\n\nMy Name: ${profile?.full_name}\nMy ID: ${profile?.id}`);
-          window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+          
+          // Log help ticket activity in the database in the background to trigger email alerts and document the issue
+          if (profile) {
+              supabase.from('support_messages').insert([{
+                  user_id: profile.id,
+                  content: `👋 User clicked the WhatsApp Support channel to chat.\n\nPre-filled text text: "Hello Velgo Support, I need assistance."`,
+                  status: 'open',
+                  admin_reply: false
+              }]).then(() => {
+                  window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+              }).catch(() => {
+                  window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+              });
+          } else {
+              window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+          }
       } else {
           onOpenChat(conv.id);
       }

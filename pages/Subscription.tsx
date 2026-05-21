@@ -134,7 +134,18 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
       if (!selectedTier || !profile) return;
       const message = `Hello Velgo Admin, I have just transferred ₦${(selectedTier.price || 0).toLocaleString()} for the ${selectedTier.name} Plan.\n\nMy Email: ${profile.email}\nMy Name: ${profile.full_name}`;
       const url = `https://wa.me/${VELGO_BANK.supportPhone}?text=${encodeURIComponent(message)}`;
-      window.open(url, '_blank');
+      
+      // Log manual payment request in the support_messages table
+      supabase.from('support_messages').insert([{
+          user_id: profile.id,
+          content: `💳 Requested Manual Payment Confirmation via WhatsApp.\nPlan: ${selectedTier.name} Plan\nAmount: ₦${(selectedTier.price || 0).toLocaleString()}\nUser Name: ${profile.full_name}\nEmail: ${profile.email}`,
+          status: 'open',
+          admin_reply: false
+      }]).then(() => {
+          window.open(url, '_blank');
+      }).catch(() => {
+          window.open(url, '_blank');
+      });
   };
 
   const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_4a7ebac9ce2a757e1209a5e52df541161b509981';

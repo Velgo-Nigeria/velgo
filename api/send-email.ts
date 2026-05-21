@@ -84,20 +84,73 @@ export default async function handler(req: any, res: any) {
        subject = 'How did we do? Please leave a review! ⭐';
        html = `<p>We hope you are enjoying Velgo. Please take a moment to leave a review on your recent experience.</p>`;
     }
+    // 7. Safety Incident Report (Notify Admins)
+    else if (table === 'safety_reports' && type === 'INSERT') {
+       userIdToNotify = 'admin_role';
+       subject = `🚨 URGENT: New Safety Incident (${record.type || 'Alert'})`;
+       html = `
+         <div style="font-family: sans-serif; padding: 24px; border: 2px solid #dc2626; border-radius: 16px; max-width: 600px; background-color: #fff; color: #1f2937;">
+           <div style="display: flex; align-items: center; margin-bottom: 20px;">
+             <span style="font-size: 32px; margin-right: 12px;">🚨</span>
+             <h2 style="color: #dc2626; margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: -0.5px;">Velgo Safety Alert</h2>
+           </div>
+           <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">A critical safety report has been filed on Velgo. Please review the incident details immediately.</p>
+           <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+           
+           <div style="margin-bottom: 12px; font-size: 13px;">
+             <strong>Incident Type:</strong> <span style="background-color: #fef2f2; color: #b91c1c; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; text-transform: uppercase;">${record.type || 'N/A'}</span>
+           </div>
+           
+           <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #dc2626; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; font-family: monospace; color: #374151;">${record.details || 'No additional details provided.'}</div>
+           
+           <div style="margin-top: 24px; text-align: center;">
+             <a href="https://velgo.com.ng" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Manage in Admin Panel</a>
+           </div>
+         </div>
+       `;
+    }
+    // 8. Support Tickets (Notify Admins for incoming client messages)
+    else if (table === 'support_messages' && type === 'INSERT' && !record.admin_reply) {
+       userIdToNotify = 'admin_role';
+       subject = '💬 New Support Ticket Message';
+       html = `
+         <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; background-color: #fff; color: #1f2937;">
+           <div style="display: flex; align-items: center; margin-bottom: 20px;">
+             <span style="font-size: 32px; margin-right: 12px;">💬</span>
+             <h2 style="color: #059669; margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: -0.5px;">New Help Request</h2>
+           </div>
+           <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">You have received a new support ticket query from a customer on Velgo.</p>
+           <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+           
+           <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #059669; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; font-style: italic;">"${record.content || ''}"</div>
+           
+           <div style="margin-top: 24px; text-align: center;">
+             <a href="https://velgo.com.ng" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">Reply via Admin Panel</a>
+           </div>
+         </div>
+       `;
+    }
 
     if (!userIdToNotify) {
         return res.status(200).json({ message: 'No email to send for this event.' });
     }
 
-    // Fetch User Email from profiles
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', userIdToNotify)
-      .single();
-    
-    if (error || !profile?.email) {
-       return res.status(400).json({ error: 'User email not found.' });
+    let recipients: string[] = [];
+
+    if (userIdToNotify === 'admin_role') {
+        recipients = ['velgonigeria.uni@gmail.com', 'admin.velgo@gmail.com'];
+    } else {
+        // Fetch User Email from profiles
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', userIdToNotify)
+          .single();
+        
+        if (error || !profile?.email) {
+           return res.status(400).json({ error: 'User email not found.' });
+        }
+        recipients = [profile.email];
     }
 
     // Send email using Resend REST API
@@ -109,7 +162,7 @@ export default async function handler(req: any, res: any) {
         },
         body: JSON.stringify({
             from: 'Velgo Notifications <notifications@velgo.com.ng>',
-            to: [profile.email],
+            to: recipients,
             subject: subject,
             html: html
         })

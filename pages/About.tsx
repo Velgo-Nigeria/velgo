@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { VelgoLogo } from '../components/Brand';
+import { supabase } from '../lib/supabaseClient';
 
 interface AboutProps {
   onBack: () => void;
@@ -36,9 +37,38 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
       }
   ];
 
-  const handleContactSupport = () => {
-    const message = encodeURIComponent("Hello Velgo, I have an inquiry regarding...");
-    window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+  const handleContactSupport = async () => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        let name = 'Unauthenticated Visitor';
+        let phone = 'N/A';
+        let email = 'N/A';
+        let uid = '';
+        
+        if (user) {
+            uid = user.id;
+            email = user.email || 'N/A';
+            const { data: profile } = await supabase.from('profiles').select('full_name, phone_number').eq('id', user.id).single();
+            if (profile) {
+                name = profile.full_name;
+                phone = profile.phone_number || 'N/A';
+            }
+            
+            // Log the help inquiry into support_messages to fire database notification triggers
+            await supabase.from('support_messages').insert([{
+                user_id: user.id,
+                content: `👋 Clicked "Contact Support" WhatsApp button from the About/FAQ view.\n\nVisitor Name: ${name}\nEmail: ${email}\nPhone: ${phone}`,
+                status: 'open',
+                admin_reply: false
+            }]);
+        }
+        
+        const message = encodeURIComponent(`Hello Velgo, I have an inquiry regarding...\n\nMy Name: ${name}\nMy ID: ${uid}`);
+        window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+    } catch (e) {
+        const message = encodeURIComponent("Hello Velgo, I have an inquiry regarding...");
+        window.open(`https://wa.me/2349167799600?text=${message}`, '_blank');
+    }
   };
 
   return (
