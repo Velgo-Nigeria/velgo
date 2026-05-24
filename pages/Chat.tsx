@@ -53,18 +53,30 @@ const Chat: React.FC<ChatProps> = ({ profile, partnerId, onBack }) => {
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !newMessage.trim()) return;
     const content = newMessage.trim();
     setNewMessage('');
     if (!isSupport) {
-      await supabase.from('messages').insert([{ sender_id: profile.id, receiver_id: partnerId, content }]);
+      supabase.from('messages').insert([{ sender_id: profile.id, receiver_id: partnerId, content }]).then(({ error }) => {
+        if (error) console.error("Error inserting chat message:", error);
+      });
     } else {
-      await supabase.from('support_messages').insert([{ user_id: profile.id, content, status: 'open' }]);
-      // Construct a clean support message and redirect via our robust WhatsApp helper
+      // 1. WhatsApp redirection synchronously (no microtask delay) - 100% PWA safe
       const promptText = `Hello Velgo Support: ${content}\n\nMy Name: ${profile.full_name}\nMy Email: ${profile.email || 'N/A'}`;
       openWhatsAppHelper(promptText);
+
+      // 2. Perform database logging in parallel, supporting both message/content columns
+      supabase.from('support_messages').insert([{ 
+          user_id: profile.id, 
+          content, 
+          message: content,
+          status: 'open',
+          admin_reply: false
+      }]).then(({ error }) => {
+          if (error) console.error("Error inserting support message log:", error.message);
+      });
     }
   };
 

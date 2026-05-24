@@ -2,9 +2,20 @@
 import { supabase } from './supabaseClient';
 
 const getVapidKey = () => {
-    const metaEnv = (import.meta as any).env;
-    // We use a known test public key that matches the backend default for instant setup
-    return metaEnv?.VITE_VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
+    let key = '';
+    try {
+        // @ts-ignore
+        key = process.env.VITE_VAPID_PUBLIC_KEY;
+    } catch (e) {}
+    
+    if (!key) {
+        try {
+            const metaEnv = (import.meta as any).env;
+            key = metaEnv?.VITE_VAPID_PUBLIC_KEY;
+        } catch (e) {}
+    }
+    
+    return key || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
 };
 
 const PUBLIC_KEY = getVapidKey();
@@ -61,9 +72,10 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         const { error } = await supabase.from('push_subscriptions').upsert({
             user_id: userId,
             subscription: JSON.parse(JSON.stringify(subscription)),
+            endpoint: subscription.endpoint,
             user_agent: navigator.userAgent,
             updated_at: new Date().toISOString()
-        }, { onConflict: 'subscription' });
+        }, { onConflict: 'endpoint' });
 
         if (error) throw error;
         
@@ -85,7 +97,7 @@ export const unsubscribeFromPush = async (userId: string) => {
             await supabase.from('push_subscriptions')
                 .delete()
                 .eq('user_id', userId)
-                .contains('subscription', { endpoint: subscription.endpoint });
+                .eq('endpoint', subscription.endpoint);
         }
         return true;
     } catch (e) {

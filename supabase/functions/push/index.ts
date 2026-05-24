@@ -97,7 +97,7 @@ serve(async (req: any) => {
                 .catch((err: any) => {
                     if (err.statusCode === 410) {
                         // Cleanup invalid subscription
-                        supabase.from('push_subscriptions').delete().match({ subscription: sub.subscription });
+                        supabase.from('push_subscriptions').delete().eq('endpoint', sub.subscription.endpoint);
                     }
                 })
         );

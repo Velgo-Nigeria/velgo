@@ -135,16 +135,19 @@ const Subscription: React.FC<SubscriptionProps> = ({ profile, sessionEmail, onRe
       if (!selectedTier || !profile) return;
       const message = `Hello Velgo Admin, I have just transferred ₦${(selectedTier.price || 0).toLocaleString()} for the ${selectedTier.name} Plan.\n\nMy Email: ${profile.email}\nMy Name: ${profile.full_name}`;
       
-      // Log manual payment request in the support_messages table
+      // 1. WhatsApp redirection synchronously (no await/promise microtask delay) - 100% PWA safe
+      openWhatsAppHelper(message, VELGO_BANK.supportPhone);
+      
+      // 2. Log manual payment request in the support_messages table in the background
+      const richLog = `💳 Requested Manual Payment Confirmation via WhatsApp.\nPlan: ${selectedTier.name} Plan\nAmount: ₦${(selectedTier.price || 0).toLocaleString()}\nUser Name: ${profile.full_name}\nEmail: ${profile.email}`;
       supabase.from('support_messages').insert([{
           user_id: profile.id,
-          content: `💳 Requested Manual Payment Confirmation via WhatsApp.\nPlan: ${selectedTier.name} Plan\nAmount: ₦${(selectedTier.price || 0).toLocaleString()}\nUser Name: ${profile.full_name}\nEmail: ${profile.email}`,
+          content: richLog,
+          message: richLog,
           status: 'open',
           admin_reply: false
-      }]).then(() => {
-          openWhatsAppHelper(message, VELGO_BANK.supportPhone);
-      }).catch(() => {
-          openWhatsAppHelper(message, VELGO_BANK.supportPhone);
+      }]).then(({ error }) => {
+          if (error) console.error("Database log of manual payment failed:", error.message);
       });
   };
 

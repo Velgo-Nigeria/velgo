@@ -122,7 +122,7 @@ export default async function handler(req: any, res: any) {
            <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">You have received a new support ticket query from a customer on Velgo.</p>
            <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
            
-           <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #059669; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; font-style: italic;">"${record.content || ''}"</div>
+           <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #059669; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; font-style: italic;">"${record.content || record.message || 'No additional details provided.'}"</div>
            
            <div style="margin-top: 24px; text-align: center;">
              <a href="https://velgo.com.ng" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">Reply via Admin Panel</a>

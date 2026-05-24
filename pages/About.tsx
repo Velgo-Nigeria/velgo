@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { VelgoLogo } from '../components/Brand';
 import { supabase } from '../lib/supabaseClient';
 import { openWhatsAppHelper } from '../lib/whatsapp';
+import { Profile } from '../types';
 
 interface AboutProps {
+  profile?: Profile | null;
   onBack: () => void;
 }
 
-const About: React.FC<AboutProps> = ({ onBack }) => {
+const About: React.FC<AboutProps> = ({ profile, onBack }) => {
   const [activeTab, setActiveTab] = useState<'story' | 'faq'>('story');
 
   const faqs = [
@@ -38,34 +40,30 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
       }
   ];
 
-  const handleContactSupport = async () => {
+  const handleContactSupport = () => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        let name = 'Unauthenticated Visitor';
-        let phone = 'N/A';
-        let email = 'N/A';
-        let uid = '';
-        
-        if (user) {
-            uid = user.id;
-            email = user.email || 'N/A';
-            const { data: profile } = await supabase.from('profiles').select('full_name, phone_number').eq('id', user.id).single();
-            if (profile) {
-                name = profile.full_name;
-                phone = profile.phone_number || 'N/A';
-            }
-            
-            // Log the help inquiry into support_messages to fire database notification triggers
-            await supabase.from('support_messages').insert([{
-                user_id: user.id,
-                content: `👋 Clicked "Contact Support" WhatsApp button from the About/FAQ view.\n\nVisitor Name: ${name}\nEmail: ${email}\nPhone: ${phone}`,
+        const name = profile?.full_name || 'Unauthenticated Visitor';
+        const phone = profile?.phone_number || 'N/A';
+        const email = profile?.email || 'N/A';
+        const uid = profile?.id || '';
+
+        // 1. WhatsApp redirection synchronously (no await/promise delay) - 100% PWA-proof
+        const message = `Hello Velgo, I have an inquiry regarding...\n\nMy Name: ${name}\nMy Email: ${email}\nMy Phone: ${phone}`;
+        openWhatsAppHelper(message);
+
+        // 2. Perform database logging in parallel
+        if (profile?.id) {
+            const richLog = `👋 Clicked "Contact Support" WhatsApp button from the About/FAQ view.\n\nVisitor Name: ${name}\nEmail: ${email}\nPhone: ${phone}`;
+            supabase.from('support_messages').insert([{
+                user_id: profile.id,
+                content: richLog,
+                message: richLog,
                 status: 'open',
                 admin_reply: false
-            }]);
+            }]).then(({ error }) => {
+                if (error) console.error("Support message logging failed:", error.message);
+            });
         }
-        
-        const message = `Hello Velgo, I have an inquiry regarding...\n\nMy Name: ${name}\nMy ID: ${uid}`;
-        openWhatsAppHelper(message);
     } catch (e) {
         const message = "Hello Velgo, I have an inquiry regarding...";
         openWhatsAppHelper(message);

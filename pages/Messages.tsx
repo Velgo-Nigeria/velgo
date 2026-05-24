@@ -77,20 +77,21 @@ const Messages: React.FC<MessagesProps> = ({ profile, onOpenChat }) => {
       if (conv.isSupport) {
           const rawMessage = `Hello Velgo Support, I need assistance.\n\nMy Name: ${profile?.full_name || 'N/A'}\nMy ID: ${profile?.id || 'N/A'}`;
           
-          // Log help ticket activity in the database in the background to trigger email alerts and document the issue
+          // 1. WhatsApp redirection synchronously (no microtask delay) - PWA-compliant
+          openWhatsAppHelper(rawMessage);
+          
+          // 2. Log help ticket activity in the database in the background
           if (profile) {
+              const richLog = `👋 User clicked the WhatsApp Support channel to chat.\n\nPre-filled text: "Hello Velgo Support, I need assistance."`;
               supabase.from('support_messages').insert([{
                   user_id: profile.id,
-                  content: `👋 User clicked the WhatsApp Support channel to chat.\n\nPre-filled text text: "Hello Velgo Support, I need assistance."`,
+                  content: richLog,
+                  message: richLog,
                   status: 'open',
                   admin_reply: false
-              }]).then(() => {
-                  openWhatsAppHelper(rawMessage);
-              }).catch(() => {
-                  openWhatsAppHelper(rawMessage);
+              }]).then(({ error }) => {
+                  if (error) console.error("Database log of support channel click failed:", error.message);
               });
-          } else {
-              openWhatsAppHelper(rawMessage);
           }
       } else {
           onOpenChat(conv.id);

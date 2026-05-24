@@ -14,13 +14,11 @@ const Safety: React.FC<SafetyProps> = ({ profile, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     setLoading(true);
 
-    // FIX: Combine the user's input with their profile data
-    // This ensures Make.com receives the Name/Phone/Email in the 'details' text
     const richDetails = `
 INCIDENT: ${incidentType.toUpperCase()}
 DETAILS: ${description}
@@ -32,26 +30,25 @@ Email: ${profile.email || 'N/A'}
 User ID: ${profile.id}
 `.trim();
 
-    const { error } = await supabase.from('safety_reports').insert([{
+    // 1. Construct pre-filled WhatsApp report message and open IMMEDIATELY (100% synchronous user interaction)
+    const waMessage = `🚨 VELGO SAFETY INCIDENT REPORT 🚨\n\nIncident Type: ${incidentType.toUpperCase()}\nReporter: ${profile.full_name}\nReporter Email: ${profile.email || 'N/A'}\nReporter Phone: ${profile.phone_number}\n\nDETAILS:\n${description}`;
+    openWhatsAppHelper(waMessage);
+
+    // 2. Insert to database in background, preserving loading states and toast updates
+    supabase.from('safety_reports').insert([{
         reporter_id: profile.id,
         type: incidentType,
-        details: richDetails, // Sending the enriched text
+        details: richDetails,
         status: 'pending'
-    }]);
-
-    setLoading(false);
-
-    if (error) {
-        alert("Error submitting report: " + error.message);
-    } else {
-        // Construct pre-filled WhatsApp report message
-        const waMessage = `🚨 VELGO SAFETY INCIDENT REPORT 🚨\n\nIncident Type: ${incidentType.toUpperCase()}\nReporter: ${profile.full_name}\nReporter Email: ${profile.email || 'N/A'}\nReporter Phone: ${profile.phone_number}\n\nDETAILS:\n${description}`;
-        
-        // Open WhatsApp using our robust PWA/mobile-compatible redirection helper
-        openWhatsAppHelper(waMessage);
-        
-        setSubmitted(true);
-    }
+    }]).then(({ error }) => {
+        setLoading(false);
+        if (error) {
+            console.error("Database logging failed:", error.message);
+            alert("Error logged locally but database sync failed: " + error.message);
+        } else {
+            setSubmitted(true);
+        }
+    });
   };
 
   if (submitted) {

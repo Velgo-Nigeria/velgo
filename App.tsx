@@ -201,7 +201,7 @@ const App: React.FC = () => {
         // Wrapped in Suspense just in case, though usually static
         case 'reset-password': return <Suspense fallback={<PageSkeleton />}><ResetPassword onSuccess={() => navigate('login')} onBack={() => handleBackNavigation('login')} /></Suspense>;
         case 'legal': return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} /></Suspense>;
-        case 'about': return <Suspense fallback={<PageSkeleton />}><About onBack={() => handleBackNavigation('landing')} /></Suspense>;
+        case 'about': return <Suspense fallback={<PageSkeleton />}><About profile={null} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
       }
     }
@@ -227,7 +227,7 @@ const App: React.FC = () => {
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
       case 'safety': return <Safety profile={profile} onBack={() => handleBackNavigation('settings')} />;
-      case 'about': return <About onBack={() => handleBackNavigation('settings')} />;
+      case 'about': return <About profile={profile} onBack={() => handleBackNavigation('settings')} />;
       case 'admin': return <AdminDashboard onBack={() => handleBackNavigation('settings')} />;
       default: return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
     }
