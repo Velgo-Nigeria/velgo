@@ -34,8 +34,16 @@ export default async function handler(req: any, res: any) {
 
     // 1. Configure VAPID keys (Zero-Config Default fallback matching pushManager.ts)
     const subject = process.env.VAPID_SUBJECT || 'mailto:admin@velgo.ng';
-    const publicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
-    const privateKey = process.env.VAPID_PRIVATE_KEY || 'Ja-URxYlZDUo1EBRicjfHI63B4--O-9ktPHSuxoPXqU';
+    
+    let publicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY;
+    if (!publicKey || publicKey === 'undefined' || publicKey === 'null' || publicKey.trim() === '' || publicKey.length < 40) {
+        publicKey = 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
+    }
+    
+    let privateKey = process.env.VAPID_PRIVATE_KEY;
+    if (!privateKey || privateKey === 'undefined' || privateKey === 'null' || privateKey.trim() === '' || privateKey.length < 20) {
+        privateKey = 'Ja-URxYlZDUo1EBRicjfHI63B4--O-9ktPHSuxoPXqU';
+    }
 
     webpush.setVapidDetails(subject, publicKey, privateKey);
 

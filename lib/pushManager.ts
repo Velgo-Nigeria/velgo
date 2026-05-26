@@ -8,14 +8,17 @@ const getVapidKey = () => {
         key = process.env.VITE_VAPID_PUBLIC_KEY;
     } catch (e) {}
     
-    if (!key) {
+    if (!key || key === 'undefined' || key === 'null' || key.trim() === '' || key.length < 40) {
         try {
             const metaEnv = (import.meta as any).env;
             key = metaEnv?.VITE_VAPID_PUBLIC_KEY;
         } catch (e) {}
     }
     
-    return key || 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
+    if (!key || key === 'undefined' || key === 'null' || key.trim() === '' || key.length < 40) {
+        return 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
+    }
+    return key;
 };
 
 const PUBLIC_KEY = getVapidKey();

@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
 CREATE OR REPLACE FUNCTION public.notify_send_push()
 RETURNS TRIGGER AS $$
 DECLARE
-  payload jsonb;
+  payload text;
 BEGIN
   -- Construct standard Supabase webhook payload structure
   payload := json_build_object(
@@ -23,7 +23,7 @@ BEGIN
     'schema', TG_TABLE_SCHEMA,
     'record', CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END,
     'old_record', CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END
-  )::jsonb;
+  )::text;
 
   -- Invoke the HTTP POST request asynchronously via net.http_post
   PERFORM net.http_post(
