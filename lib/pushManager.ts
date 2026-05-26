@@ -15,7 +15,7 @@ const getVapidKey = () => {
         } catch (e) {}
     }
     
-    return key || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
+    return key || 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
 };
 
 const PUBLIC_KEY = getVapidKey();

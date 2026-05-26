@@ -17,9 +17,9 @@ export default async function handler(req: any, res: any) {
 
     const { type, table, record } = payload;
     
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mrnypajnlltkuitfzgkh.supabase.co';
     // For reading other users' subscriptions, we MUST prefer the Service Role Key (secret) to bypass RLS.
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybnlwYWpubGx0a3VpdGZ6Z2toIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjM3OTY0NywiZXhwIjoyMDgxOTU1NjQ3fQ.ZtxDaG71AgbD8DChdXVmI4Am8a3f_2lNLJl7rlGrZAU' || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
        return res.status(500).json({ error: 'Missing Supabase Config. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.' });
@@ -34,8 +34,8 @@ export default async function handler(req: any, res: any) {
 
     // 1. Configure VAPID keys (Zero-Config Default fallback matching pushManager.ts)
     const subject = process.env.VAPID_SUBJECT || 'mailto:admin@velgo.ng';
-    const publicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBLYFpaaNYTupyyV33GQ';
-    const privateKey = process.env.VAPID_PRIVATE_KEY || 'rswBUssqX3V5Q18P_5-M9VcwqK8qjKj8X7k_7jXy8-A';
+    const publicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || 'BE24hFf2ZMbL8kfXPykLjBGESP1rGAaUU6qWRX2uuGZiJMV-JAv2NEAfRn2Kt4agaWPhbSq5UjFYb1Hao4JtdWI';
+    const privateKey = process.env.VAPID_PRIVATE_KEY || 'Ja-URxYlZDUo1EBRicjfHI63B4--O-9ktPHSuxoPXqU';
 
     webpush.setVapidDetails(subject, publicKey, privateKey);
 
