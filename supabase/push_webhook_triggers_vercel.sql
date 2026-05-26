@@ -16,21 +16,30 @@ RETURNS TRIGGER AS $$
 DECLARE
   payload text;
 BEGIN
-  -- Construct standard Supabase webhook payload structure
-  payload := json_build_object(
-    'type', TG_OP,
-    'table', TG_TABLE_NAME,
-    'schema', TG_TABLE_SCHEMA,
-    'record', CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END,
-    'old_record', CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END
-  )::text;
+  -- We wrap the push initiation inside a safety sub-block so any network
+  -- or extension errors never block the parent booking/message/verification transaction!
+  BEGIN
+    -- Construct standard Supabase webhook payload structure
+    payload := json_build_object(
+      'type', TG_OP,
+      'table', TG_TABLE_NAME,
+      'schema', TG_TABLE_SCHEMA,
+      'record', CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END,
+      'old_record', CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END
+    )::text;
 
-  -- Invoke the HTTP POST request asynchronously via net.http_post
-  PERFORM net.http_post(
-    url := 'https://velgo.com.ng/api/send-push',
-    headers := '{"Content-Type":"application/json"}'::jsonb,
-    body := payload
-  );
+    -- Invoke the HTTP POST request asynchronously via net.http_post
+    -- We use cased positional parameters to guarantee compatibility across pg_net versions
+    PERFORM net.http_post(
+      'https://velgo.com.ng/api/send-push'::text,
+      payload::text,
+      '{}'::jsonb,
+      '{"Content-Type":"application/json"}'::jsonb
+    );
+  EXCEPTION WHEN OTHERS THEN
+    -- Safely swallow errors so database inserts/updates always succeed
+    RAISE WARNING 'Push notification trigger bypassed due to error: %', SQLERRM;
+  END;
 
   RETURN NEW;
 END;
