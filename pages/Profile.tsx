@@ -87,7 +87,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
 
     const { data: { publicUrl } } = supabase.storage.from('verifications').getPublicUrl(fileName);
 
-    const { error: updateError } = await supabase.from('profiles').update({ nin_image_url: publicUrl }).eq('id', profile.id);
+    const { error: updateError } = await supabase.from('profiles').update({ nin_image_url: publicUrl, id_rejection_reason: null }).eq('id', profile.id);
 
     if (updateError) {
       alert("Failed to update profile: " + updateError.message);
@@ -321,40 +321,53 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
         {/* Identity Verification Section */}
         <div className="space-y-6">
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Identity Verification</h3>
-            <div className={`p-5 rounded-[32px] border shadow-sm flex items-center justify-between ${profile?.is_verified ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
-                {profile?.is_verified ? (
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i className="fa-solid fa-shield-check"></i></div>
-                        <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Account Verified</h4>
-                            <p className="text-[10px] text-gray-500 font-medium">Your identity has been confirmed.</p>
-                        </div>
-                    </div>
-                ) : profile?.nin_image_url ? (
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl"><i className="fa-solid fa-clock-rotate-left"></i></div>
-                        <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Pending Review</h4>
-                            <p className="text-[10px] text-gray-500 font-medium">Admin is reviewing your ID.</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex items-center justify-between w-full">
+            <div className={`p-5 rounded-[32px] border shadow-sm flex flex-col gap-4 ${profile?.is_verified ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+                <div className="flex items-center justify-between w-full">
+                    {profile?.is_verified ? (
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center text-xl"><i className="fa-solid fa-id-card"></i></div>
+                            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i className="fa-solid fa-shield-check"></i></div>
                             <div>
-                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Not Verified</h4>
-                                <p className="text-[10px] text-gray-500 font-medium">Upload NIN / Driver's License</p>
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Account Verified</h4>
+                                <p className="text-[10px] text-gray-500 font-medium">Your identity has been confirmed.</p>
                             </div>
                         </div>
-                        <button 
-                            onClick={() => idInputRef.current?.click()} 
-                            disabled={idLoading}
-                            className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
-                        >
-                            {idLoading ? '...' : 'Upload'}
-                        </button>
-                        <input ref={idInputRef} type="file" accept="image/*" onChange={handleIdUpload} className="hidden" />
+                    ) : profile?.nin_image_url ? (
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl"><i className="fa-solid fa-clock-rotate-left"></i></div>
+                            <div>
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Pending Review</h4>
+                                <p className="text-[10px] text-gray-500 font-medium">Admin is reviewing your ID.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center text-xl"><i className="fa-solid fa-id-card"></i></div>
+                                <div>
+                                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Not Verified</h4>
+                                    <p className="text-[10px] text-gray-500 font-medium">Upload NIN / Driver's License</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => idInputRef.current?.click()} 
+                                disabled={idLoading}
+                                className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                            >
+                                {idLoading ? '...' : 'Upload'}
+                            </button>
+                            <input ref={idInputRef} type="file" accept="image/*" onChange={handleIdUpload} className="hidden" />
+                        </div>
+                    )}
+                </div>
+
+                {!profile?.is_verified && !profile?.nin_image_url && profile?.id_rejection_reason && (
+                    <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex gap-3 items-start w-full">
+                        <i className="fa-solid fa-circle-exclamation text-red-500 mt-0.5 shrink-0"></i>
+                        <div>
+                            <h5 className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">Previous Upload Rejected</h5>
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-0.5">{profile.id_rejection_reason}</p>
+                            <p className="text-[10px] text-gray-400 mt-1 font-medium">Please upload a matching, clear, and valid ID card for approval.</p>
+                        </div>
                     </div>
                 )}
             </div>

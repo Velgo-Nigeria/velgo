@@ -18,6 +18,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
   // Broadcast Form
@@ -197,16 +198,27 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   // Process Verification from Verify Tab
   const handleVerificationDecision = async (userId: string, decision: 'approve' | 'reject') => {
+      const reason = rejectionReasons[userId]?.trim();
+      if (decision === 'reject' && !reason) {
+          alert("Please provide a Reason for Rejection so the user knows what to correct.");
+          return;
+      }
+
       setProcessingId(userId);
       try {
           const updates = decision === 'approve' 
-            ? { is_verified: true } 
-            : { nin_image_url: null, is_verified: false }; // Clear image on reject so user can re-upload
+            ? { is_verified: true, id_rejection_reason: null } 
+            : { nin_image_url: null, is_verified: false, id_rejection_reason: reason }; // Clear image on reject so user can re-upload
 
           const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
           if (error) throw error;
 
           setPendingVerifications(prev => prev.filter(u => u.id !== userId));
+          setRejectionReasons(prev => {
+              const copy = { ...prev };
+              delete copy[userId];
+              return copy;
+          });
           alert(`User ${decision}d successfully.`);
       } catch (err: any) {
           alert("Action failed: " + err.message);
@@ -299,6 +311,74 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       } else {
           alert("Failed: " + error.message);
       }
+  };
+
+  const downloadUsersCSV = () => {
+      if (!users || users.length === 0) {
+          alert("No user records to download.");
+          return;
+      }
+
+      // Column Headers
+      const headers = [
+          'ID',
+          'Full Name',
+          'Email',
+          'Phone Number',
+          'Role',
+          'Address',
+          'State',
+          'LGA',
+          'Verification Status',
+          'ID Card URL',
+          'Subscription Tier',
+          'Tokens Balance',
+          'Profile Score',
+          'Created At'
+      ];
+
+      // Format Rows
+      const rows = users.map(u => [
+          u.id || '',
+          u.full_name || '',
+          u.email || '',
+          u.phone_number || '',
+          u.role || '',
+          u.address || '',
+          u.state || '',
+          u.lga || '',
+          u.is_verified ? 'Verified' : 'Unverified',
+          u.nin_image_url || '',
+          u.subscription_tier || 'basic',
+          u.tokens ?? 0,
+          u.profile_score ?? 0,
+          u.updated_at || ''
+      ]);
+
+      // Utility to escape quotes and commas
+      const escapeValue = (val: any) => {
+          const stringified = String(val).replace(/"/g, '""');
+          if (stringified.includes(',') || stringified.includes('"') || stringified.includes('\n') || stringified.includes('\r')) {
+              return `"${stringified}"`;
+          }
+          return stringified;
+      };
+
+      const csvContent = [
+          headers.map(escapeValue).join(','),
+          ...rows.map(row => row.map(escapeValue).join(','))
+      ].join('\n');
+
+      // Generate blob with UTF-8 BOM so Excel opens it with the correct encoding automatically
+      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `velgo_users_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
   };
 
   const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -610,6 +690,19 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                  </a>
                              </div>
 
+                             <div className="space-y-1.5 pt-1">
+                                 <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                     Reason for Rejection (required only if rejecting)
+                                 </label>
+                                 <input 
+                                     type="text" 
+                                     placeholder="e.g. Image blurry, name mismatch, expired document..."
+                                     value={rejectionReasons[user.id] || ''}
+                                     onChange={(e) => setRejectionReasons(prev => ({ ...prev, [user.id]: e.target.value }))}
+                                     className="w-full text-xs p-3 rounded-xl border border-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-red-400 dark:focus:border-red-500/50 transition-colors"
+                                 />
+                             </div>
+
                              <div className="grid grid-cols-2 gap-3">
                                  <button 
                                     onClick={() => handleVerificationDecision(user.id, 'reject')}
@@ -634,7 +727,17 @@ GRANT ALL ON public.broadcasts TO service_role;`}
          
          activeTab === 'users' ? (
             <div className="space-y-4">
-                <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search users..." className="w-full p-4 rounded-2xl border dark:bg-slate-800 dark:border-slate-700 dark:text-white outline-none focus:border-brand" />
+                <div className="flex gap-2">
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search users..." className="flex-1 p-4 rounded-2xl border dark:bg-slate-800 dark:border-slate-700 dark:text-white outline-none focus:border-brand" />
+                    <button 
+                        onClick={downloadUsersCSV}
+                        className="bg-brand text-white px-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shrink-0"
+                        title="Download all user records as CSV"
+                    >
+                        <i className="fa-solid fa-file-csv text-base"></i>
+                        <span className="hidden sm:inline">Download CSV</span>
+                    </button>
+                </div>
                 <div className="space-y-3">
                     {filteredUsers.map(user => (
                         <div key={user.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm flex flex-col gap-3">
