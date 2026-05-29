@@ -24,7 +24,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
     },
     {
       title: "The Completion Rule",
-      text: "Never pay upfront. Only transfer funds once the job is finished. Once you pay, mark the task as 'Completed' in your Gigs tab to build the worker's reputation.",
+      text: "Never pay upfront. Only transfer funds once the job is finished. Once you pay, mark the task as 'Completed' in your Activities tab to build the worker's reputation.",
       icon: "fa-circle-check",
       color: "bg-green-600"
     },
@@ -45,7 +45,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
     },
     {
       title: "Managing Applications",
-      text: "Check the 'Gigs' tab daily. 'Requests' are direct hires waiting for your response. 'Ongoing' shows jobs you are currently working on. Speed is key to winning clients!",
+      text: "Check the 'Activities' tab daily. 'Requests' are direct hires waiting for your response. 'Ongoing' shows jobs you are currently working on. Speed is key to winning clients!",
       icon: "fa-bolt",
       color: "bg-orange-600"
     },

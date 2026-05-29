@@ -247,7 +247,7 @@ const App: React.FC = () => {
                 <div className="mb-10 pl-2"><VelgoLogo /></div>
                 <nav className="space-y-3 flex-1">
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navigate('home')} />
-                    <SidebarItem icon="fa-bolt-lightning" label="My Gigs" active={view === 'activity'} onClick={() => navigate('activity')} />
+                    <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => navigate('activity')} />
                     <SidebarItem icon="fa-comments" label="Messages" active={['messages', 'chat'].includes(view)} onClick={() => navigate('messages')} />
                     <SidebarItem icon="fa-user-ninja" label="Profile" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view)} onClick={() => navigate('profile')} />
                 </nav>
@@ -284,7 +284,7 @@ const App: React.FC = () => {
             </button>
             <button onClick={() => navigate('activity')} className={`flex flex-col items-center flex-1 ${view === 'activity' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-bolt-lightning text-xl"></i>
-              <span className="text-[9px] font-black uppercase mt-1">Gigs</span>
+              <span className="text-[9px] font-black uppercase mt-1">Activities</span>
             </button>
              <button onClick={() => navigate('messages')} className={`flex flex-col items-center flex-1 ${['messages', 'chat'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-comments text-xl"></i>

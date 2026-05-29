@@ -175,7 +175,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                 <div className="p-8 bg-purple-50/50 rounded-[32px] border border-purple-100 space-y-4 shadow-sm">
                     <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-lg shadow-purple-200"><i className="fa-solid fa-handshake"></i></div>
                     <div>
-                        <h3 className="font-black text-gray-900 text-xl leading-none">Safe Gigs</h3>
+                        <h3 className="font-black text-gray-900 text-xl leading-none">Safe Work</h3>
                         <p className="text-sm text-gray-500 font-medium mt-3 leading-relaxed">A strict community code ensures mutual respect and service quality.</p>
                     </div>
                 </div>

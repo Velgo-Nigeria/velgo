@@ -13,6 +13,12 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [pendingReplies, setPendingReplies] = useState<any[]>([]);
+  const [counts, setCounts] = useState<{
+      verify: number;
+      safety: number;
+      support: number;
+      reviews: number;
+  }>({ verify: 0, safety: 0, support: 0, reviews: 0 });
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +49,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [adminReply, setAdminReply] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { fetchData(); }, [activeTab]);
+  useEffect(() => { 
+    fetchData(); 
+    fetchCounts();
+  }, [activeTab]);
 
   useEffect(() => {
     if (selectedTicketUser && chatScrollRef.current) {
@@ -123,6 +132,58 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setErrorMsg(err.message || "Unknown system error occurred.");
     } finally {
         setLoading(false);
+    }
+  };
+
+  const fetchCounts = async () => {
+    try {
+        // 1. Pending Verifications count
+        const { count: vCount } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .not('nin_image_url', 'is', null)
+            .eq('is_verified', false);
+
+        // 2. Active Safety Reports count (unresolved / undismissed)
+        const { data: sData } = await supabase
+            .from('safety_reports')
+            .select('status');
+        const sCount = sData ? sData.filter((r: any) => r.status !== 'resolved' && r.status !== 'dismissed').length : 0;
+
+        // 3. Support Tickets count (where client sent last message and admin didn't reply yet)
+        const { data: supportMsgs } = await supabase
+            .from('support_messages')
+            .select('id, admin_reply, user_id, created_at, profiles:user_id(id)');
+        let supportPendingCount = 0;
+        if (supportMsgs) {
+            const grouped = supportMsgs.reduce((acc: any, msg) => {
+                if (!msg.profiles) return acc;
+                const uid = msg.profiles.id;
+                if (!acc[uid]) acc[uid] = { lastMsg: msg };
+                if (new Date(msg.created_at) > new Date(acc[uid].lastMsg.created_at)) {
+                    acc[uid].lastMsg = msg;
+                }
+                return acc;
+            }, {});
+            supportPendingCount = Object.values(grouped).filter((ticket: any) => !ticket.lastMsg.admin_reply).length;
+        }
+
+        // 4. Artisan Replies count (where worker_reply is set but not yet approved)
+        const { count: rCount } = await supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .not('worker_reply', 'is', null)
+            .neq('worker_reply', '')
+            .or('worker_reply_approved.is.null,worker_reply_approved.eq.false');
+
+        setCounts({
+            verify: vCount || 0,
+            safety: sCount,
+            support: supportPendingCount,
+            reviews: rCount || 0
+        });
+    } catch (e) {
+        console.error("Error fetching admin counts:", e);
     }
   };
 
@@ -220,6 +281,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               return copy;
           });
           alert(`User ${decision}d successfully.`);
+          fetchCounts();
       } catch (err: any) {
           alert("Action failed: " + err.message);
       } finally {
@@ -260,6 +322,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           
           setPendingReplies(prev => prev.map(item => item.id === bookingId ? { ...item, worker_reply_approved: true } : item));
           alert("Artisan reply approved! It is now live on their profile.");
+          fetchCounts();
       } catch (err: any) {
           alert("Action failed: " + err.message);
       } finally {
@@ -283,6 +346,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           
           setPendingReplies(prev => prev.filter(item => item.id !== bookingId));
           alert("Artisan reply rejected & deleted.");
+          fetchCounts();
       } catch (err: any) {
           alert("Action failed: " + err.message);
       } finally {
@@ -409,11 +473,25 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews'].map(tab => (
-            <button key={tab} onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase ${activeTab === tab ? 'bg-brand text-white' : 'bg-white/10 text-gray-400'}`}>
-              {tab === 'reviews' ? 'Artisan Replies' : tab}
-            </button>
-          ))}
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews'].map(tab => {
+            const badgeCount = counts[tab as keyof typeof counts] || 0;
+            return (
+              <button 
+                key={tab} 
+                onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
+                className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
+              >
+                <span>{tab === 'reviews' ? 'Artisan Replies' : tab}</span>
+                {badgeCount > 0 && (
+                  <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
+                    activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-500 text-white animate-pulse'
+                  }`}>
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -582,7 +582,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       )}
 
       <div className="px-6 pt-10 pb-4 flex justify-between items-end sticky top-0 bg-white dark:bg-gray-900 z-20">
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Gigs</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Activities</h1>
       </div>
 
       <div className="px-6 sticky top-[72px] bg-white dark:bg-gray-900 z-10 pb-2">
@@ -619,7 +619,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       </div>
 
       <div className="p-6 pb-24">
-        {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Gigs...</div> :
+        {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Activities...</div> :
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
             {currentItems.length > 0 ? currentItems.map(item => {
                 // Logic to identify if item is an Open Task (no worker assigned yet)
@@ -838,7 +838,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                         <i className="fa-solid fa-cloud text-2xl"></i>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 text-xs font-bold mb-2">No Gigs in this tab</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-xs font-bold mb-2">No activities in this tab</p>
                     
                     <p className="text-[11px] max-w-[250px] leading-relaxed">
                         Looking for work or need something done? Head over to the Home tab to browse available jobs, hire talent, or post a new task!
