@@ -11,53 +11,77 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
 
   const clientSlides = [
     {
-      title: "Direct Hire vs. Public Post",
-      text: "You have two ways to hire: Search the 'Market' to message a worker directly (Direct Hire), or tap 'Post a Job' to let verified workers across Nigeria apply to you.",
-      icon: "fa-handshake",
+      title: "1. Choose How to Hire",
+      text: "Explore the 'Market' to view top artisans with real service histories, or tap 'Post a Job' to detail your request. Verified talent across Nigeria will apply with transparent proposals.",
+      icon: "fa-search",
       color: "bg-brand"
     },
     {
-      title: "Pro-Tip: Bank Verification",
-      text: "When paying, Velgo shows you the worker's registered Bank Name and Account Name. ALWAYS ensure the name on your banking app matches the name shown in Velgo before sending money.",
+      title: "2. Chat & Agree First",
+      text: "Always finalize terms in the Velgo Chat first. Explicitly agree on the final labor cost, expected delivery date, and whether the worker needs a transport fee to move to your site.",
+      icon: "fa-comments",
+      color: "bg-purple-600"
+    },
+    {
+      title: "3. Materials Protocol",
+      text: "To avoid cash-advance risks, always buy materials yourself or accompany the artisan to the market. Only send cash directly for materials to highly-rated, verified artisans.",
+      icon: "fa-cart-shopping",
+      color: "bg-amber-600"
+    },
+    {
+      title: "4. Verify Bank Names",
+      text: "When making bank transfers, ALWAYS double-check that the recipient name in your banking app matches the verified Account Name in the artisan's Velgo profile exactly.",
       icon: "fa-building-columns",
       color: "bg-blue-600"
     },
     {
-      title: "The Completion Rule",
-      text: "Never pay upfront. Only transfer funds once the job is finished. Once you pay, mark the task as 'Completed' in your Activities tab to build the worker's reputation.",
+      title: "5. Safe Escrow & Completion",
+      text: "Never pay in full upfront. Transfer funds directly to the worker once they safely finish the job. Once paid, mark the task as 'Completed' in the Activities tab.",
       icon: "fa-circle-check",
       color: "bg-green-600"
     },
     {
-      title: "Verified Security",
-      text: "Look for the blue checkmark. Verified workers have submitted their NIN. We recommend hiring verified pros for home-service jobs for maximum safety.",
+      title: "6. Security & Checkmarks",
+      text: "Prioritize workers with the blue verification checkmark. They have submitted authenticated NIN credentials. Leave honest ratings to maintain marketplace integrity.",
       icon: "fa-shield-halved",
-      color: "bg-gray-900"
+      color: "bg-slate-900"
     }
   ];
 
   const workerSlides = [
     {
-      title: "Profile Optimization",
-      text: "To get hired across Nigeria, ensure your 'Category' and 'Subcategory' are exact. Workers with detailed bios and clear profile photos get 3x more direct bookings.",
+      title: "1. Clean Profile & Subcategory",
+      text: "Artisans with distinct work photos and clear service subcategories get 4x more direct hires. Make your bio detailed, welcoming, and clearly represent your actual craft.",
       icon: "fa-user-gear",
       color: "bg-brand"
     },
     {
-      title: "Managing Applications",
-      text: "Check the 'Activities' tab daily. 'Requests' are direct hires waiting for your response. 'Ongoing' shows jobs you are currently working on. Speed is key to winning clients!",
+      title: "2. Verify with NIN",
+      text: "Unlock the community verified badge by completing NIIN security verification in Settings. Clients are search-filtering exclusively for verified trust to secure home services.",
+      icon: "fa-fingerprint",
+      color: "bg-teal-600"
+    },
+    {
+      title: "3. Prompt Applications",
+      text: "Track direct Requests and public job openings daily in the Activities tab. Responding swiftly in under 30 minutes dramatically raises your chance of securing the gig.",
       icon: "fa-bolt",
       color: "bg-orange-600"
     },
     {
-      title: "Payment Security",
-      text: "Clients pay you directly to your bank. Ensure your bank details in Settings are correct. Remind clients to check your name in the app before they transfer.",
+      title: "4. Clarify Travel & Materials",
+      text: "Before starting your transit, confirm the exact project address and finalize the labor sum in chat. Explicitly discuss transit logistics and who purchases the supplies.",
+      icon: "fa-map-location-dot",
+      color: "bg-indigo-600"
+    },
+    {
+      title: "5. Direct Direct-to-Bank Pay",
+      text: "Ensure your registered Bank Account number in settings is correct. Before transferring, have clients match your verified bank name shown inside the Velgo app.",
       icon: "fa-money-bill-transfer",
       color: "bg-green-700"
     },
     {
-      title: "Safety First",
-      text: "Always set an Emergency Contact in Settings. Before starting a job in a new location, use the 'Safety Center' to flag any concerns with our 24/7 team.",
+      title: "6. Physical Safety Habits",
+      text: "Always set emergency contact numbers in Settings. If traveling to a distant location, share live locations with family and access the 24/7 Safety Center first to flag issues.",
       icon: "fa-kit-medical",
       color: "bg-red-600"
     }

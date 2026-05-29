@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { jsPDF } from 'jspdf';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, SubscriptionTier, Broadcast } from '../lib/types';
 import { TIERS } from '../lib/constants';
@@ -445,6 +446,219 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       URL.revokeObjectURL(url);
   };
 
+  const downloadUsersPDF = () => {
+      if (!users || users.length === 0) {
+          alert("No user records to export.");
+          return;
+      }
+
+      // Initialize jsPDF in Landscape mode, A4 size
+      const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+      });
+
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 15;
+      const contentWidth = pageWidth - (margin * 2); // 267
+
+      // Professional Palette matching Slate/Corporate style
+      const brandPrimary = [15, 23, 42]; // Slate 900
+      const textGray = [100, 116, 139]; // Slate 500
+      const zebraBg = [248, 250, 252]; // Slate 50
+      
+      let pageNum = 1;
+
+      // Draw reusable page header and table header
+      const drawHeader = (docInstance: any, page: number) => {
+          // Top solid header banner
+          docInstance.setFillColor(brandPrimary[0], brandPrimary[1], brandPrimary[2]);
+          docInstance.rect(margin, margin, contentWidth, 18, 'F');
+
+          // Left titles
+          docInstance.setTextColor(255, 255, 255);
+          docInstance.setFont('helvetica', 'bold');
+          docInstance.setFontSize(14);
+          docInstance.text("VELGO NIGERIA", margin + 6, margin + 11);
+          
+          docInstance.setFont('helvetica', 'normal');
+          docInstance.setFontSize(9);
+          docInstance.text("ADMINISTRATIVE USER DIRECTORY & RECORDS AUDIT", margin + 6, margin + 18 - 3);
+
+          // Right metadata
+          docInstance.setFontSize(8);
+          docInstance.setTextColor(203, 213, 225); // Slate 300
+          const dateStr = new Date().toLocaleString('en-GB', { timeZone: 'UTC' }) + ' UTC';
+          docInstance.text(`Generated: ${dateStr}`, margin + contentWidth - 6, margin + 9, { align: 'right' });
+          docInstance.text(`Total Records: ${users.length} | Page ${page}`, margin + contentWidth - 6, margin + 14, { align: 'right' });
+
+          // Table column header background
+          const tableHeaderY = margin + 24;
+          docInstance.setFillColor(241, 245, 249); // slate 100
+          docInstance.rect(margin, tableHeaderY, contentWidth, 8, 'F');
+          
+          docInstance.setDrawColor(226, 232, 240); // border
+          docInstance.setLineWidth(0.1);
+          docInstance.line(margin, tableHeaderY + 8, margin + contentWidth, tableHeaderY + 8);
+
+          docInstance.setTextColor(71, 85, 105); // text slate 600
+          docInstance.setFont('helvetica', 'bold');
+          docInstance.setFontSize(8);
+
+          // Headers mapping
+          let currentX = margin;
+          
+          docInstance.text("S/N", currentX + 3, tableHeaderY + 5.5);
+          currentX += 12;
+          
+          docInstance.text("FULL NAME", currentX + 3, tableHeaderY + 5.5);
+          currentX += 50;
+          
+          docInstance.text("EMAIL ADDRESS", currentX + 3, tableHeaderY + 5.5);
+          currentX += 60;
+          
+          docInstance.text("PHONE", currentX + 3, tableHeaderY + 5.5);
+          currentX += 38;
+          
+          docInstance.text("ROLE", currentX + 3, tableHeaderY + 5.5);
+          currentX += 22;
+          
+          docInstance.text("STATE & LGA", currentX + 3, tableHeaderY + 5.5);
+          currentX += 55;
+          
+          docInstance.text("STATUS", currentX + 3, tableHeaderY + 5.5);
+      };
+
+      // Draw first page header
+      drawHeader(doc, pageNum);
+
+      let y = margin + 38; // Initial row printing height
+
+      users.forEach((u, index) => {
+          // Check for vertical page overflow (Landscape A4 is 210mm high)
+          if (y > pageHeight - 15) {
+              doc.addPage();
+              pageNum++;
+              drawHeader(doc, pageNum);
+              y = margin + 38;
+          }
+
+          // Alternating zebra row backgrounds
+          if (index % 2 === 1) {
+              doc.setFillColor(zebraBg[0], zebraBg[1], zebraBg[2]);
+              doc.rect(margin, y - 6, contentWidth, 8, 'F');
+          }
+
+          // Row font & size
+          doc.setTextColor(51, 65, 85); // Slate 700
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+
+          let currentX = margin;
+
+          // 1. Serial Number
+          doc.text(String(index + 1), currentX + 3, y - 0.5);
+          currentX += 12;
+
+          // 2. Full Name (with safety limit string truncation)
+          const name = u.full_name || 'N/A';
+          doc.setFont('helvetica', 'bold');
+          doc.text(name.length > 25 ? name.substring(0, 23) + '...' : name, currentX + 3, y - 0.5);
+          doc.setFont('helvetica', 'normal');
+          currentX += 50;
+
+          // 3. Email Address
+          const email = u.email || 'N/A';
+          doc.text(email.length > 32 ? email.substring(0, 30) + '...' : email, currentX + 3, y - 0.5);
+          currentX += 60;
+
+          // 4. Phone Number
+          const phone = u.phone_number || 'N/A';
+          doc.text(phone, currentX + 3, y - 0.5);
+          currentX += 38;
+
+          // 5. Role
+          const role = (u.role || 'client').toUpperCase();
+          if (role === 'ADMIN') {
+              doc.setTextColor(147, 51, 234); // Purple
+              doc.setFont('helvetica', 'bold');
+          } else if (role === 'WORKER') {
+              doc.setTextColor(13, 148, 136); // Teal
+          } else {
+              doc.setTextColor(59, 130, 246); // Blue
+          }
+          doc.text(role, currentX + 3, y - 0.5);
+          doc.setTextColor(51, 65, 85);
+          doc.setFont('helvetica', 'normal');
+          currentX += 22;
+
+          // 6. Location (State & LGA)
+          const location = `${u.state || 'N/A'}, ${u.lga || 'N/A'}`;
+          doc.text(location.length > 28 ? location.substring(0, 26) + '...' : location, currentX + 3, y - 0.5);
+          currentX += 55;
+
+          // 7. Verification Status
+          const isVerified = !!u.is_verified;
+          if (isVerified) {
+              doc.setTextColor(16, 185, 129); // Green 500
+              doc.setFont('helvetica', 'bold');
+              doc.text("VERIFIED", currentX + 3, y - 0.5);
+          } else {
+              doc.setTextColor(148, 163, 184); // Slate 400
+              doc.text("UNVERIFIED", currentX + 3, y - 0.5);
+          }
+
+          // Post row horizontal border spacer
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.1);
+          doc.line(margin, y + 2, margin + contentWidth, y + 2);
+
+          y += 8; // Advance layout pointer
+      });
+
+      // Verify page placement space for stats footer
+      if (y > pageHeight - 25) {
+          doc.addPage();
+          pageNum++;
+          drawHeader(doc, pageNum);
+          y = margin + 38;
+      }
+
+      // Close data table
+      doc.setDrawColor(15, 23, 42); // deep slate
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, margin + contentWidth, y);
+      doc.line(margin, y + 0.8, margin + contentWidth, y + 0.8);
+
+      // Auditing summary block
+      y += 6;
+      doc.setFillColor(248, 250, 252); // slate 50
+      doc.rect(margin, y, contentWidth, 18, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin, y, contentWidth, 18, 'S');
+
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text("REPORT SUMMARY STATISTICS", margin + 5, y + 5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      const totalWorkers = users.filter(u => u.role === 'worker').length;
+      const totalClients = users.filter(u => u.role === 'client' || u.role === 'user').length;
+      const totalVerified = users.filter(u => u.is_verified).length;
+
+      doc.text(`Total Registered Workers: ${totalWorkers}`, margin + 5, y + 10);
+      doc.text(`Total Registered Clients/Consumers: ${totalClients}`, margin + 100, y + 10);
+      doc.text(`Biometrics/NIN Verified Users: ${totalVerified}`, margin + 200, y + 10);
+      doc.text("Velgo Nigeria Registry Database • Security & Integrity Verified.", margin + 5, y + 15);
+
+      // Trigger standard local file download
+      doc.save(`velgo_users_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const groupedSupport = supportMessages.reduce((acc: any, msg) => {
@@ -814,6 +1028,14 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                     >
                         <i className="fa-solid fa-file-csv text-base"></i>
                         <span className="hidden sm:inline">Download CSV</span>
+                    </button>
+                    <button 
+                        onClick={downloadUsersPDF}
+                        className="bg-rose-600 text-white px-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shrink-0"
+                        title="Export current user list as printable PDF report"
+                    >
+                        <i className="fa-solid fa-file-pdf text-base"></i>
+                        <span className="hidden sm:inline">Export PDF</span>
                     </button>
                 </div>
                 <div className="space-y-3">
