@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { jsPDF } from 'jspdf';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
@@ -55,8 +56,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       await supabase.from('bookings')
         .select(`
           *, 
-          client:client_id(id, full_name, avatar_url),
-          worker:worker_id(id, full_name, avatar_url, bank_name, account_number, account_name), 
+          client:client_id(id, full_name, email, phone_number, avatar_url),
+          worker:worker_id(id, full_name, email, phone_number, avatar_url, bank_name, account_number, account_name), 
           posted_tasks:task_id(title, description, budget)
         `)
         .or(`client_id.eq.${profile.id},worker_id.eq.${profile.id}`)
@@ -74,7 +75,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     // Fetch Tasks (Jobs posted by the user or assigned to the user)
     const { data: tasksData } = await safeFetch<any[]>(async () => 
       await supabase.from('posted_tasks')
-        .select('*, profiles:assigned_worker_id(*)')
+        .select('*, client:client_id(*), profiles:assigned_worker_id(*)')
         .or(`client_id.eq.${profile.id},assigned_worker_id.eq.${profile.id}`)
         .order('created_at', { ascending: false })
     );
@@ -158,6 +159,260 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     alert("Account number copied!");
+  };
+
+  // ============================================
+  // PRIVACY MASKING & PDF INVOICE GENERATOR UTILS
+  // ============================================
+  const obfuscateEmail = (email?: string): string => {
+    if (!email) return 'N/A';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const [local, domain] = parts;
+    if (local.length <= 2) {
+      return `${local[0]}***@${domain}`;
+    }
+    return `${local[0]}***${local[local.length - 1]}@${domain}`;
+  };
+
+  const obfuscatePhone = (phone?: string): string => {
+    if (!phone) return 'N/A';
+    if (phone.length <= 6) return '****';
+    return `${phone.substring(0, 4)}****${phone.slice(-2)}`;
+  };
+
+  const downloadJobReceipt = (item: any) => {
+    if (!item) return;
+
+    // Detect if it is a task or direct booking
+    const isTask = item.budget !== undefined && !item.worker_id;
+
+    // Name / Title details
+    const title = item.title || item.posted_tasks?.title || 'Direct Artisan Booking';
+    const description = item.description || item.posted_tasks?.description || 'N/A';
+    
+    // Resolve amount/budget
+    const rawBudget = item.budget || item.posted_tasks?.budget;
+    const formattedBudget = rawBudget ? `NGN ${Number(rawBudget).toLocaleString()}` : 'Negotiated labor cost';
+
+    // Client/Employer details
+    const clientName = item.client?.full_name || 'N/A';
+    const clientEmail = item.client?.email || 'N/A';
+    const clientPhone = item.client?.phone_number || 'N/A';
+
+    // Worker Details
+    const workerName = isTask ? (item.profiles?.full_name || 'N/A') : (item.worker?.full_name || 'N/A');
+    const workerEmail = isTask ? (item.profiles?.email || 'N/A') : (item.worker?.email || 'N/A');
+    const workerPhone = isTask ? (item.profiles?.phone_number || 'N/A') : (item.worker?.phone_number || 'N/A');
+    const workerBankName = isTask ? (item.profiles?.bank_name || 'N/A') : (item.worker?.bank_name || 'N/A');
+    const workerAccountNumber = isTask ? (item.profiles?.account_number || 'N/A') : (item.worker?.account_number || 'N/A');
+    const workerAccountName = isTask ? (item.profiles?.account_name || 'N/A') : (item.worker?.account_name || 'N/A');
+
+    const status = (item.status || 'N/A').toUpperCase();
+    const dateStr = new Date(item.created_at).toLocaleDateString('en-GB') + ' UTC';
+
+    // Initialize portrait PDF
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2); // 170
+
+    // Design Color Theme
+    const colorPrimary = [15, 23, 42];  // Slate 900
+    const colorSecondary = [71, 85, 105]; // Slate 600
+    const colorLight = [248, 250, 252]; // Slate 50
+
+    // Top Brand Solid Banner
+    doc.setFillColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.rect(margin, margin, contentWidth, 12, 'F');
+
+    // Header label
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text("VELGO NIGERIA • TRUSTED LOCAL SERVICES PLATFORM", margin + 6, margin + 7.5);
+
+    // Docket Receipt title
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.setFont('text', 'bold');
+    doc.setFontSize(16);
+    doc.text("SERVICE JOB DOCKET & RECEIPT", margin, margin + 22);
+
+    // Reference ID & Date block
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    const docketId = `VLG-${item.id.substring(0, 8).toUpperCase()}-${new Date(item.created_at).getFullYear()}`;
+    doc.text(`Reference ID: ${docketId}`, margin, margin + 28);
+    doc.text(`Record Verified: ${dateStr}`, margin, margin + 31.5);
+
+    // Status Pill Badge Box on right
+    doc.setFillColor(241, 245, 249); // slate 100
+    doc.roundedRect(pageWidth - margin - 45, margin + 17, 45, 12, 2, 2, 'F');
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text("STATUS STATUS", pageWidth - margin - 40, margin + 21.5);
+    
+    if (status === 'COMPLETED') {
+      doc.setTextColor(16, 185, 129); // Green 500
+    } else if (status === 'CANCELLED' || status === 'DECLINED') {
+      doc.setTextColor(239, 68, 68); // Red 500
+    } else {
+      doc.setTextColor(245, 158, 11); // Amber 500
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(status, pageWidth - margin - 40, margin + 26.5);
+
+    // Participants Table Box
+    let y = margin + 40;
+    doc.setFillColor(colorLight[0], colorLight[1], colorLight[2]);
+    doc.rect(margin, y, contentWidth, 36, 'F');
+    doc.setDrawColor(226, 232, 240); // border slate 200
+    doc.setLineWidth(0.2);
+    doc.rect(margin, y, contentWidth, 36, 'S');
+
+    // Box Head
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text("1. TRANSACTION PARTICIPANTS (SPAM PROTECTION PROTOCOL ENFORCED)", margin + 5, y + 5);
+
+    // Client Info
+    doc.setFontSize(7);
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    doc.text("CLIENT / EMPLOYER:", margin + 6, y + 11.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.text(clientName.toUpperCase(), margin + 6, y + 15.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Email: ${obfuscateEmail(clientEmail)}`, margin + 6, y + 21);
+    doc.text(`Phone: ${obfuscatePhone(clientPhone)}`, margin + 6, y + 26);
+
+    // Vertical Border Separator
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin + 85, y + 8, margin + 85, y + 30);
+
+    // Worker Info
+    doc.setFontSize(7);
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    doc.text("SERVICE PROVIDER / ARTISAN:", margin + 91, y + 11.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.text(workerName.toUpperCase(), margin + 91, y + 15.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Email: ${obfuscateEmail(workerEmail)}`, margin + 91, y + 21);
+    doc.text(`Phone: ${obfuscatePhone(workerPhone)}`, margin + 91, y + 26);
+
+    // Job Section Details
+    y += 42;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.text("2. CONTRACT SERVICE DETAILS", margin, y);
+
+    // Simple Table
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y + 3, contentWidth, 7, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, y + 10, margin + contentWidth, y + 10);
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    doc.text("JOB TITLE / DESCRIPTION", margin + 3, y + 7.5);
+    doc.text("NEGOTIATED labor sum", margin + 115, y + 7.5);
+
+    // Table Row Content
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    
+    // Split title lines
+    const titleLines = doc.splitTextToSize(title, 105);
+    doc.text(titleLines, margin + 3, y + 15);
+    doc.text(formattedBudget.toUpperCase(), margin + 115, y + 15);
+
+    let offsetOffset = titleLines.length * 4.5;
+    y += 16 + offsetOffset;
+
+    // Line separator
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, y, margin + contentWidth, y);
+
+    // Description Block
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    doc.text("WORK SUMMARY & SCOPE NOTES:", margin, y + 5);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    const descLines = doc.splitTextToSize(description, contentWidth - 6);
+    doc.text(descLines, margin, y + 9.5);
+
+    y += 13 + (descLines.length * 4);
+
+    // Verification Bank Account Block if set
+    const hasBank = workerAccountNumber && workerAccountNumber !== 'N/A' && workerAccountNumber !== '---------';
+    if (hasBank) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, 20, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin, y, contentWidth, 20, 'S');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text("ARTISAN BANK VERIFICATION BLOCK", margin + 5, y + 4.5);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(`Remittance Bank Name: ${workerBankName}`, margin + 5, y + 9);
+      doc.text(`Registered Account Title: ${workerAccountName}`, margin + 5, y + 13);
+      doc.text(`Verified Number: ${workerAccountNumber}`, margin + 5, y + 17);
+      
+      y += 25;
+    } else {
+      y += 8;
+    }
+
+    // Safety and Nigerian regulatory compliance footer notes
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, margin + contentWidth, y);
+    doc.line(margin, y + 0.5, margin + contentWidth, y + 0.5);
+
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.text("VELGO NIGERIA COMPLIANCE LOGS", margin, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+    const finePrint = [
+      "• DIRECT PAYMENT REMITTANCE: Clients send funds directly to the verified artisan. Velgo does NOT collect commission/escrow escrow holding fees.",
+      "• SPAM / PIRACY CONTROLS: According to NDPR privacy laws, phone details are starred (hashed) on receipt prints to prevent indexing spam bots.",
+      "• COMPLETION GUARANTEE: Mark accomplishments as Completed inside Velgo to build transparency weight on the network."
+    ];
+    finePrint.forEach((line, index) => {
+      doc.text(line, margin, y + 3.5 + (index * 3.5));
+    });
+
+    // Save File on target system
+    doc.save(`velgo_receipt_${docketId.toLowerCase()}.pdf`);
   };
 
   const submitCompletion = async () => {
@@ -827,9 +1082,22 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 </button>
                             )}
 
-                            <div className="flex justify-center">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{new Date(item.created_at).toLocaleDateString()}</span>
-                            </div>
+                        </div>
+                    )}
+
+                    {statusFilter === 'history' && (
+                        <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center gap-3 relative z-10 font-sans">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                {new Date(item.created_at).toLocaleDateString()}
+                            </span>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); downloadJobReceipt(item); }}
+                                className="bg-rose-600 hover:bg-rose-700 text-white px-4.5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-rose-600/10 transition-all active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                                title="Download PDF invoice for this job history record"
+                            >
+                                <i className="fa-solid fa-file-pdf text-xs"></i>
+                                <span>PDF Receipt</span>
+                            </button>
                         </div>
                     )}
                 </div>
