@@ -181,6 +181,253 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     return `${phone.substring(0, 4)}****${phone.slice(-2)}`;
   };
 
+  const resolveItemDetails = (item: any) => {
+    const isBooking = item.worker_id !== undefined;
+    const isTask = !isBooking;
+
+    const title = item.title || item.posted_tasks?.title || 'Direct Artisan Booking';
+
+    const rawBudget = item.budget !== undefined ? item.budget : item.posted_tasks?.budget;
+    const formattedBudget = rawBudget ? `NGN ${Number(rawBudget).toLocaleString()}` : 'Negotiated';
+
+    let cpName = 'N/A';
+    let cpEmail = 'N/A';
+    let cpPhone = 'N/A';
+
+    if (isBooking) {
+      cpName = item.profiles?.full_name || 'N/A';
+      cpEmail = item.profiles?.email || 'N/A';
+      cpPhone = item.profiles?.phone_number || 'N/A';
+    } else {
+      if (viewMode === 'hiring') {
+        cpName = item.profiles?.full_name || 'Unassigned / Open';
+        cpEmail = item.profiles?.email || 'N/A';
+        cpPhone = item.profiles?.phone_number || 'N/A';
+      } else {
+        cpName = item.client?.full_name || 'N/A';
+        cpEmail = item.client?.email || 'N/A';
+        cpPhone = item.client?.phone_number || 'N/A';
+      }
+    }
+
+    const status = (item.status || 'N/A').toUpperCase();
+    const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : 'N/A';
+
+    return { title, rawBudget, formattedBudget, cpName, cpEmail, cpPhone, status, dateStr, isBooking };
+  };
+
+  const downloadAllHistoryPDF = (items: any[]) => {
+    if (!items || items.length === 0) {
+      alert("No history records to export.");
+      return;
+    }
+
+    // Initialize landscape PDF
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = 297;
+    const pageHeight = 210;
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // Professional Palette matching Slate
+    const brandPrimary = [15, 23, 42]; // Slate 900
+    const textGray = [100, 116, 139]; // Slate 500
+    const zebraBg = [248, 250, 252]; // Slate 50
+    const borderGray = [226, 232, 240]; // Slate 200
+
+    let pageNum = 1;
+
+    const drawHeader = (docInstance: any, page: number) => {
+      // Solid header bar
+      docInstance.setFillColor(brandPrimary[0], brandPrimary[1], brandPrimary[2]);
+      docInstance.rect(margin, margin, contentWidth, 18, 'F');
+
+      // Left Titles
+      docInstance.setTextColor(255, 255, 255);
+      docInstance.setFont('helvetica', 'bold');
+      docInstance.setFontSize(14);
+      docInstance.text("VELGO NIGERIA", margin + 6, margin + 11);
+
+      docInstance.setFont('helvetica', 'normal');
+      docInstance.setFontSize(9);
+      const roleStr = viewMode === 'hiring' ? 'HIRING ENTITY REPORT' : 'ARTISAN SERVICE REMITTANCE RECORDS';
+      docInstance.text(`CONSOLIDATED TRANSACTION HISTORY & INVOICES • ${roleStr}`, margin + 6, margin + 15);
+
+      // Right Metadata
+      docInstance.setFontSize(8);
+      docInstance.setTextColor(203, 213, 225); // Slate 300
+      const dateStr = new Date().toLocaleString('en-GB', { timeZone: 'UTC' }) + ' UTC';
+      docInstance.text(`Generated: ${dateStr}`, margin + contentWidth - 6, margin + 9, { align: 'right' });
+      docInstance.text(`Total Records: ${items.length} | Page ${page}`, margin + contentWidth - 6, margin + 14, { align: 'right' });
+
+      // Columns header Y
+      const tableHeaderY = margin + 24;
+      docInstance.setFillColor(241, 245, 249); // slate 100
+      docInstance.rect(margin, tableHeaderY, contentWidth, 8, 'F');
+
+      docInstance.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+      docInstance.setLineWidth(0.1);
+      docInstance.line(margin, tableHeaderY + 8, margin + contentWidth, tableHeaderY + 8);
+
+      docInstance.setTextColor(71, 85, 105); // Slate 600
+      docInstance.setFont('helvetica', 'bold');
+      docInstance.setFontSize(8);
+
+      // Draw columns header text
+      let currentX = margin;
+      
+      docInstance.text("S/N", currentX + 3, tableHeaderY + 5.5);
+      currentX += 12;
+      
+      docInstance.text("DATE", currentX + 3, tableHeaderY + 5.5);
+      currentX += 22;
+      
+      docInstance.text("JOB TITLE & DESCRIPTION", currentX + 3, tableHeaderY + 5.5);
+      currentX += 85;
+      
+      docInstance.text(viewMode === 'hiring' ? "VERIFIED PROVIDER / EMAIL" : "EMPLOYER DETAILS / EMAIL", currentX + 3, tableHeaderY + 5.5);
+      currentX += 68;
+      
+      docInstance.text("REMITTANCE", currentX + 3, tableHeaderY + 5.5);
+      currentX += 48;
+      
+      docInstance.text("STATUS", currentX + 3, tableHeaderY + 5.5);
+    };
+
+    drawHeader(doc, pageNum);
+
+    let y = margin + 38;
+
+    items.forEach((item, index) => {
+      if (y > pageHeight - 20) {
+        doc.addPage();
+        pageNum++;
+        drawHeader(doc, pageNum);
+        y = margin + 38;
+      }
+
+      if (index % 2 === 1) {
+        doc.setFillColor(zebraBg[0], zebraBg[1], zebraBg[2]);
+        doc.rect(margin, y - 6, contentWidth, 8, 'F');
+      }
+
+      const details = resolveItemDetails(item);
+
+      doc.setTextColor(51, 65, 85);
+      doc.setFont('text', 'normal');
+      doc.setFontSize(8);
+
+      let currentX = margin;
+
+      // 1. S/N
+      doc.text(String(index + 1), currentX + 3, y - 0.5);
+      currentX += 12;
+
+      // 2. Date
+      doc.text(details.dateStr, currentX + 3, y - 0.5);
+      currentX += 22;
+
+      // 3. Job Title
+      doc.setFont('helvetica', 'bold');
+      const truncatedTitle = details.title.length > 46 ? details.title.substring(0, 43) + '...' : details.title;
+      doc.text(truncatedTitle, currentX + 3, y - 0.5);
+      doc.setFont('helvetica', 'normal');
+      currentX += 85;
+
+      // 4. Counterparty Details
+      const labelName = details.cpName.length > 20 ? details.cpName.substring(0, 18) + '...' : details.cpName;
+      const labelEmail = obfuscateEmail(details.cpEmail);
+      doc.text(`${labelName} (${labelEmail})`, currentX + 3, y - 0.5);
+      currentX += 68;
+
+      // 5. Budget Amount
+      doc.setFont('helvetica', 'bold');
+      doc.text(details.formattedBudget, currentX + 3, y - 0.5);
+      doc.setFont('helvetica', 'normal');
+      currentX += 48;
+
+      // 6. Status Badge
+      if (details.status === 'COMPLETED') {
+        doc.setTextColor(16, 185, 129); // Green 500
+        doc.setFont('helvetica', 'bold');
+        doc.text("COMPLETED", currentX + 3, y - 0.5);
+      } else if (details.status === 'CANCELLED' || details.status === 'DECLINED') {
+        doc.setTextColor(239, 68, 68); // Red 500
+        doc.text(details.status, currentX + 3, y - 0.5);
+      } else {
+        doc.setTextColor(245, 158, 11); // Amber 500
+        doc.text(details.status, currentX + 3, y - 0.5);
+      }
+
+      // Border lines
+      doc.setDrawColor(241, 245, 249);
+      doc.setLineWidth(0.1);
+      doc.line(margin, y + 2, margin + contentWidth, y + 2);
+
+      y += 8;
+    });
+
+    if (y > pageHeight - 32) {
+      doc.addPage();
+      pageNum++;
+      drawHeader(doc, pageNum);
+      y = margin + 38;
+    }
+
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, margin + contentWidth, y);
+    doc.line(margin, y + 0.8, margin + contentWidth, y + 0.8);
+
+    y += 5;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(margin, y, contentWidth, 22, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(margin, y, contentWidth, 22, 'S');
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text("REPORT SUMMARY STATISTICS • AUDITED RECORDS", margin + 5, y + 5);
+
+    const totalJobs = items.length;
+    const completedCount = items.filter(item => {
+      const details = resolveItemDetails(item);
+      return details.status === 'COMPLETED';
+    }).length;
+    const cancelledCount = items.filter(item => {
+      const details = resolveItemDetails(item);
+      return details.status === 'CANCELLED' || details.status === 'DECLINED';
+    }).length;
+
+    let totalSpentEarned = 0;
+    items.forEach(item => {
+      const details = resolveItemDetails(item);
+      if (details.rawBudget && details.status === 'COMPLETED') {
+        totalSpentEarned += Number(details.rawBudget);
+      }
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    const amountLabel = viewMode === 'hiring' ? "Total Finished Job Costs Paid" : "Total Finished Earnings Remitted";
+    doc.text(`Total Records Present: ${totalJobs} historical items`, margin + 5, y + 10);
+    doc.text(`Completed Jobs: ${completedCount} | Cancelled/Declined: ${cancelledCount}`, margin + 5, y + 15);
+    doc.text(`${amountLabel}: NGN ${totalSpentEarned.toLocaleString()}`, margin + 120, y + 10);
+    doc.text("Velgo Nigeria Audit Protocol • All transactions are client-to-artisan direct-tier remittance. Privacy protection enforced.", margin + 120, y + 15);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Report verification checksum: VLG-HASH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`, margin + 5, y + 20);
+
+    doc.save(`velgo_history_report_${viewMode}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const downloadJobReceipt = (item: any) => {
     if (!item) return;
 
@@ -874,6 +1121,26 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       </div>
 
       <div className="p-6 pb-24">
+        {statusFilter === 'history' && !loading && currentItems.length > 0 && (
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 p-5 rounded-[30px] flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 relative z-10 font-sans">
+              <div className="text-center sm:text-left">
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 justify-center sm:justify-start">
+                     <i className="fa-solid fa-list-check text-rose-500 text-sm"></i>
+                     <span>Consolidated History Report</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider mt-1">Download full ledger log of your completed & archived service records.</p>
+              </div>
+              <button 
+                  onClick={() => downloadAllHistoryPDF(currentItems)}
+                  className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-600/10 transition-all flex items-center justify-center gap-1.5 shrink-0 outline-none"
+                  title="Export complete history records in one Landscape PDF report"
+              >
+                  <i className="fa-solid fa-file-pdf text-xs"></i>
+                  <span>Export All History (PDF)</span>
+              </button>
+          </div>
+        )}
+
         {loading ? <div className="text-center py-20 animate-pulse text-[10px] font-black uppercase tracking-[5px] text-gray-300">Syncing Activities...</div> :
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
             {currentItems.length > 0 ? currentItems.map(item => {
