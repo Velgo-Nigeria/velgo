@@ -252,7 +252,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (activeTab === 'stats') {
             try {
                 // Fetch stats datasets
-                const { data: allProfiles, error: pErr } = await supabase.from('profiles').select('role, is_verified, subscription_tier, created_at, tokens, updated_at');
+                const { data: allProfiles, error: pErr } = await supabase.from('profiles').select('role, is_verified, subscription_tier, created_at, tokens, updated_at, category');
                 const { data: allTasks, error: tErr } = await supabase.from('posted_tasks').select('status, budget, created_at, category');
                 const { data: allBookings, error: bErr } = await supabase.from('bookings').select('status, created_at');
 
@@ -273,9 +273,13 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 profilesList.forEach((p: any) => {
                     const r = p.role || 'user';
-                    if (r === 'client') roles.client++;
-                    else if (r === 'worker' || r === 'artisan') roles.worker++;
-                    else roles.admin++;
+                    if (r === 'admin') {
+                        roles.admin++;
+                    } else if (p.category) {
+                        roles.worker++;
+                    } else {
+                        roles.client++;
+                    }
 
                     if (p.is_verified) verifiedCount++;
 
