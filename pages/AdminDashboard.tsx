@@ -31,6 +31,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Blocking Form states
   const [blockingUserId, setBlockingUserId] = useState<string | null>(null);
   const [blockReasonInput, setBlockReasonInput] = useState<string>('');
+  const [unblockConfirmId, setUnblockConfirmId] = useState<string | null>(null);
 
   // Broadcast Form
   const [bTitle, setBTitle] = useState('');
@@ -342,7 +343,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const handleUnblockUser = async (userId: string) => {
-      if (!window.confirm("Are you sure you want to unblock this user?")) return;
       setProcessingId(userId);
       try {
           const { error } = await supabase.from('profiles').update({
@@ -352,6 +352,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           if (error) throw error;
 
           setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: false, block_reason: null } : u));
+          setUnblockConfirmId(null);
           alert("User unblocked successfully!");
       } catch (err: any) {
           alert("Failed to unblock user: " + err.message);
@@ -1139,12 +1140,29 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                                     Reason: {user.block_reason || 'N/A'}
                                                 </p>
                                             </div>
-                                            <button 
-                                                onClick={() => handleUnblockUser(user.id)}
-                                                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all shadow-md shrink-0 focus:outline-none"
-                                            >
-                                                Unblock User
-                                            </button>
+                                            {unblockConfirmId === user.id ? (
+                                                <div className="flex gap-2 shrink-0 items-center">
+                                                    <button 
+                                                        onClick={() => handleUnblockUser(user.id)}
+                                                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all shadow-md shrink-0 focus:outline-none"
+                                                    >
+                                                        Confirm Unblock
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setUnblockConfirmId(null)}
+                                                        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 text-slate-700 px-2.5 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all shrink-0 focus:outline-none border border-slate-200 dark:border-slate-600"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => setUnblockConfirmId(user.id)}
+                                                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all shadow-md shrink-0 focus:outline-none"
+                                                >
+                                                    Unblock User
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col gap-2">
