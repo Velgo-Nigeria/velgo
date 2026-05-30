@@ -79,6 +79,35 @@ const App: React.FC = () => {
     viewRef.current = view; 
   }, [view]);
 
+  // Initial deep-link query parameter parser on application startup
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const jobIdParam = urlParams.get('jobId');
+      if (jobIdParam) {
+        localStorage.setItem('velgo_redirect_job_id', jobIdParam);
+        // Clean up search query for visual aesthetic
+        const newUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({ view: 'landing', data: null }, '', newUrl);
+      }
+    } catch (e) {
+      console.warn("Deep-link capture error:", e);
+    }
+  }, []);
+
+  // Consume deep-link redirect once authenticated user profile is fully active
+  useEffect(() => {
+    if (profile && profile.role && profile.phone_number) {
+      const pendingJobId = localStorage.getItem('velgo_redirect_job_id');
+      if (pendingJobId) {
+        localStorage.removeItem('velgo_redirect_job_id');
+        setView('task-detail');
+        setViewData(pendingJobId);
+        window.history.replaceState({ view: 'task-detail', data: pendingJobId }, '', '');
+      }
+    }
+  }, [profile]);
+
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);

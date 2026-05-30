@@ -30,6 +30,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   
   // Modals
   const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -148,14 +149,37 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
       }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!task) return;
-    const text = `Check out this job: ${task.title} on Velgo!`;
-    const url = window.location.href;
+    const text = `Check out this job: "${task.title}" on Velgo Nigeria! Find verified local artisans and client work.`;
+    const url = `${window.location.origin}/?jobId=${task.id}`;
+    
+    // Copy URL to clipboard automatically so user can paste it anywhere
+    try {
+        await navigator.clipboard.writeText(url);
+    } catch (err) {
+        console.warn("Clipboard copy failed: ", err);
+    }
+
     if (navigator.share) {
-        navigator.share({ title: 'Velgo Job', text, url }).catch(console.error);
+        try {
+            await navigator.share({
+                title: `Velgo Nigeria Job: ${task.title}`,
+                text: text,
+                url: url
+            });
+        } catch (err: any) {
+            // User aborted or error occurred; show secondary feedback toast
+            if (err.name !== 'AbortError') {
+                setShowShareToast(true);
+                setTimeout(() => setShowShareToast(false), 3000);
+            }
+        }
     } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+        // Fallback: Open WhatsApp with prefilled message
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 3000);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n\nLink: ' + url)}`, '_blank');
     }
   };
 
@@ -228,7 +252,20 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
     </div>
   );
 
-  if (!task) return <div className="p-10 text-center">Task not found.</div>;
+  if (!task) return (
+    <div className="p-10 text-center min-h-screen bg-white flex flex-col items-center justify-center space-y-6 animate-fadeIn">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-2xl font-black">
+            <i className="fa-solid fa-triangle-exclamation animate-bounce"></i>
+        </div>
+        <div className="space-y-2">
+            <h2 className="text-lg font-black text-gray-900 uppercase tracking-wide">Job Post Offline</h2>
+            <p className="text-xs text-gray-500 max-w-xs mx-auto">This job posting might have been completed, filled by another artisan, or deleted by the client.</p>
+        </div>
+        <button onClick={onBack} className="px-6 py-3 bg-brand text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-transform">
+            Go to Marketplace
+        </button>
+    </div>
+  );
 
   const isOwner = profile?.id === task.client_id;
 
@@ -356,6 +393,22 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
             )}
         </div>
       </div>
+
+      {/* Dynamic Clipboard Copy Toast */}
+      {showShareToast && (
+        <div className="fixed bottom-24 left-6 right-6 z-[150] bg-slate-900 border border-slate-800 text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl animate-fadeIn backdrop-blur-md bg-opacity-95 font-sans">
+            <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">
+                    <i className="fa-solid fa-check"></i>
+                </div>
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-white">Link Copied!</p>
+                    <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5">Share with friends over WhatsApp or SMS</p>
+                </div>
+            </div>
+            <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-0.5 rounded-lg font-mono">Pristine</span>
+        </div>
+      )}
     </div>
   );
 };
