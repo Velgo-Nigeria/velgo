@@ -6,14 +6,175 @@ import { Profile, SubscriptionTier, Broadcast } from '../lib/types';
 import { TIERS } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 
+interface SparkChartProps {
+    data: { label: string; count: number }[];
+    color: string;
+    gradientId: string;
+}
+
+const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId }) => {
+    if (data.length === 0) return <div className="h-40 flex items-center justify-center text-xs text-gray-400">No data</div>;
+    const maxVal = Math.max(...data.map(d => d.count), 5);
+    const height = 180;
+    const width = 500;
+    const padding = { top: 20, right: 20, bottom: 25, left: 35 };
+
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    const points = data.map((d, i) => {
+        const x = padding.left + (i / (data.length - 1)) * chartWidth;
+        const y = padding.top + chartHeight - (d.count / maxVal) * chartHeight;
+        return { x, y, label: d.label, count: d.count };
+    });
+
+    const pathD = points.length > 0 
+        ? `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+        : '';
+
+    const areaD = points.length > 0
+        ? `${pathD} L ${points[points.length - 1].x} ${padding.top + chartHeight} L ${points[0].x} ${padding.top + chartHeight} Z`
+        : '';
+
+    return (
+        <div className="w-full relative group">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible font-sans">
+                <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+                    </linearGradient>
+                </defs>
+                
+                {/* Horizontal Grid Lines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                    const y = padding.top + chartHeight * ratio;
+                    const val = Math.round(maxVal * (1 - ratio));
+                    return (
+                        <g key={idx}>
+                            <line 
+                                x1={padding.left} 
+                                y1={y} 
+                                x2={width - padding.right} 
+                                y2={y} 
+                                className="stroke-gray-100 dark:stroke-slate-800/80" 
+                                strokeWidth={1} 
+                                strokeDasharray="3 3" 
+                            />
+                            <text 
+                                x={padding.left - 8} 
+                                y={y + 3} 
+                                className="fill-gray-400 dark:fill-gray-500 font-mono text-[8px] text-right font-bold"
+                                textAnchor="end"
+                            >
+                                {val}
+                            </text>
+                        </g>
+                    );
+                })}
+
+                {/* Vertical labels */}
+                {points.map((p, idx) => (
+                    <text 
+                        key={idx}
+                        x={p.x}
+                        y={height - 6}
+                        className="fill-gray-400 dark:fill-gray-500 font-black text-[8px] uppercase tracking-wider"
+                        textAnchor="middle"
+                    >
+                        {p.label}
+                    </text>
+                ))}
+
+                {/* Glowing Area Fill */}
+                {areaD && (
+                    <path 
+                        d={areaD} 
+                        fill={`url(#${gradientId})`} 
+                    />
+                )}
+
+                {/* Spark Line */}
+                {pathD && (
+                    <path 
+                        d={pathD} 
+                        fill="none" 
+                        stroke={color} 
+                        strokeWidth={2} 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                    />
+                )}
+
+                {/* Interactive Points */}
+                {points.map((p, idx) => (
+                    <g key={idx} className="group/dot cursor-pointer">
+                        <circle 
+                            cx={p.x} 
+                            cy={p.y} 
+                            r={3.5} 
+                            className="fill-white dark:fill-slate-900 stroke-2" 
+                            stroke={color} 
+                        />
+                        <circle 
+                            cx={p.x} 
+                            cy={p.y} 
+                            r={8} 
+                            fill={color} 
+                            className="opacity-0 group-hover/dot:opacity-15 transition-all duration-150" 
+                        />
+                        
+                        {/* Tooltip on Hover */}
+                        <g className="opacity-0 group-hover/dot:opacity-100 transition-opacity duration-200 pointer-events-none">
+                            <rect 
+                                x={p.x - 22} 
+                                y={p.y - 24} 
+                                width={44} 
+                                height={16} 
+                                rx={4} 
+                                className="fill-slate-950/90 dark:fill-white" 
+                            />
+                            <text 
+                                x={p.x} 
+                                y={p.y - 13} 
+                                className="fill-white dark:fill-slate-950 font-black text-[8px] text-center"
+                                textAnchor="middle"
+                            >
+                                {p.count}
+                            </text>
+                        </g>
+                    </g>
+                ))}
+            </svg>
+        </div>
+    );
+};
+
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding' | 'reviews'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding' | 'reviews' | 'stats'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [pendingReplies, setPendingReplies] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+      totalUsers: number;
+      weeklyActiveCount: number;
+      roles: { client: number; worker: number; admin: number };
+      verifiedCount: number;
+      tiers: { basic: number; lite: number; standard: number; pro: number };
+      totalTasks: number;
+      totalBudget: number;
+      taskStatus: Record<string, number>;
+      totalBookings: number;
+      bookingStatus: Record<string, number>;
+      revenueMRR: number;
+      averageBudget: number;
+      categoryDistribution: Record<string, number>;
+      userGrowth: { label: string; count: number }[];
+      taskVolumeWeekly: { label: string; count: number }[];
+  } | null>(null);
   const [counts, setCounts] = useState<{
       verify: number;
       safety: number;
@@ -86,6 +247,139 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const { data: curProfile } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
         if (curProfile) {
             setCurrentUserProfile(curProfile);
+        }
+
+        if (activeTab === 'stats') {
+            try {
+                // Fetch stats datasets
+                const { data: allProfiles, error: pErr } = await supabase.from('profiles').select('role, is_verified, subscription_tier, created_at, tokens, updated_at');
+                const { data: allTasks, error: tErr } = await supabase.from('posted_tasks').select('status, budget, created_at, category');
+                const { data: allBookings, error: bErr } = await supabase.from('bookings').select('status, created_at');
+
+                if (pErr || tErr || bErr) {
+                    throw new Error(pErr?.message || tErr?.message || bErr?.message || "Error fetching records");
+                }
+
+                const profilesList = allProfiles || [];
+                const totalUsers = profilesList.length;
+                const roles = { client: 0, worker: 0, admin: 0 };
+                let verifiedCount = 0;
+                const tiers = { basic: 0, lite: 0, standard: 0, pro: 0 };
+
+                // Weekly active users calculation: profiles whose updated_at/created_at is within the last 7 days
+                let weeklyActiveCount = 0;
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+                profilesList.forEach((p: any) => {
+                    const r = p.role || 'user';
+                    if (r === 'client') roles.client++;
+                    else if (r === 'worker' || r === 'artisan') roles.worker++;
+                    else roles.admin++;
+
+                    if (p.is_verified) verifiedCount++;
+
+                    const tier = p.subscription_tier || 'basic';
+                    if (tier in tiers) {
+                        tiers[tier as keyof typeof tiers]++;
+                    } else {
+                        tiers.basic++;
+                    }
+
+                    const lastActive = p.updated_at ? new Date(p.updated_at) : p.created_at ? new Date(p.created_at) : null;
+                    if (lastActive && lastActive >= sevenDaysAgo) {
+                        weeklyActiveCount++;
+                    }
+                });
+
+                // Tier pricing definitions in NGN (Starter Pack, Standard Pack, Pro Pack, Power Pack)
+                const tierPrices = { basic: 900, lite: 3999, standard: 6999, pro: 9999 };
+                const revenueMRR = (tiers.basic * tierPrices.basic) + 
+                                    (tiers.lite * tierPrices.lite) + 
+                                    (tiers.standard * tierPrices.standard) + 
+                                    (tiers.pro * tierPrices.pro);
+
+                const tasksList = allTasks || [];
+                const totalTasks = tasksList.length;
+                let totalBudget = 0;
+                const taskStatus: Record<string, number> = {};
+                const categoryDistribution: Record<string, number> = {};
+
+                tasksList.forEach((t: any) => {
+                    totalBudget += t.budget || 0;
+                    taskStatus[t.status] = (taskStatus[t.status] || 0) + 1;
+                    categoryDistribution[t.category] = (categoryDistribution[t.category] || 0) + 1;
+                });
+
+                const averageBudget = totalTasks > 0 ? Math.round(totalBudget / totalTasks) : 0;
+
+                const bookingsList = allBookings || [];
+                const totalBookings = bookingsList.length;
+                const bookingStatus: Record<string, number> = {};
+                bookingsList.forEach((b: any) => {
+                    bookingStatus[b.status] = (bookingStatus[b.status] || 0) + 1;
+                });
+
+                // Group User Growth by month (last 6 months)
+                const userGrowthMap: Record<string, number> = {};
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const now = new Date();
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
+                    userGrowthMap[key] = 0;
+                }
+
+                profilesList.forEach((p: any) => {
+                    if (!p.created_at) return;
+                    const d = new Date(p.created_at);
+                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
+                    if (key in userGrowthMap) {
+                        userGrowthMap[key]++;
+                    }
+                });
+
+                // Group Task Volume by month (last 6 months)
+                const taskVolMap: Record<string, number> = {};
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
+                    taskVolMap[key] = 0;
+                }
+
+                tasksList.forEach((t: any) => {
+                    if (!t.created_at) return;
+                    const d = new Date(t.created_at);
+                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
+                    if (key in taskVolMap) {
+                        taskVolMap[key]++;
+                    }
+                });
+
+                setStats({
+                    totalUsers,
+                    weeklyActiveCount,
+                    roles,
+                    verifiedCount,
+                    tiers,
+                    totalTasks,
+                    totalBudget,
+                    taskStatus,
+                    totalBookings,
+                    bookingStatus,
+                    revenueMRR,
+                    averageBudget,
+                    categoryDistribution,
+                    userGrowth: Object.entries(userGrowthMap).map(([label, count]) => ({ label, count })),
+                    taskVolumeWeekly: Object.entries(taskVolMap).map(([label, count]) => ({ label, count }))
+                });
+            } catch (err: any) {
+                console.error("Failed to compile stats: ", err);
+                setErrorMsg("Failed to compile platform-wide metrics: " + err.message);
+            } finally {
+                setLoading(false);
+            }
+            return;
         }
 
         if (activeTab === 'users') {
@@ -736,7 +1030,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews', 'stats'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -744,7 +1038,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'reviews' ? 'Artisan Replies' : tab}</span>
+                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-500 text-white animate-pulse'
@@ -1373,6 +1667,215 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                           ))}
                       </div>
                   )}
+              </div>
+          ) : 
+
+          activeTab === 'stats' && stats ? (
+              <div className="space-y-6 animate-fadeIn pb-12 font-sans max-w-6xl mx-auto">
+                  {/* Overview Card Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {/* Metric 1: Total Users */}
+                      <div className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                          <div>
+                              <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Total Registers</p>
+                              <h3 className="text-2xl font-black text-gray-900 dark:text-white mt-1">{stats.totalUsers}</h3>
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
+                              <span>{stats.verifiedCount} Verified</span>
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          </div>
+                      </div>
+
+                      {/* Metric 2: Weekly Active (WAU) */}
+                      <div className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                          <div>
+                              <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Weekly Active (WAU)</p>
+                              <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{stats.weeklyActiveCount}</h3>
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
+                              <span>7-Day Active Index</span>
+                              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                          </div>
+                      </div>
+
+                      {/* Metric 3: Jobs / Tasks Posted */}
+                      <div className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                          <div>
+                              <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Total Task Flow</p>
+                              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.totalTasks}</h3>
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
+                              <span>{stats.totalBookings} Active Bookings</span>
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          </div>
+                      </div>
+
+                      {/* Metric 4: Platform Estimated MRR */}
+                      <div className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                          <div>
+                              <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Monthly Revenue (MRR)</p>
+                              <h3 className="text-2xl font-black text-amber-500 mt-1">₦{stats.revenueMRR.toLocaleString()}</h3>
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
+                              <span>Subscription Model</span>
+                              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Visual Trendline Charts Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Chart 1: User Growth Monthly */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                          <div>
+                              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">User Growth Trend</h4>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Registered profiles over last 6 months</p>
+                          </div>
+                          <div className="pt-2">
+                              <SparkChart data={stats.userGrowth} color="#4f46e5" gradientId="userGrowthGrad" />
+                          </div>
+                      </div>
+
+                      {/* Chart 2: Task Volume Monthly */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                          <div>
+                              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Job Traffic & Posting Volume</h4>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posted task submissions over last 6 months</p>
+                          </div>
+                          <div className="pt-2">
+                              <SparkChart data={stats.taskVolumeWeekly} color="#10b981" gradientId="taskVolumeGrad" />
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Subscription split and transaction metrics */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Grid Item 1: Tiers breakdown */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                          <div>
+                              <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Subscription Split</h4>
+                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Revenue generation channels</p>
+                          </div>
+                          <div className="space-y-3 pt-2">
+                              {[
+                                  { name: 'Starter Pack (₦900)', count: stats.tiers.basic, color: 'bg-slate-400' },
+                                  { name: 'Standard Pack (₦3,999)', count: stats.tiers.lite, color: 'bg-blue-400' },
+                                  { name: 'Pro Pack (₦6,999)', count: stats.tiers.standard, color: 'bg-indigo-400' },
+                                  { name: 'Power Pack (₦9,999)', count: stats.tiers.pro, color: 'bg-purple-400' }
+                              ].map((item, idx) => {
+                                  const total = stats.tiers.basic + stats.tiers.lite + stats.tiers.standard + stats.tiers.pro || 1;
+                                  const pct = Math.round((item.count / total) * 100);
+                                  return (
+                                      <div key={idx} className="space-y-1">
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="font-bold text-gray-700 dark:text-gray-300">{item.name}</span>
+                                              <span className="font-black text-gray-900 dark:text-white">{item.count} users ({pct}%)</span>
+                                          </div>
+                                          <div className="w-full h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                              <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+
+                      {/* Grid Item 2: User Types Split */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                          <div>
+                              <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Roles & Ecosystem Split</h4>
+                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Ecosystem balance indices</p>
+                          </div>
+                          <div className="space-y-3 pt-2">
+                              {[
+                                  { label: 'Clients', count: stats.roles.client, icon: 'fa-user', color: 'bg-indigo-500' },
+                                  { label: 'Artisans / Workers', count: stats.roles.worker, icon: 'fa-user-ninja', color: 'bg-emerald-500' },
+                                  { label: 'Admins', count: stats.roles.admin, icon: 'fa-shield', color: 'bg-amber-500' }
+                              ].map((r, idx) => {
+                                  const total = stats.roles.client + stats.roles.worker + stats.roles.admin || 1;
+                                  const pct = Math.round((r.count / total) * 100);
+                                  return (
+                                      <div key={idx} className="space-y-1">
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                                  <i className={`fa-solid ${r.icon} text-[10px]`}></i> {r.label}
+                                              </span>
+                                              <span className="font-black text-gray-900 dark:text-white">{r.count} ({pct}%)</span>
+                                          </div>
+                                          <div className="w-full h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                              <div className={`h-full ${r.color} rounded-full`} style={{ width: `${pct}%` }} />
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+
+                      {/* Grid Item 3: Job Distribution Details */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                          <div>
+                              <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Job Metrics Overview</h4>
+                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Financial metrics per listing</p>
+                          </div>
+                          <div className="space-y-3 text-xs pt-1.5">
+                              <div className="flex justify-between items-center py-2.5 border-b dark:border-slate-700/50">
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Mean Client Budget</span>
+                                  <span className="font-black text-gray-900 dark:text-white text-sm">₦{stats.averageBudget.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2.5 border-b dark:border-slate-700/50">
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Open Listings</span>
+                                  <span className="font-black text-indigo-500 font-mono text-sm">{stats.taskStatus.open || 0} tasks</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2.5">
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Completed Bookings</span>
+                                  <span className="font-black text-emerald-500 font-mono text-sm">{stats.bookingStatus.completed || 0} jobs</span>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Categories Leaderboard */}
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm">
+                      <div className="mb-4">
+                          <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Task Postings by Industry Category</h4>
+                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Ecosystem supply/demand indicators</p>
+                      </div>
+                      
+                      {Object.keys(stats.categoryDistribution).length === 0 ? (
+                          <div className="text-center py-6 text-xs text-gray-400">No postings recorded yet.</div>
+                      ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {Object.entries(stats.categoryDistribution)
+                                  .sort((a, b) => b[1] - a[1])
+                                  .slice(0, 10)
+                                  .map(([cat, count], idx) => {
+                                      const total = stats.totalTasks || 1;
+                                      const pct = Math.round((count / total) * 100);
+                                      return (
+                                          <div key={idx} className="bg-gray-50 dark:bg-slate-900/40 p-3.5 rounded-2xl flex items-center justify-between border border-gray-100 dark:border-slate-800/60 font-sans">
+                                              <div className="min-w-0 flex-1 pr-2">
+                                                  <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 truncate">{cat}</h5>
+                                                  <div className="flex items-center gap-1 mt-1">
+                                                      <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }} />
+                                                      </div>
+                                                      <span className="text-[9px] text-gray-400 font-bold">{pct}%</span>
+                                                  </div>
+                                              </div>
+                                              <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-xs font-black font-mono shrink-0">
+                                                  {count} posts
+                                              </span>
+                                          </div>
+                                      );
+                                  })}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          ) : activeTab === 'stats' ? (
+              <div className="text-center py-20 text-gray-400 animate-pulse font-sans">
+                  <i className="fa-solid fa-cloud-arrow-down text-4xl mb-3 text-indigo-500 animate-bounce"></i>
+                  <p className="font-black uppercase tracking-wider text-xs">Fetching & Compiling Analytics...</p>
               </div>
           ) : null
         }
