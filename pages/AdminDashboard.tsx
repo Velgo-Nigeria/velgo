@@ -28,6 +28,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
+  // Blocking Form states
+  const [blockingUserId, setBlockingUserId] = useState<string | null>(null);
+  const [blockReasonInput, setBlockReasonInput] = useState<string>('');
+
   // Broadcast Form
   const [bTitle, setBTitle] = useState('');
   const [bMessage, setBMessage] = useState('');
@@ -309,6 +313,50 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           alert("Failed to update tier: " + error?.message);
       } finally {
         setProcessingId(null);
+      }
+  };
+
+  const handleBlockUser = async (userId: string) => {
+      const reason = blockReasonInput.trim();
+      if (!reason) {
+          alert("Please enter an official Reason for Block.");
+          return;
+      }
+      setProcessingId(userId);
+      try {
+          const { error } = await supabase.from('profiles').update({
+              is_blocked: true,
+              block_reason: reason
+          }).eq('id', userId);
+          if (error) throw error;
+
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: true, block_reason: reason } : u));
+          setBlockingUserId(null);
+          setBlockReasonInput('');
+          alert("User blocked successfully and session token revoked!");
+      } catch (err: any) {
+          alert("Failed to block user: " + err.message);
+      } finally {
+          setProcessingId(null);
+      }
+  };
+
+  const handleUnblockUser = async (userId: string) => {
+      if (!window.confirm("Are you sure you want to unblock this user?")) return;
+      setProcessingId(userId);
+      try {
+          const { error } = await supabase.from('profiles').update({
+              is_blocked: false,
+              block_reason: null
+          }).eq('id', userId);
+          if (error) throw error;
+
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: false, block_reason: null } : u));
+          alert("User unblocked successfully!");
+      } catch (err: any) {
+          alert("Failed to unblock user: " + err.message);
+      } finally {
+          setProcessingId(null);
       }
   };
 
@@ -1076,6 +1124,72 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                     </select>
                                 </div>
                             </div>
+                            
+                            {/* Emergency Blocking System (NDPR compliant) */}
+                            {currentUserProfile && user.id !== currentUserProfile.id && (
+                                <div className="mt-2 pt-2 border-t border-gray-50 dark:border-slate-700/60 flex flex-col gap-2">
+                                    {user.is_blocked ? (
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30 gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <i className="fa-solid fa-lock text-xs"></i>
+                                                    <span>Emergency Blocked</span>
+                                                </p>
+                                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-bold truncate italic" title={user.block_reason}>
+                                                    Reason: {user.block_reason || 'N/A'}
+                                                </p>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleUnblockUser(user.id)}
+                                                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all shadow-md shrink-0 focus:outline-none"
+                                            >
+                                                Unblock User
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {blockingUserId === user.id ? (
+                                                <div className="flex flex-col gap-2 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                    <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                                                        <i className="fa-solid fa-solid fa-circle-info text-rose-500"></i>
+                                                        <span>Space Reason For Block</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Enter reason for suspension..." 
+                                                            value={blockReasonInput} 
+                                                            onChange={(e) => setBlockReasonInput(e.target.value)} 
+                                                            className="flex-1 text-[11px] font-medium p-2.5 rounded-lg border dark:bg-slate-900 dark:border-slate-700 dark:text-white outline-none focus:border-red-500"
+                                                        />
+                                                        <button 
+                                                            onClick={() => handleBlockUser(user.id)}
+                                                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shrink-0 active:scale-95"
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => { setBlockingUserId(null); setBlockReasonInput(''); }}
+                                                            className="text-gray-400 hover:text-gray-600 dark:hover:text-white text-[10px] font-black uppercase tracking-wider px-2"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-end">
+                                                    <button 
+                                                        onClick={() => { setBlockingUserId(user.id); setBlockReasonInput(''); }}
+                                                        className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-widest transition-all"
+                                                    >
+                                                        Emergency Block
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

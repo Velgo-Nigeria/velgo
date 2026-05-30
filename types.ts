@@ -48,6 +48,8 @@ export interface Profile {
   subcategory?: string;
   theme_mode?: 'light' | 'dark' | 'auto';
   notification_preferences?: NotificationPreferences;
+  is_blocked?: boolean;
+  block_reason?: string;
   
   task_count: number;
   job_count: number;

@@ -54,6 +54,8 @@ export interface Profile {
   theme_mode?: 'light' | 'dark' | 'auto';
   updated_at?: string;
   notification_preferences?: NotificationPreferences;
+  is_blocked?: boolean;
+  block_reason?: string;
   worker_rating_count?: number;
   worker_avg_rating?: number;
   worker_avg_communication?: number;

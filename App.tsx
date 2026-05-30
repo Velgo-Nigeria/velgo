@@ -31,6 +31,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { InstallPWA } from './components/InstallPWA';
 import { NotificationToast } from './components/NotificationToast';
 import { UserGuide } from './components/UserGuide';
+import { SuspendedScreen } from './components/SuspendedScreen';
 
 // Extracted Skeleton for reuse in Suspense fallback
 const PageSkeleton = () => (
@@ -189,6 +190,32 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]); 
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = supabase
+      .channel(`profile-updates-${session.user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${session.user.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setProfile(payload.new as Profile);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
   // Skeleton Loader for Initialization
   if (loading || isInitializingProfile) return <PageSkeleton />;
 
@@ -204,6 +231,19 @@ const App: React.FC = () => {
         case 'about': return <Suspense fallback={<PageSkeleton />}><About profile={null} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
       }
+    }
+
+    // Intercept Blocked / Suspended Accounts instantly
+    if (profile && profile.is_blocked) {
+      return (
+        <SuspendedScreen 
+          profile={profile} 
+          onCheckStatus={() => fetchProfile(session.user.id, 1, false)} 
+          onLogOut={async () => {
+             await supabase.auth.signOut();
+          }} 
+        />
+      );
     }
 
     // 2. Logged In but Profile Record Missing or Incomplete
