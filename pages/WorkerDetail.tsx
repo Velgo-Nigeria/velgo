@@ -17,9 +17,16 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [hasMoreReviews, setHasMoreReviews] = useState(true);
   const [hasRequested, setHasRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showShareToast, setShowShareToast] = useState(false);
 
   useEffect(() => {
-    safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any).then(({data}) => setWorker(data));
+    setLoading(true);
+    safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any)
+      .then(({data}) => {
+         setWorker(data);
+         setLoading(false);
+      });
     
     // Check if profile has already requested this worker
     if (profile && profile.id !== workerId) {
@@ -92,16 +99,64 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!worker) return;
-    const text = `Check out ${worker.full_name} on Velgo!`;
-    const url = window.location.href;
+    const text = `Check out "${worker.full_name}" (${worker.category || 'Professional Artisan'}) on Velgo Nigeria! Hire verified local expertise.`;
+    const url = `${window.location.origin}/?workerId=${worker.id}`;
+    
+    // Copy URL to clipboard automatically so user can paste it anywhere
+    try {
+        await navigator.clipboard.writeText(url);
+    } catch (err) {
+        console.warn("Clipboard copy failed: ", err);
+    }
+
     if (navigator.share) {
-        navigator.share({ title: 'Velgo Profile', text, url }).catch(console.error);
+        try {
+            await navigator.share({
+                title: `Velgo Nigeria Artisan: ${worker.full_name}`,
+                text: text,
+                url: url
+            });
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                setShowShareToast(true);
+                setTimeout(() => setShowShareToast(false), 3000);
+            }
+        }
     } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+        // Fallback: Open WhatsApp with prefilled message
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 3000);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n\nLink: ' + url)}`, '_blank');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20 text-gray-400 animate-pulse font-sans bg-white min-h-screen flex flex-col items-center justify-center">
+          <i className="fa-solid fa-cloud-arrow-down text-4xl mb-3 text-brand animate-bounce"></i>
+          <p className="font-black uppercase tracking-wider text-[10px]">Retrieving Artisan Profile...</p>
+      </div>
+    );
+  }
+
+  if (!worker) {
+    return (
+      <div className="p-10 text-center min-h-screen bg-white flex flex-col items-center justify-center space-y-6 animate-fadeIn">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-2xl font-black">
+              <i className="fa-solid fa-triangle-exclamation animate-bounce"></i>
+          </div>
+          <div className="space-y-2">
+              <h2 className="text-lg font-black text-gray-900 uppercase tracking-wide">Artisan Offline</h2>
+              <p className="text-xs text-gray-500 max-w-xs mx-auto">This artisan public profile might have been suspended, deleted, or is temporarily unavailable.</p>
+          </div>
+          <button onClick={onBack} className="px-6 py-3 bg-brand text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-transform">
+              Go to Marketplace
+          </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white min-h-screen pb-24 relative">
@@ -290,6 +345,22 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
           )}
         </div>
       </div>
+
+      {/* Dynamic Clipboard Copy Toast */}
+      {showShareToast && (
+        <div className="fixed bottom-24 left-6 right-6 z-[150] bg-slate-900 border border-slate-800 text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl animate-fadeIn backdrop-blur-md bg-opacity-95 font-sans">
+            <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">
+                    <i className="fa-solid fa-check"></i>
+                </div>
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-white">Link Copied!</p>
+                    <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5">Share with friends over WhatsApp or SMS</p>
+                </div>
+            </div>
+            <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-0.5 rounded-lg font-mono">Pristine</span>
+        </div>
+      )}
     </div>
   );
 };

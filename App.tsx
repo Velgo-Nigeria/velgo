@@ -84,8 +84,19 @@ const App: React.FC = () => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const jobIdParam = urlParams.get('jobId');
+      const workerIdParam = urlParams.get('workerId');
+      let redirectHappened = false;
+
       if (jobIdParam) {
         localStorage.setItem('velgo_redirect_job_id', jobIdParam);
+        redirectHappened = true;
+      }
+      if (workerIdParam) {
+        localStorage.setItem('velgo_redirect_worker_id', workerIdParam);
+        redirectHappened = true;
+      }
+
+      if (redirectHappened) {
         // Clean up search query for visual aesthetic
         const newUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({ view: 'landing', data: null }, '', newUrl);
@@ -104,6 +115,15 @@ const App: React.FC = () => {
         setView('task-detail');
         setViewData(pendingJobId);
         window.history.replaceState({ view: 'task-detail', data: pendingJobId }, '', '');
+        return;
+      }
+
+      const pendingWorkerId = localStorage.getItem('velgo_redirect_worker_id');
+      if (pendingWorkerId) {
+        localStorage.removeItem('velgo_redirect_worker_id');
+        setView('worker-detail');
+        setViewData(pendingWorkerId);
+        window.history.replaceState({ view: 'worker-detail', data: pendingWorkerId }, '', '');
       }
     }
   }, [profile]);
