@@ -1525,6 +1525,43 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                             <a href={`tel:${report.profiles?.phone_number}`} className="text-xs text-blue-600 font-bold underline">{report.profiles?.phone_number}</a>
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-xl mb-4 whitespace-pre-wrap text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{report.details}</div>
+                        
+                        {/* Display Attached Evidence Screenshot */}
+                        {(() => {
+                            let imageUrl = report.evidence_url;
+                            if (!imageUrl && report.details) {
+                                const match = report.details.match(/EVIDENCE LINK:\s*(https?:\/\/\S+)/i);
+                                if (match) {
+                                    imageUrl = match[1];
+                                }
+                            }
+                            if (imageUrl) {
+                                return (
+                                    <div className="mb-4">
+                                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Attached Evidence</p>
+                                        <div className="relative group overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700 max-w-sm bg-gray-50 dark:bg-slate-900 shadow-sm">
+                                            <img 
+                                                src={imageUrl} 
+                                                alt="Attached evidence screenshot" 
+                                                className="w-full h-auto max-h-60 object-contain hover:scale-105 transition-all duration-300 cursor-pointer" 
+                                                onClick={() => window.open(imageUrl, '_blank')}
+                                                referrerPolicy="no-referrer"
+                                            />
+                                            <a 
+                                                href={imageUrl} 
+                                                target="_blank" 
+                                                rel="noreferrer" 
+                                                className="absolute bottom-2 right-2 bg-black/75 hover:bg-black text-white px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase flex items-center gap-1"
+                                            >
+                                                <i className="fa-solid fa-expand"></i> Open Fullsize
+                                            </a>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+
                         <div className="flex gap-2">
                             <button onClick={() => { setActiveTab('support'); setSelectedTicketUser(report.profiles); }} className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-black text-[10px] uppercase">Message</button>
                             {report.status !== 'resolved' && (

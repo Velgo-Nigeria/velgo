@@ -387,13 +387,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                     />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Phone Number</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">WhatsApp Number (For Direct Chats)</label>
                     <input 
                         disabled={!editing} 
                         value={phone} 
                         onChange={e => setPhone(e.target.value)} 
                         className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all" 
                     />
+                    {editing && (
+                        <p className="text-[8px] text-emerald-500 font-bold uppercase tracking-wider mt-1 px-1">
+                            * Other users will connect with you here directly to close deals securely.
+                        </p>
+                    )}
                 </div>
                 <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase">Street Address</label>

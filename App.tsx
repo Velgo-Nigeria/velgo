@@ -11,10 +11,9 @@ import SignUp from './pages/SignUp';
 // Lazy Load Secondary Pages (Reduces initial bundle size significantly)
 const Home = React.lazy(() => import('./pages/Home'));
 const Activity = React.lazy(() => import('./pages/Activity'));
-const Messages = React.lazy(() => import('./pages/Messages'));
+const Overview = React.lazy(() => import('./pages/Overview'));
 const ProfilePage = React.lazy(() => import('./pages/Profile'));
 const Subscription = React.lazy(() => import('./pages/Subscription'));
-const Chat = React.lazy(() => import('./pages/Chat'));
 const WorkerDetail = React.lazy(() => import('./pages/WorkerDetail'));
 const TaskDetail = React.lazy(() => import('./pages/TaskDetail'));
 const Settings = React.lazy(() => import('./pages/Settings'));
@@ -304,12 +303,11 @@ const App: React.FC = () => {
     // NOTE: Suspense wrapper added to main content to handle lazy loading
     switch (view) {
       case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
-      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewTask={(id) => navigate('task-detail', id)} onViewWorker={(id) => navigate('worker-detail', id)} />;
-      case 'messages': return <Messages profile={profile} onOpenChat={(id) => navigate('chat', id)} />;
+      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewTask={(id) => navigate('task-detail', id)} onViewWorker={(id) => navigate('worker-detail', id)} />;
+      case 'overview': return <Overview profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewLegal={(tab) => navigate('legal', tab)} onShowGuide={() => setShowGuide(true)} />;
       case 'profile': return <ProfilePage profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onSubscription={() => navigate('subscription')} onSettings={() => navigate('settings')} />;
       case 'subscription': return <Subscription profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('profile')} />;
-      case 'chat': return <Chat profile={profile} partnerId={viewData} onBack={() => handleBackNavigation('messages')} />;
-      case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('chat', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
+      case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} />;
       case 'change-password': return <ResetPassword onSuccess={() => { setToast({ msg: 'Password updated!', type: 'success' }); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
@@ -337,7 +335,7 @@ const App: React.FC = () => {
                 <nav className="space-y-3 flex-1">
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navigate('home')} />
                     <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => navigate('activity')} />
-                    <SidebarItem icon="fa-comments" label="Messages" active={['messages', 'chat'].includes(view)} onClick={() => navigate('messages')} />
+                    <SidebarItem icon="fa-compass" label="My Hub" active={view === 'overview'} onClick={() => navigate('overview')} />
                     <SidebarItem icon="fa-user-ninja" label="Profile" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view)} onClick={() => navigate('profile')} />
                 </nav>
             </aside>
@@ -375,9 +373,9 @@ const App: React.FC = () => {
               <i className="fa-solid fa-bolt-lightning text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Activities</span>
             </button>
-             <button onClick={() => navigate('messages')} className={`flex flex-col items-center flex-1 ${['messages', 'chat'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
-              <i className="fa-solid fa-comments text-xl"></i>
-              <span className="text-[9px] font-black uppercase mt-1">Chats</span>
+             <button onClick={() => navigate('overview')} className={`flex flex-col items-center flex-1 ${view === 'overview' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+              <i className="fa-solid fa-compass text-xl"></i>
+              <span className="text-[9px] font-black uppercase mt-1">My Hub</span>
             </button>
             <button onClick={() => navigate('profile')} className={`flex flex-col items-center flex-1 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-user-ninja text-xl"></i>

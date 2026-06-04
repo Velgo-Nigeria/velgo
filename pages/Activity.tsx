@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface ActivityProps {
   profile: Profile | null;
@@ -20,6 +21,52 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [bookings, setBookings] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Redirect modal states
+  const [showRedirectModal, setShowRedirectModal] = useState(false);
+  const [redirectingPartnerName, setRedirectingPartnerName] = useState('');
+  const [redirectingPhone, setRedirectingPhone] = useState('');
+  const [redirectingMessage, setRedirectingMessage] = useState('');
+
+  const handleConnectWhatsApp = (item: any) => {
+    if (!profile) return;
+    
+    let partnerPhone = '';
+    let partnerName = '';
+    let jobTitle = item.title || item.posted_tasks?.title || 'our job';
+
+    // 1. If it's a booking object (has worker_id)
+    if (item.worker_id) {
+      const isClient = profile.id === item.client_id;
+      const partner = isClient ? item.worker : item.client;
+      partnerPhone = partner?.phone_number || '';
+      partnerName = partner?.full_name || 'User';
+    } 
+    // 2. If it's a task object
+    else {
+      const isClient = profile.id === item.client_id;
+      const partner = isClient ? item.profiles : item.client; // profiles holds assigned_worker_id mapped as profiles
+      partnerPhone = partner?.phone_number || '';
+      partnerName = partner?.full_name || 'User';
+    }
+
+    if (!partnerPhone) {
+      alert("We couldn't retrieve the partner's phone number. Please contact Support.");
+      return;
+    }
+
+    const message = `Hello! I am contacting you regarding our contract for '${jobTitle}' on Velgo Nigeria.`;
+    
+    setRedirectingPartnerName(partnerName);
+    setRedirectingPhone(partnerPhone);
+    setRedirectingMessage(message);
+    setShowRedirectModal(true);
+
+    setTimeout(() => {
+      setShowRedirectModal(false);
+      openWhatsAppHelper(message, partnerPhone);
+    }, 2500);
+  };
 
   // Client Completion Modal State
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -123,14 +170,10 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         if (newStatus === 'accepted' && onRefreshProfile) onRefreshProfile(); // Refresh profile to show deducted tokens
 
         if (newStatus === 'accepted') {
-            const partnerId = profile.id === booking.client_id ? booking.worker_id : booking.client_id;
-            const jobText = booking.posted_tasks?.title ? ` on '${booking.posted_tasks.title}'` : "";
-            
-            await supabase.from('messages').insert([{
-                sender_id: profile.id,
-                receiver_id: partnerId,
-                content: `Hello! I have just accepted your request${jobText}.`
-            }]);
+            // Trigger immediate direct-drive WhatsApp connection
+            setTimeout(() => {
+                handleConnectWhatsApp(booking);
+            }, 400);
         }
         
         fetchActivity();
@@ -1272,11 +1315,11 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     <i className="fa-solid fa-circle-check"></i> Complete & Pay
                                 </button>
                             )}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onOpenChat(profile?.id === item.client_id ? (item.worker_id || item.assigned_worker_id) : item.client_id); }} 
-                                className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); handleConnectWhatsApp(item); }} 
+                                className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-green-100/10 active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
-                                Open Chat
+                                <i className="fa-brands fa-whatsapp text-sm"></i> Chat on WhatsApp
                             </button>
                         </div>
                     )}
@@ -1410,6 +1453,39 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 </div>
             </div>
             </div>
+        )}
+
+        {/* Beautiful WhatsApp Interstitial Redirect Modal */}
+        {showRedirectModal && (
+          <div className="fixed inset-0 bg-black/90 z-[160] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
+            <div className="bg-white dark:bg-gray-800 rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl border border-gray-100 dark:border-gray-700 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-[#25D366]"></div>
+              
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center mx-auto text-[#25D366] text-3xl animate-pulse">
+                <i className="fa-brands fa-whatsapp"></i>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">Secure Direct Chat</h3>
+                <p className="text-[10px] font-black uppercase text-emerald-500 tracking-widest bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full w-max mx-auto">Redirecting to WhatsApp...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-bold pt-2">
+                  Opening safe and direct conversation thread with <span className="text-gray-900 dark:text-white font-black">{redirectingPartnerName}</span>.
+                </p>
+              </div>
+
+              <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex flex-col items-center justify-center gap-1 animate-fadeIn delay-150">
+                <p className="text-[8px] uppercase tracking-widest text-gray-400 font-extrabold">Prefilled Message Context:</p>
+                <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium italic border border-dashed border-gray-100 dark:border-gray-700/60 p-2.5 rounded-lg max-w-[250px] overflow-hidden whitespace-nowrap text-ellipsis">
+                  "{redirectingMessage}"
+                </p>
+                <div className="flex gap-1.5 justify-center items-center mt-3">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-300"></span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

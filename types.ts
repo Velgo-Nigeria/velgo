@@ -59,6 +59,7 @@ export interface Profile {
   avg_quality: number;
   avg_punctuality: number;
   profile_score: number;
+  views_count?: number;
 }
 
 export interface PostedTask {

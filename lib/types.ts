@@ -69,6 +69,7 @@ export interface Profile {
   tokens?: number;
   subscription_tier?: SubscriptionTier;
   subscription_end_date?: string;
+  views_count?: number;
 }
 
 export interface PostedTask {

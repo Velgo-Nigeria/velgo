@@ -128,11 +128,16 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
               className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
               placeholder="Full Name"
             />
-            <input 
-              required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
-              placeholder="Phone Number"
-            />
+            <div className="space-y-1.5">
+              <input 
+                required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
+                placeholder="WhatsApp Number (e.g. 080...)"
+              />
+              <p className="text-[8px] text-gray-500 font-extrabold uppercase tracking-wider px-6 leading-relaxed">
+                * Required. Other users will message you here directly to close deals.
+              </p>
+            </div>
           </div>
 
           <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all active:scale-95">
