@@ -28,26 +28,18 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
          setLoading(false);
       });
 
-    // Real and accurate profile views tracking with atomic increment and robust DB fallback
+    // Real and accurate profile views tracking with a persistent 'profile_views' audit table in Supabase
     if (!profile || profile.id !== workerId) {
-      supabase.rpc('increment_profile_views', { target_id: workerId })
+      supabase.from('profile_views')
+        .insert([{
+          profile_id: workerId,
+          viewer_id: profile ? profile.id : null
+        }])
         .then(({ error }) => {
           if (error) {
-            console.warn("RPC increment_profile_views failed, applying safe fallback update:", error.message);
-            // Fallback: Read-Modify-Write direct column update
-            supabase.from('profiles')
-              .select('views_count')
-              .eq('id', workerId)
-              .single()
-              .then(({ data: pData }) => {
-                if (pData) {
-                  const updatedViews = (pData.views_count || 0) + 1;
-                  supabase.from('profiles')
-                    .update({ views_count: updatedViews })
-                    .eq('id', workerId)
-                    .then();
-                }
-              });
+            console.warn("Real-time profile_views insert failed, falling back to cached RPC:", error.message);
+            // Fallback to legacy RPC integration if the table is still deploying
+            supabase.rpc('increment_profile_views', { target_id: workerId }).then();
           }
         });
     }
