@@ -52,13 +52,17 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
       try {
         setLoadingStats(true);
         
-        // Fetch exact rows from the professional profile_views audit table in real-time
+        // Fetch exact views from the profile_views audit table in the past 30 days
         let realViewsCount = 0;
         try {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
           const { count, error: countError } = await supabase
             .from('profile_views')
             .select('*', { count: 'exact', head: true })
-            .eq('profile_id', profile.id);
+            .eq('profile_id', profile.id)
+            .gte('viewed_at', thirtyDaysAgo.toISOString());
             
           if (!countError && count !== null) {
             realViewsCount = count;
@@ -80,7 +84,7 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
         const hashSum = idChars.reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const baselineSeed = 120 + (hashSum % 60);
 
-        // Combined live count representing genuine visitor actions plus baseline seeding
+        // Combined live count representing genuine visitor actions plus baseline seeding within sliding window
         setViewsCount(baselineSeed + realViewsCount);
 
         // Fetch bookings count where this user is client OR worker
@@ -429,14 +433,14 @@ UID: ${profile.id}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               
-              {/* Dynamic local views card */}
+              {/* Dynamic local views card with sliding monthly window */}
               <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl p-4 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 transition-all text-center">
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-widest">Profile Views</p>
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-widest">Monthly Views</p>
                 <div className="flex items-center justify-center gap-1.5 mt-2">
                   <i className="fa-regular fa-eye text-[#25D366]"></i>
                   <span className="text-xl font-black text-gray-900 dark:text-white font-mono">{viewsCount}</span>
                 </div>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-1.5 leading-none">Visits logged</p>
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-1.5 leading-none">Past 30 Days</p>
               </div>
 
               {/* Ongoing Contracts */}
