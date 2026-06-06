@@ -92,6 +92,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         if (isFetchingWorkers) {
             query = supabase.from('profiles').select('*')
                 .eq('role', 'user')
+                .eq('is_verified', true)
                 .not('category', 'is', null)
                 .order('profile_score', { ascending: false, nullsFirst: false });
             if (category !== 'All') query = query.eq('category', category);
@@ -270,6 +271,26 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               </div>
           </div>
       </div>
+
+      {/* Draft Warning Banner */}
+      {profile && !profile.is_verified && (
+          <div className="px-6 mt-4 animate-fadeIn">
+              <div className="bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/30 p-5 rounded-[24px] flex items-start gap-4">
+                  <div className="w-10 h-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center shrink-0 text-lg">
+                      <i className="fa-solid fa-user-shield animate-pulse"></i>
+                  </div>
+                  <div className="flex-1">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400">Profile hidden (Draft Mode)</h4>
+                      <p className="text-[10px] text-amber-700 dark:text-amber-300 font-bold leading-relaxed mt-1">
+                          To safeguard clients and eliminate mobilization fee scams on Velgo, unverified user profiles are hidden from the Talent Finder.
+                      </p>
+                      <p className="text-[9px] text-[#b45309] dark:text-amber-500 font-black uppercase tracking-widest mt-2">
+                         👉 Go to the "Profile" tab below & upload your NIN to go live!
+                      </p>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Action Buttons - Unified Layout */}
       <div className="px-6 mt-6 grid grid-cols-3 gap-2">

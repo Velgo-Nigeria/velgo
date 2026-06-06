@@ -31,6 +31,39 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  const [idLoading, setIdLoading] = useState(false);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !profile) return;
+    
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `id_${profile.id}_${Date.now()}.${fileExt}`;
+
+    setIdLoading(true);
+    
+    const { error: uploadError } = await supabase.storage.from('verifications').upload(fileName, file);
+
+    if (uploadError) {
+      alert("Error uploading ID: " + uploadError.message);
+      setIdLoading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('verifications').getPublicUrl(fileName);
+
+    const { error: updateError } = await supabase.from('profiles').update({ nin_image_url: publicUrl, id_rejection_reason: null }).eq('id', profile.id);
+
+    if (updateError) {
+      alert("Failed to update profile: " + updateError.message);
+    } else {
+      alert("ID Uploaded successfully! Your verification is now pending.");
+      onRefreshProfile();
+    }
+    setIdLoading(false);
+  };
+
   useEffect(() => {
     if (NIGERIA_LGAS[selectedState]) {
         if (!NIGERIA_LGAS[selectedState].includes(selectedLGA)) {
@@ -40,6 +73,109 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         setSelectedLGA('');
     }
   }, [selectedState]);
+
+  if (profile && !profile.is_verified) {
+    const isPending = !!profile.nin_image_url;
+    const isRejected = !profile.is_verified && !!profile.id_rejection_reason;
+
+    return (
+      <div className="bg-gray-50 dark:bg-gray-950 min-h-screen pb-24 relative flex flex-col">
+        {/* Simple Header */}
+        <div className="px-6 pt-10 pb-4 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center gap-4 sticky top-0 z-10">
+          <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+            <i className="fa-solid fa-chevron-left text-gray-500"></i>
+          </button>
+          <h1 className="text-xl font-black">Post a Job</h1>
+        </div>
+
+        {/* Outer body */}
+        <div className="flex-1 p-6 flex flex-col justify-center max-w-sm mx-auto w-full">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-2xl shadow-gray-100 dark:shadow-none border border-gray-100 dark:border-gray-800 text-center space-y-6 flex flex-col items-center">
+            
+            {/* Status Icons */}
+            {isPending ? (
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-2xl animate-pulse">
+                <i className="fa-solid fa-user-clock"></i>
+              </div>
+            ) : isRejected ? (
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center text-2xl">
+                <i className="fa-solid fa-circle-exclamation"></i>
+              </div>
+            ) : (
+              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center text-2xl">
+                <i className="fa-solid fa-user-shield animate-pulse"></i>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                {isPending ? "ID Review in Progress" : isRejected ? "ID Card Rejected" : "Verification Required"}
+              </h2>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-relaxed">
+                {isPending 
+                  ? "Our safety division is currently reviewing your uploaded ID. Most reviews in Nigeria take under 15 minutes. We will notify you once approved."
+                  : isRejected
+                  ? `Your verification ID was declined. Reason: "${profile.id_rejection_reason}". Please upload a clean photo of your legitimate NIMC Slip, Green Card, or Driver's License.`
+                  : "To secure our Nigerian marketplace, eliminate ghost budgets, and prevent worker exploitation, Velgo requires clients to provide an official ID card before posting jobs."}
+              </p>
+            </div>
+
+            {/* Actions Panel */}
+            <div className="w-full pt-4">
+              {isPending ? (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 py-3 rounded-2xl text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 tracking-wider">
+                     ⚡ Speed Review Enabled
+                  </div>
+                  <button onClick={onBack} className="w-full bg-gray-900 text-white dark:bg-gray-800 py-4 rounded-2xl text-xs font-black uppercase tracking-widest active:scale-95 transition-transform">
+                    Return to Marketplace
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4 w-full">
+                  <input ref={idFileInputRef} type="file" accept="image/*" onChange={handleIdUpload} className="hidden" />
+                  
+                  <button 
+                    onClick={() => idFileInputRef.current?.click()} 
+                    disabled={idLoading}
+                    className="w-full bg-brand text-white py-4 rounded-[20px] text-xs font-black uppercase tracking-widest shadow-lg shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {idLoading ? (
+                      <>
+                        <i className="fa-solid fa-circle-notch animate-spin"></i> Uploading ID...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-cloud-arrow-up"></i> {isRejected ? "Re-upload Clean ID" : "Upload NIN / ID Card"}
+                      </>
+                    )}
+                  </button>
+
+                  <button onClick={onBack} className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white py-4 rounded-[20px] text-xs font-black uppercase tracking-widest active:scale-95 transition-transform">
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Visual Indicators */}
+            <div className="flex gap-4 border-t border-gray-100 dark:border-gray-800 pt-5 w-full justify-center">
+              <div className="text-center">
+                <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase">+20 XP</p>
+                <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">Visibility Booster</p>
+              </div>
+              <div className="w-[1px] h-6 bg-gray-100 dark:bg-gray-800"></div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase">100%</p>
+                <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">Scam-Free Ecosystem</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
