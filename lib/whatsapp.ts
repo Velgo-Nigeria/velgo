@@ -34,14 +34,30 @@ export const openWhatsAppHelper = (message: string, phoneNumber: string = '23491
   // Use api.whatsapp.com which triggers deep-linking handlers more reliably on some devices
   const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
   
-  // Open via a dynamic tag that forces exit from standalone web container bounds
-  const link = document.createElement('a');
-  link.href = waUrl;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Detect Safari, iOS, or standalone PWA environment
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = (window.navigator as any).standalone === true || 
+                       window.matchMedia('(display-mode: standalone)').matches;
+  const isSafari = navigator.userAgent.toLowerCase().includes('safari') && 
+                    !navigator.userAgent.toLowerCase().includes('chrome') && 
+                    !navigator.userAgent.toLowerCase().includes('chromium');
+
+  if (isIOS || isStandalone || isSafari) {
+    // WebKit popup blockers in standalone mode block synthetic clicks inside timeouts,
+    // and target="_blank" opens stuck screens inside standalone/Safari contexts.
+    // Setting window.location.href forces iOS to intercept the universal link and hand-off to native WhatsApp.
+    window.location.href = waUrl;
+  } else {
+    // Open via a dynamic tag that forces exit from standalone web container bounds
+    const link = document.createElement('a');
+    link.href = waUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 };
 

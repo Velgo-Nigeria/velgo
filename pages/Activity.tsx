@@ -64,10 +64,23 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     setRedirectingMessage(message);
     setShowRedirectModal(true);
 
-    setTimeout(() => {
-      setShowRedirectModal(false);
+    const isIOSorSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+                          (navigator.userAgent.toLowerCase().includes('safari') && !navigator.userAgent.toLowerCase().includes('chrome') && !navigator.userAgent.toLowerCase().includes('chromium'));
+    const isStandalone = (window.navigator as any).standalone === true || 
+                       window.matchMedia('(display-mode: standalone)').matches;
+
+    // WebKit popup blockers in Safari and added-to-homescreen PWA mode block synthetic clicks after any asynchronous delay.
+    // So we resolve Safari/iOS natively, synchronously inline.
+    if (isIOSorSafari || isStandalone) {
       openWhatsAppHelper(message, partnerPhone);
-    }, 2500);
+    } else {
+      // Maintain premium transition for Android/Desktop/Chrome
+      setTimeout(() => {
+        setShowRedirectModal(false);
+        openWhatsAppHelper(message, partnerPhone);
+      }, 2500);
+    }
   };
 
   // Client Completion Modal State
@@ -1488,16 +1501,28 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 </p>
               </div>
 
-              <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex flex-col items-center justify-center gap-1 animate-fadeIn delay-150">
-                <p className="text-[8px] uppercase tracking-widest text-gray-400 font-extrabold">Prefilled Message Context:</p>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium italic border border-dashed border-gray-100 dark:border-gray-700/60 p-2.5 rounded-lg max-w-[250px] overflow-hidden whitespace-nowrap text-ellipsis">
+              <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex flex-col items-center justify-center gap-1 animate-fadeIn">
+                <p className="text-[8px] uppercase tracking-widest text-gray-400 font-extrabold mb-1">Prefilled Message Context:</p>
+                <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium italic border border-dashed border-gray-100 dark:border-gray-700/60 p-2.5 rounded-lg max-w-[250px] overflow-hidden whitespace-nowrap text-ellipsis mb-4">
                   "{redirectingMessage}"
                 </p>
-                <div className="flex gap-1.5 justify-center items-center mt-3">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-300"></span>
-                </div>
+                
+                <button
+                  onClick={() => {
+                    openWhatsAppHelper(redirectingMessage, redirectingPhone);
+                    setShowRedirectModal(false);
+                  }}
+                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <i className="fa-brands fa-whatsapp text-lg animate-bounce"></i> Open Chat Now
+                </button>
+
+                <button
+                  onClick={() => setShowRedirectModal(false)}
+                  className="mt-2 text-[9px] font-black uppercase text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 tracking-wider transition-colors pt-2"
+                >
+                  Stay on Velgo
+                </button>
               </div>
             </div>
           </div>
