@@ -67,7 +67,61 @@ const App: React.FC = () => {
   const [view, setView] = useState<any>('landing');
   const [viewData, setViewData] = useState<any>(null);
   
-  const [toast, setToast] = useState<{msg: string, type: 'info'|'success'|'alert'} | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'info' | 'success' | 'alert' }>>([]);
+
+  const addToast = useCallback((msg: string, type: 'info' | 'success' | 'alert' = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message: msg, type }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  useEffect(() => {
+    window.alert = (message: string) => {
+      if (!message) return;
+      let type: 'info' | 'success' | 'alert' = 'info';
+      const lowercase = String(message).toLowerCase();
+      
+      const isSuccess = lowercase.includes('success') || 
+                        lowercase.includes('completed') || 
+                        lowercase.includes('approved') || 
+                        lowercase.includes('saved') || 
+                        lowercase.includes('great') || 
+                        lowercase.includes('done') || 
+                        lowercase.includes('thank') ||
+                        lowercase.includes('successfully') ||
+                        lowercase.includes('copied');
+                        
+      const isAlert = lowercase.includes('fail') || 
+                      lowercase.includes('error') || 
+                      lowercase.includes('denied') || 
+                      lowercase.includes('reject') || 
+                      lowercase.includes('invalid') || 
+                      lowercase.includes('prohibited') || 
+                      lowercase.includes('forbidden') || 
+                      lowercase.includes('required') || 
+                      lowercase.includes('safety') || 
+                      lowercase.includes('scam') ||
+                      lowercase.includes('violate') ||
+                      lowercase.includes('exceeds') ||
+                      lowercase.includes('cannot');
+
+      if (isSuccess) {
+        type = 'success';
+      } else if (isAlert) {
+        type = 'alert';
+      }
+      
+      addToast(message, type);
+    };
+
+    (window as any).showToast = (msg: string, type: 'info' | 'success' | 'alert' = 'info') => {
+      addToast(msg, type);
+    };
+  }, [addToast]);
+
   const [showGuide, setShowGuide] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -310,7 +364,7 @@ const App: React.FC = () => {
       case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} />;
-      case 'change-password': return <ResetPassword onSuccess={() => { setToast({ msg: 'Password updated!', type: 'success' }); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
+      case 'change-password': return <ResetPassword onSuccess={() => { addToast('Password updated!', 'success'); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
       case 'safety': return <Safety profile={profile} onBack={() => handleBackNavigation('settings')} />;
@@ -348,7 +402,7 @@ const App: React.FC = () => {
             </Suspense>
           </div>
         </main>
-        {toast && <NotificationToast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+        {toasts.length > 0 && <NotificationToast toasts={toasts} onRemove={removeToast} />}
         {showGuide && <UserGuide onClose={() => setShowGuide(false)} />}
         <InstallPWA />
         
