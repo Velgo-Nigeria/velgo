@@ -101,6 +101,11 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     if (!profile) return;
     if (hasRequested) return;
 
+    if (!profile.is_verified) {
+      alert("Verification Required: To secure our marketplace and eliminate fake bookings, Velgo requires you to verify your identity before booking professionals. Please go to your Profile and upload your NIN.");
+      return;
+    }
+
     setRequesting(true);
     const { error } = await safeFetch(async () => await supabase.from('bookings').insert([{ client_id: profile.id, worker_id: workerId, status: 'pending' }]));
     setRequesting(false);
@@ -346,6 +351,23 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
               )}
           </div>
 
+          {profile && profile.id !== workerId && !profile.is_verified && (
+              <div className="bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/30 p-5 rounded-[24px] flex items-start gap-4">
+                  <div className="w-10 h-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center shrink-0 text-lg">
+                      <i className="fa-solid fa-user-shield animate-pulse"></i>
+                  </div>
+                  <div className="flex-1">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400">Verification Required</h4>
+                      <p className="text-[10px] text-amber-700 dark:text-amber-300 font-bold leading-relaxed mt-1">
+                          To protect our community and eliminate advance fee fraud or fake bookings, Velgo requires clients to verify their profile before booking professionals.
+                      </p>
+                      <p className="text-[9px] text-[#b45309] dark:text-amber-500 font-black uppercase tracking-widest mt-2">
+                         👉 View your Profile tab to upload your NIN card.
+                      </p>
+                  </div>
+              </div>
+          )}
+
           {profile && profile.id !== workerId && (
             <button 
                 onClick={handleBooking} 
@@ -353,10 +375,12 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                 className={`w-full py-5 rounded-[28px] font-black shadow-xl uppercase tracking-widest transition-all ${
                     hasRequested 
                         ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                        : !profile.is_verified
+                        ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                         : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
                 }`}
             >
-                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : 'INITIATE BOOKING'}
+                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : !profile.is_verified ? '🔒 Verify ID to Book' : 'INITIATE BOOKING'}
             </button>
           )}
         </div>

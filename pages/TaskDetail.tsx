@@ -93,6 +93,11 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   const handleApply = async () => {
       if (!profile || !task) return;
       
+      if (!profile.is_verified) {
+          alert("Verification Required: To secure our marketplace and eliminate fake applicants, Velgo requires you to verify your identity before applying. Please go to your Profile and upload your NIN.");
+          return;
+      }
+      
       setApplying(true);
       
       const { error } = await supabase.from('bookings').insert({
@@ -366,17 +371,42 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
 
             {/* Action Area */}
             {!isOwner ? (
-                <div className="pt-4">
+                <div className="pt-4 space-y-4">
+                    {profile && !profile.is_verified && (
+                        <div className="bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/30 p-5 rounded-[24px] flex items-start gap-4">
+                            <div className="w-10 h-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center shrink-0 text-lg">
+                                <i className="fa-solid fa-user-shield animate-pulse"></i>
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400 font-sans">Verification Required to Apply</h4>
+                                <p className="text-[10px] text-amber-700 dark:text-amber-300 font-bold leading-relaxed mt-1">
+                                    To eliminate fake applicants and protect our clients, Velgo requires workers to verify their identity before applying to any posted jobs.
+                                </p>
+                                <p className="text-[9px] text-[#b45309] dark:text-amber-500 font-black uppercase tracking-widest mt-2">
+                                   👉 Go to your Profile tab to upload your NIN card.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     <button 
                         onClick={handleApply} 
                         disabled={hasApplied || applying}
                         className={`w-full py-5 rounded-[28px] font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95 ${
                             hasApplied 
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : 'bg-brand text-white'
+                            : !profile?.is_verified
+                            ? 'bg-amber-600 text-white hover:bg-amber-700'
+                            : 'bg-brand text-white hover:bg-brand-dark'
                         }`}
                     >
-                        {hasApplied ? 'Application Sent' : (applying ? 'Sending...' : 'Apply Now')}
+                        {hasApplied 
+                            ? 'Application Sent' 
+                            : applying 
+                            ? 'Sending...' 
+                            : !profile?.is_verified 
+                            ? '🔒 Verify ID to Apply' 
+                            : 'Apply Now'
+                        }
                     </button>
                     {hasApplied && <p className="text-center text-[10px] text-gray-400 font-bold mt-3 uppercase">Check 'Live Jobs' tab for status updates.</p>}
                 </div>
