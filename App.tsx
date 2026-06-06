@@ -72,11 +72,6 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
-  const addToast = useCallback((msg: string, type: 'info' | 'success' | 'alert' = 'info') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message: msg, type }]);
-  }, []);
-
   const fetchUnreadCount = useCallback(async () => {
     if (!session?.user?.id) return;
     try {
@@ -93,6 +88,46 @@ const App: React.FC = () => {
       console.warn('Error fetching unread notifications count, table may not exist yet:', err);
     }
   }, [session?.user?.id]);
+
+  const recentLocalToastsRef = useRef<Array<{ title: string; message: string }>>([]);
+
+  const addToast = useCallback((msg: string, type: 'info' | 'success' | 'alert' = 'info', skipDbPersist = false) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message: msg, type }]);
+
+    if (!skipDbPersist && session?.user?.id) {
+      let title = 'System Notice';
+      if (type === 'success') title = 'Success Alert';
+      if (type === 'alert') title = 'Action Warning';
+
+      recentLocalToastsRef.current.push({ title, message: msg });
+
+      // Clear after 5 seconds to prevent list accretion
+      setTimeout(() => {
+        recentLocalToastsRef.current = recentLocalToastsRef.current.filter(
+          (t) => !(t.title === title && t.message === msg)
+        );
+      }, 5000);
+
+      supabase
+        .from('notifications')
+        .insert({
+          user_id: session.user.id,
+          title,
+          message: msg,
+          type
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Silent database write notification issue:', error);
+          }
+          fetchUnreadCount();
+        })
+        .catch((err) => {
+          console.warn('Caught silent DB warning:', err);
+        });
+    }
+  }, [session?.user?.id, fetchUnreadCount]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -358,8 +393,24 @@ const App: React.FC = () => {
           
           if (payload.eventType === 'INSERT') {
             const notif = payload.new;
+
+            // Deduplicate if we ourselves stored it locally
+            const isSelfInitiated = recentLocalToastsRef.current.some(
+              (t) => t.title === notif.title && t.message === notif.message
+            );
+            
+            if (isSelfInitiated) {
+              const idx = recentLocalToastsRef.current.findIndex(
+                (t) => t.title === notif.title && t.message === notif.message
+              );
+              if (idx > -1) {
+                recentLocalToastsRef.current.splice(idx, 1);
+              }
+              return;
+            }
+
             // Play a real-time toast notification!
-            addToast(`${notif.title}: ${notif.message}`, notif.type || 'info');
+            addToast(`${notif.title}: ${notif.message}`, notif.type || 'info', true);
           }
         }
       )
