@@ -1,0 +1,17 @@
+# Robots.txt Configuration for Velgo Nigeria
+# Optimizing visibility for search engines & AI Search Agents (ChatGPT, Gemini, Perplexity, etc.)
+
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /manifest.json
+Allow: /sw.js
+
+# Prevent search bots from attempting to crawl login, registration, or private dashboard callbacks
+Disallow: /api/
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /reset-password
+
+# Provide a direct pointer to the AI handbook
+Sitemap: https://velgo.vercel.app/sitemap.xml
