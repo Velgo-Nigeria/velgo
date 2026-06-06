@@ -878,8 +878,15 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       ? viewBookings.filter(b => b.status === 'accepted').concat(viewTasks.filter(t => t.status === 'assigned'))
       : viewBookings.filter(b => ['completed', 'cancelled', 'declined', 'disputed'].includes(b.status)).concat(viewTasks.filter(t => t.status === 'completed' || t.status === 'cancelled'));
 
-  const hiringBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'pending' && b.task_id != null);
-  const workingBadge = bookings.some(b => b.worker_id === profile?.id && b.status === 'pending' && b.task_id == null);
+  const hiringRequestsBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'pending' && b.task_id != null);
+  const hiringOngoingBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'accepted') || tasks.some(t => t.client_id === profile?.id && t.status === 'assigned');
+  const hiringHistoryBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'completed' && !b.rating);
+  const hiringBadge = hiringRequestsBadge || hiringOngoingBadge || hiringHistoryBadge;
+
+  const workingRequestsBadge = bookings.some(b => b.worker_id === profile?.id && b.status === 'pending' && b.task_id == null);
+  const workingOngoingBadge = bookings.some(b => b.worker_id === profile?.id && b.status === 'accepted') || tasks.some(t => t.assigned_worker_id === profile?.id && t.status === 'assigned');
+  const workingHistoryBadge = bookings.some(b => b.worker_id === profile?.id && b.status === 'completed' && !b.client_rating);
+  const workingBadge = workingRequestsBadge || workingOngoingBadge || workingHistoryBadge;
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-200">
@@ -1183,9 +1190,18 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 <button 
                     key={filter} 
                     onClick={() => setStatusFilter(filter as any)} 
-                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border outline-none ${statusFilter === filter ? 'bg-brand/10 border-brand/20 text-brand shadow-sm' : 'bg-transparent border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'}`}
+                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border outline-none relative ${statusFilter === filter ? 'bg-brand/10 border-brand/20 text-brand shadow-sm' : 'bg-transparent border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'}`}
                 >
                     {filter}
+                    {filter === 'requests' && (viewMode === 'hiring' ? hiringRequestsBadge : workingRequestsBadge) && (
+                        <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    )}
+                    {filter === 'ongoing' && (viewMode === 'hiring' ? hiringOngoingBadge : workingOngoingBadge) && (
+                        <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    )}
+                    {filter === 'history' && (viewMode === 'hiring' ? hiringHistoryBadge : workingHistoryBadge) && (
+                        <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    )}
                 </button>
             ))}
         </div>

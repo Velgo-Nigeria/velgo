@@ -71,6 +71,48 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'info' | 'success' | 'alert' }>>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [hasActivityBadge, setHasActivityBadge] = useState(false);
+
+  const fetchActivityBadgeStatus = useCallback(async () => {
+    if (!session?.user?.id) return;
+    try {
+      const uid = session.user.id;
+      
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select('id, client_id, worker_id, status, task_id, rating, client_rating')
+        .or(`client_id.eq.${uid},worker_id.eq.${uid}`);
+
+      const bData = bookingsData || [];
+
+      const hasPendingHiringRequests = bData.some(b => b.client_id === uid && b.status === 'pending' && b.task_id != null);
+      const hasPendingWorkingRequests = bData.some(b => b.worker_id === uid && b.status === 'pending' && b.task_id == null);
+
+      const hasOngoingBookings = bData.some(b => b.status === 'accepted');
+
+      const hasUnratedHiringCompleted = bData.some(b => b.client_id === uid && b.status === 'completed' && !b.rating);
+      const hasUnratedWorkingCompleted = bData.some(b => b.worker_id === uid && b.status === 'completed' && !b.client_rating);
+
+      const { data: tasksData } = await supabase
+        .from('posted_tasks')
+        .select('id, status')
+        .or(`client_id.eq.${uid},assigned_worker_id.eq.${uid}`)
+        .eq('status', 'assigned');
+
+      const ongoingTasksCount = (tasksData || []).length;
+
+      const isActive = hasPendingHiringRequests || 
+                       hasPendingWorkingRequests || 
+                       hasOngoingBookings || 
+                       hasUnratedHiringCompleted || 
+                       hasUnratedWorkingCompleted || 
+                       ongoingTasksCount > 0;
+
+      setHasActivityBadge(isActive);
+    } catch (err) {
+      console.warn('Error fetching activity badge status:', err);
+    }
+  }, [session?.user?.id]);
 
   const fetchUnreadCount = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -421,6 +463,47 @@ const App: React.FC = () => {
     };
   }, [session?.user?.id, fetchUnreadCount, addToast]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    fetchActivityBadgeStatus();
+
+    const bChannel = supabase
+      .channel(`bookings-badge-realtime-${session.user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          fetchActivityBadgeStatus();
+        }
+      )
+      .subscribe();
+
+    const tChannel = supabase
+      .channel(`tasks-badge-realtime-${session.user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'posted_tasks'
+        },
+        () => {
+          fetchActivityBadgeStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bChannel);
+      supabase.removeChannel(tChannel);
+    };
+  }, [session?.user?.id, fetchActivityBadgeStatus]);
+
   // Skeleton Loader for Initialization
   if (loading || isInitializingProfile) return <PageSkeleton />;
 
@@ -491,7 +574,7 @@ const App: React.FC = () => {
                 <div className="mb-10 pl-2"><VelgoLogo /></div>
                 <nav className="space-y-3 flex-1">
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navigate('home')} />
-                    <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => navigate('activity')} />
+                    <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => navigate('activity')} hasBadge={hasActivityBadge} />
                     <SidebarItem icon="fa-compass" label="My Hub" active={view === 'overview'} onClick={() => navigate('overview')} />
                     <SidebarItem icon="fa-user-ninja" label="Profile" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view)} onClick={() => navigate('profile')} />
                 </nav>
@@ -532,8 +615,13 @@ const App: React.FC = () => {
               <i className="fa-solid fa-house-chimney text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Market</span>
             </button>
-            <button onClick={() => navigate('activity')} className={`flex flex-col items-center flex-1 ${view === 'activity' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
-              <i className="fa-solid fa-bolt-lightning text-xl"></i>
+            <button onClick={() => navigate('activity')} className={`flex flex-col items-center flex-1 relative ${view === 'activity' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+              <span className="relative inline-block">
+                <i className="fa-solid fa-bolt-lightning text-xl"></i>
+                {hasActivityBadge && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-white dark:border-gray-950"></span>
+                )}
+              </span>
               <span className="text-[9px] font-black uppercase mt-1">Activities</span>
             </button>
              <button onClick={() => navigate('overview')} className={`flex flex-col items-center flex-1 ${view === 'overview' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
@@ -551,10 +639,15 @@ const App: React.FC = () => {
   );
 };
 
-const SidebarItem: React.FC<{ icon: string; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all group ${active ? 'bg-brand text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-      <i className={`fa-solid ${icon} text-lg ${active ? 'text-white' : 'text-gray-400 group-hover:text-brand'}`}></i>
-      <span className={`font-bold text-sm ${active ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>{label}</span>
+const SidebarItem: React.FC<{ icon: string; label: string; active: boolean; onClick: () => void; hasBadge?: boolean }> = ({ icon, label, active, onClick, hasBadge }) => (
+  <button onClick={onClick} className={`w-full flex items-center justify-between p-4 rounded-xl transition-all group ${active ? 'bg-brand text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+      <div className="flex items-center gap-4">
+          <i className={`fa-solid ${icon} text-lg ${active ? 'text-white' : 'text-gray-400 group-hover:text-brand'}`}></i>
+          <span className={`font-bold text-sm ${active ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>{label}</span>
+      </div>
+      {hasBadge && (
+          <span className={`w-2 h-2 rounded-full bg-red-500 animate-pulse ${active ? 'ring-2 ring-white/30' : ''}`}></span>
+      )}
   </button>
 );
 
