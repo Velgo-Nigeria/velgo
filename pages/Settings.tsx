@@ -10,11 +10,13 @@ interface SettingsProps {
   onNavigate: (view: string, data?: any) => void;
   onRefreshProfile: () => Promise<void> | void;
   onShowGuide?: () => void;
+  onShowNotifications?: () => void;
+  unreadCount?: number;
 }
 
 type ReAuthMode = 'bank' | null;
 
-const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefreshProfile, onShowGuide }) => {
+const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefreshProfile, onShowGuide, onShowNotifications, unreadCount }) => {
   // UI State
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>(profile?.theme_mode || 'auto');
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -271,11 +273,26 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-40 transition-colors duration-200">
-      <div className="bg-white dark:bg-gray-900 px-6 pt-10 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-4 sticky top-0 z-20 shadow-sm transition-colors duration-200">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-            <i className="fa-solid fa-chevron-left text-gray-500"></i>
-        </button>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
+      <div className="bg-white dark:bg-gray-900 px-6 pt-10 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 z-20 shadow-sm transition-colors duration-200">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+              <i className="fa-solid fa-chevron-left text-gray-500"></i>
+          </button>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
+        </div>
+        {onShowNotifications && (
+          <button 
+            onClick={onShowNotifications} 
+            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white relative hover:scale-105 transition-transform"
+          >
+            <i className="fa-solid fa-bell"></i>
+            {unreadCount !== undefined && unreadCount > 0 ? (
+              <span className="absolute -top-1 -right-1 bg-brand text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                {unreadCount}
+              </span>
+            ) : null}
+          </button>
+        )}
       </div>
 
       <div className="p-6 space-y-8 relative z-10">

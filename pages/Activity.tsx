@@ -13,9 +13,11 @@ interface ActivityProps {
   onRefreshProfile: () => void;
   onViewTask: (id: string) => void;
   onViewWorker: (id: string) => void;
+  onShowNotifications?: () => void;
+  unreadCount?: number;
 }
 
-const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onRefreshProfile, onViewTask, onViewWorker }) => {
+const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onRefreshProfile, onViewTask, onViewWorker, onShowNotifications, unreadCount }) => {
   const [viewMode, setViewMode] = useState<'working' | 'hiring'>('working');
   const [statusFilter, setStatusFilter] = useState<'requests' | 'ongoing' | 'history'>('requests');
   const [bookings, setBookings] = useState<any[]>([]);
@@ -1126,8 +1128,21 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         </div>
       )}
 
-      <div className="px-6 pt-10 pb-4 flex justify-between items-end sticky top-0 bg-white dark:bg-gray-900 z-20">
+      <div className="px-6 pt-10 pb-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 z-20 border-b border-gray-100 dark:border-gray-800">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Activities</h1>
+        {onShowNotifications && (
+          <button 
+            onClick={onShowNotifications} 
+            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white relative hover:scale-105 transition-transform"
+          >
+            <i className="fa-solid fa-bell"></i>
+            {unreadCount !== undefined && unreadCount > 0 ? (
+              <span className="absolute -top-1 -right-1 bg-brand text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                {unreadCount}
+              </span>
+            ) : null}
+          </button>
+        )}
       </div>
 
       <div className="px-6 sticky top-[72px] bg-white dark:bg-gray-900 z-10 pb-2">

@@ -10,9 +10,11 @@ interface ProfilePageProps {
   onRefreshProfile: () => void;
   onSubscription: () => void;
   onSettings: () => void;
+  onShowNotifications?: () => void;
+  unreadCount?: number;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, onSubscription, onSettings }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, onSubscription, onSettings, onShowNotifications, unreadCount }) => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [idLoading, setIdLoading] = useState(false);
@@ -210,6 +212,19 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
       <div className="px-6 pt-10 pb-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 z-10 border-b border-gray-100 dark:border-gray-800">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Profile</h1>
         <div className="flex gap-3">
+            {onShowNotifications && (
+              <button 
+                onClick={onShowNotifications} 
+                className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white relative hover:scale-105 transition-transform"
+              >
+                <i className="fa-solid fa-bell"></i>
+                {unreadCount !== undefined && unreadCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-brand text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            )}
             <button onClick={onSettings} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
                 <i className="fa-solid fa-gear"></i>
             </button>

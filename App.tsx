@@ -31,6 +31,7 @@ import { InstallPWA } from './components/InstallPWA';
 import { NotificationToast } from './components/NotificationToast';
 import { UserGuide } from './components/UserGuide';
 import { SuspendedScreen } from './components/SuspendedScreen';
+import { NotificationPanel } from './components/NotificationPanel';
 
 // Extracted Skeleton for reuse in Suspense fallback
 const PageSkeleton = () => (
@@ -68,11 +69,30 @@ const App: React.FC = () => {
   const [viewData, setViewData] = useState<any>(null);
   
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'info' | 'success' | 'alert' }>>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const addToast = useCallback((msg: string, type: 'info' | 'success' | 'alert' = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message: msg, type }]);
   }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .eq('is_read', false);
+
+      if (!error && count !== null) {
+        setUnreadNotificationsCount(count);
+      }
+    } catch (err) {
+      console.warn('Error fetching unread notifications count, table may not exist yet:', err);
+    }
+  }, [session?.user?.id]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -318,6 +338,38 @@ const App: React.FC = () => {
     };
   }, [session?.user?.id]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    fetchUnreadCount();
+
+    const nChannel = supabase
+      .channel(`notifications-realtime-${session.user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${session.user.id}`
+        },
+        (payload) => {
+          fetchUnreadCount();
+          
+          if (payload.eventType === 'INSERT') {
+            const notif = payload.new;
+            // Play a real-time toast notification!
+            addToast(`${notif.title}: ${notif.message}`, notif.type || 'info');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(nChannel);
+    };
+  }, [session?.user?.id, fetchUnreadCount, addToast]);
+
   // Skeleton Loader for Initialization
   if (loading || isInitializingProfile) return <PageSkeleton />;
 
@@ -356,14 +408,14 @@ const App: React.FC = () => {
     // 3. Authenticated & Profile Fully Synced
     // NOTE: Suspense wrapper added to main content to handle lazy loading
     switch (view) {
-      case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
-      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewTask={(id) => navigate('task-detail', id)} onViewWorker={(id) => navigate('worker-detail', id)} />;
-      case 'overview': return <Overview profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewLegal={(tab) => navigate('legal', tab)} onShowGuide={() => setShowGuide(true)} />;
-      case 'profile': return <ProfilePage profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onSubscription={() => navigate('subscription')} onSettings={() => navigate('settings')} />;
+      case 'home': return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
+      case 'activity': return <Activity profile={profile} onOpenChat={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewTask={(id) => navigate('task-detail', id)} onViewWorker={(id) => navigate('worker-detail', id)} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
+      case 'overview': return <Overview profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onViewLegal={(tab) => navigate('legal', tab)} onShowGuide={() => setShowGuide(true)} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
+      case 'profile': return <ProfilePage profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onSubscription={() => navigate('subscription')} onSettings={() => navigate('settings')} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
       case 'subscription': return <Subscription profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('profile')} />;
       case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
-      case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} />;
+      case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
       case 'change-password': return <ResetPassword onSuccess={() => { addToast('Password updated!', 'success'); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
@@ -404,6 +456,12 @@ const App: React.FC = () => {
         </main>
         {toasts.length > 0 && <NotificationToast toasts={toasts} onRemove={removeToast} />}
         {showGuide && <UserGuide onClose={() => setShowGuide(false)} />}
+        <NotificationPanel 
+          isOpen={showNotifications} 
+          onClose={() => setShowNotifications(false)} 
+          userId={session?.user?.id}
+          onRefreshUnread={fetchUnreadCount}
+        />
         <InstallPWA />
         
         {/* Global Floating Action Button */}

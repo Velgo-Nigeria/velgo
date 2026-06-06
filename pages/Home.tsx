@@ -9,7 +9,7 @@ import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 import { VerificationBadge } from '../components/VerificationBadge';
 
-const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide }) => {
+const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void, onShowNotifications?: () => void, unreadCount?: number }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide, onShowNotifications, unreadCount }) => {
   const [items, setItems] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
@@ -230,6 +230,19 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       <div className="px-6 pt-10 pb-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-end sticky top-0 bg-white dark:bg-[#0f172a] z-10">
         <VelgoLogo className="h-8" />
         <div className="flex gap-3">
+            {onShowNotifications && (
+              <button 
+                onClick={onShowNotifications} 
+                className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white relative hover:scale-105 transition-transform"
+              >
+                <i className="fa-solid fa-bell"></i>
+                {unreadCount !== undefined && unreadCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-brand text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            )}
             <button onClick={() => setShowInsights(true)} className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center animate-pulse"><i className="fa-solid fa-wand-magic-sparkles"></i></button>
             <button onClick={() => onShowGuide()} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-white"><i className="fa-regular fa-circle-question"></i></button>
         </div>
