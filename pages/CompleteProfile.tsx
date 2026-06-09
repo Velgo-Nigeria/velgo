@@ -15,7 +15,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
   // Initialize state from session metadata if available
   const [role, setRole] = useState<UserRole>(metadata.role || 'user');
   const [clientType, setClientType] = useState<ClientType>(metadata.client_type || 'personal');
-  const [fullName, setFullName] = useState(metadata.full_name || '');
+  const [fullName, setFullName] = useState(metadata.full_name || metadata.name || '');
   const [phone, setPhone] = useState(metadata.phone_number || '');
   
   const [loading, setLoading] = useState(false);

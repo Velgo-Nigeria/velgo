@@ -133,6 +133,39 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
           </button>
         </form>
 
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 px-4">
+            <div className="h-[1px] flex-1 bg-slate-800"></div>
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">OR</span>
+            <div className="h-[1px] flex-1 bg-slate-800"></div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setLoading(true);
+              setError(null);
+              try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: {
+                    redirectTo: window.location.origin,
+                  },
+                });
+                if (error) throw error;
+              } catch (err: any) {
+                setError(err.message || 'Error initializing Google login.');
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="w-full bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 text-white py-5 rounded-[28px] font-black uppercase text-xs tracking-[2px] transition-all flex items-center justify-center gap-3 active:scale-95"
+          >
+            <i className="fa-brands fa-google text-red-500 text-base"></i>
+            <span>Continue with Google</span>
+          </button>
+        </div>
+
         <div className="text-center pt-4">
           <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">
             New to Velgo? <button onClick={onToggle} className="text-emerald-400 font-black ml-2 border-b-2 border-emerald-400/20 hover:border-emerald-400 transition-all pb-0.5">Create Account</button>
