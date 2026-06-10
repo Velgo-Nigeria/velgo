@@ -1,7 +1,7 @@
 
 /// <reference lib="webworker" />
 // @ts-nocheck
-const CACHE_NAME = 'velgo-v1.0.9';
+const CACHE_NAME = 'velgo-v1.1.0';
 const DYNAMIC_CACHE = 'velgo-api-v1';
 
 const PRECACHE_URLS = [
