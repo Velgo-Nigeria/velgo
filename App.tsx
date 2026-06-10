@@ -65,8 +65,29 @@ const App: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitializingProfile, setIsInitializingProfile] = useState(false);
-  const [view, setView] = useState<any>('landing');
-  const [viewData, setViewData] = useState<any>(null);
+  const [view, setView] = useState<any>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('view') === 'legal') {
+        return 'legal';
+      }
+    } catch (e) {
+      console.warn('Error parsing initial view query param:', e);
+    }
+    return 'landing';
+  });
+  const [viewData, setViewData] = useState<any>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('view') === 'legal') {
+        const tab = urlParams.get('tab');
+        return tab === 'privacy' ? 'privacy' : (tab === 'terms' ? 'tos' : 'tos');
+      }
+    } catch (e) {
+      console.warn('Error parsing initial viewData query param:', e);
+    }
+    return null;
+  });
   
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'info' | 'success' | 'alert' }>>([]);
   const [showNotifications, setShowNotifications] = useState(false);
