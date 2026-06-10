@@ -70,6 +70,16 @@ export interface Profile {
   subscription_tier?: SubscriptionTier;
   subscription_end_date?: string;
   views_count?: number;
+  referrer_id?: string;
+}
+
+export interface PromoCode {
+  code: string;
+  user_id: string;
+  discount_percent: number;
+  is_used: boolean;
+  created_at?: string;
+  used_at?: string;
 }
 
 export interface PostedTask {

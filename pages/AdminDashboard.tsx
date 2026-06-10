@@ -1423,6 +1423,32 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Referral Analytics Diagnostic block */}
+                            <div className="bg-gray-50 dark:bg-slate-900/40 p-3 rounded-xl border border-gray-100 dark:border-slate-800 text-xs text-gray-700 dark:text-gray-300 space-y-1.5 font-sans mt-1">
+                                <p className="text-[8px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Referral Analytics & Control</p>
+                                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                    <div>
+                                        <span className="text-gray-400 dark:text-gray-500 font-bold uppercase block text-[8px] leading-tight">Referred By Parent</span>
+                                        <span className="font-mono text-[9px] truncate block mt-0.5 select-all" title={user.referrer_id || 'Direct Signup'}>
+                                            {user.referrer_id ? user.referrer_id.substring(0, 18) + '...' : 'Direct Signup'}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-gray-400 dark:text-gray-500 font-bold uppercase block text-[8px] leading-tight">Actions</span>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                navigator.clipboard.writeText(`${window.location.origin}?ref=${user.id}`);
+                                                alert("Referral link copied for this user: " + user.full_name);
+                                            }}
+                                            className="text-brand text-[9px] font-black uppercase tracking-wider hover:underline mt-1 bg-brand/5 dark:bg-brand/10 px-2 py-0.5 rounded border border-brand/10 inline-block"
+                                        >
+                                            <i className="fa-solid fa-copy mr-1"></i> Promo Link
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                             
                             {/* Emergency Blocking System (NDPR compliant) */}
                             {currentUserProfile && user.id !== currentUserProfile.id && (

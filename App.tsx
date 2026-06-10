@@ -256,8 +256,13 @@ const App: React.FC = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const jobIdParam = urlParams.get('jobId');
       const workerIdParam = urlParams.get('workerId');
+      const refParam = urlParams.get('ref');
       let redirectHappened = false;
 
+      if (refParam) {
+        localStorage.setItem('velgo_referrer_id', refParam);
+        redirectHappened = true;
+      }
       if (jobIdParam) {
         localStorage.setItem('velgo_redirect_job_id', jobIdParam);
         redirectHappened = true;
@@ -409,6 +414,33 @@ const App: React.FC = () => {
     });
     return () => subscription.unsubscribe();
   }, [fetchProfile]); 
+
+  // Handle linking incoming referrer and clear from localStorage upon success
+  useEffect(() => {
+    if (profile && profile.id) {
+      const storedReferrer = localStorage.getItem('velgo_referrer_id');
+      if (storedReferrer && storedReferrer !== profile.id && !profile.referrer_id) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(storedReferrer)) {
+          supabase
+            .from('profiles')
+            .update({ referrer_id: storedReferrer })
+            .eq('id', profile.id)
+            .then(({ error }) => {
+              if (error) {
+                console.warn("Failed to update referrer_id for profile:", error.message);
+              } else {
+                console.log("Successfully linked referrer:", storedReferrer);
+                localStorage.removeItem('velgo_referrer_id');
+                fetchProfile(profile.id, 1, true); // Silent reload
+              }
+            });
+        } else {
+          localStorage.removeItem('velgo_referrer_id');
+        }
+      }
+    }
+  }, [profile, fetchProfile]);
 
   useEffect(() => {
     if (!session?.user?.id) return;

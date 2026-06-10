@@ -28,6 +28,12 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
   const [completedJobsCount, setCompletedJobsCount] = useState(0);
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // Referral Program states
+  const [referredCount, setReferredCount] = useState<number>(0);
+  const [promoCodes, setPromoCodes] = useState<any[]>([]);
+  const [loadingReferrals, setLoadingReferrals] = useState<boolean>(true);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
   // Safety form state
   const [incidentType, setIncidentType] = useState('Fraud');
   const [details, setDetails] = useState('');
@@ -137,6 +143,96 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [profile?.id]);
+
+  const fetchReferralsAndRewards = async () => {
+    if (!profile?.id) return;
+    try {
+      setLoadingReferrals(true);
+      const { count, error: refError } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('referrer_id', profile.id);
+
+      let currentCount = 0;
+      if (!refError && count !== null) {
+        currentCount = count;
+        setReferredCount(count);
+      }
+
+      const { data: promoData, error: promoError } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      let currentCodes: any[] = [];
+      if (!promoError && promoData) {
+        currentCodes = promoData;
+        setPromoCodes(promoData);
+      }
+
+      await checkAndAwardMilestones(currentCount, currentCodes);
+
+    } catch (err) {
+      console.warn("Failed to fetch referrals & rewards:", err);
+    } finally {
+      setLoadingReferrals(false);
+    }
+  };
+
+  const checkAndAwardMilestones = async (currentCount: number, currentCodes: any[]) => {
+    if (!profile?.id) return;
+    
+    const milestones = [
+      { target: 3, percent: 15 },
+      { target: 7, percent: 30 },
+      { target: 15, percent: 50 },
+      { target: 30, percent: 80 }
+    ];
+
+    let codesChanged = false;
+
+    for (const milestone of milestones) {
+      if (currentCount >= milestone.target) {
+        const hasCode = currentCodes.some(c => c.discount_percent === milestone.percent);
+        if (!hasCode) {
+          const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const codeString = `VELGO-REF${milestone.target}-${randomStr}`;
+          
+          try {
+            const { error: insertErr } = await supabase.from('promo_codes').insert({
+              code: codeString,
+              user_id: profile.id,
+              discount_percent: milestone.percent,
+              is_used: false
+            });
+            if (!insertErr) {
+              codesChanged = true;
+            }
+          } catch (err) {
+            console.warn("Failed auto-inserting promo reward:", err);
+          }
+        }
+      }
+    }
+
+    if (codesChanged) {
+      const { data: freshPromoData } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+      if (freshPromoData) {
+        setPromoCodes(freshPromoData);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchReferralsAndRewards();
+    }
   }, [profile?.id]);
 
   // Setup real profile views counter & database calculations
@@ -428,6 +524,34 @@ UID: ${profile.id}
     }
   };
 
+  const getNextMilestoneInfo = () => {
+    const milestones = [
+      { target: 3, label: 'Bronze (15% Off)', percent: 15 },
+      { target: 7, label: 'Silver (30% Off)', percent: 30 },
+      { target: 15, label: 'Gold (50% Off)', percent: 50 },
+      { target: 30, label: 'Elite (80% Off)', percent: 80 }
+    ];
+
+    const next = milestones.find(m => referredCount < m.target);
+    if (!next) {
+      return { label: 'All Milestones Achieved!', progressPercent: 100, remaining: 0, nextTarget: 30 };
+    }
+
+    const prevTarget = milestones.filter(m => referredCount >= m.target).reduce((max, m) => m.target > max ? m.target : max, 0);
+    const range = next.target - prevTarget;
+    const currentInRange = referredCount - prevTarget;
+    const progressPercent = Math.min(100, Math.round((currentInRange / range) * 100));
+
+    return {
+      label: next.label,
+      progressPercent,
+      remaining: next.target - referredCount,
+      nextTarget: next.target
+    };
+  };
+
+  const nextMilestone = getNextMilestoneInfo();
+
   return (
     <div className="bg-white dark:bg-gray-900 pb-28 min-h-screen text-gray-800 dark:text-gray-200">
       
@@ -681,6 +805,141 @@ UID: ${profile.id}
         {/* RIGHT COLUMN: Upgraded Safety Center & Platform user guides (5/12 cols) */}
         <div className="lg:col-span-5 space-y-8">
           
+          {/* REFERRAL SYSTEM: REFER & EARN DISCOUNTS */}
+          <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-[#0f172a] rounded-[35px] text-white p-6 shadow-xl relative overflow-hidden space-y-6 border border-white/5">
+            {/* Elegant Background Icon */}
+            <i className="fa-solid fa-gift absolute -right-6 -bottom-6 text-[130px] opacity-[0.06] rotate-12 pointer-events-none"></i>
+            
+            <div className="space-y-2 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center border border-indigo-500/20">
+                  <i className="fa-solid fa-share-nodes text-lg"></i>
+                </div>
+                <div>
+                  <h3 className="font-black uppercase tracking-wider text-xs">Referral Rewards</h3>
+                  <p className="text-[8px] uppercase tracking-widest text-indigo-300 font-bold">Invite Friends, Unlock Milestones</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-indigo-100 leading-relaxed font-semibold">
+                Share Velgo with friends & colleagues. Once they join, unlock one-time-use discount codes up to <span className="text-emerald-400 font-black">80% OFF</span> standard packs!
+              </p>
+            </div>
+
+            {/* Link Sharing Box */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 relative z-10">
+              <label className="text-[8px] font-black text-indigo-300 uppercase tracking-widest block">Your Unique Referral Link</label>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={`${window.location.origin}?ref=${profile?.id || 'guest'}`}
+                  className="flex-1 bg-black/20 text-[10px] font-mono p-3 rounded-xl outline-none border border-white/5 text-slate-300 truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}?ref=${profile?.id}`);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${copiedLink ? 'bg-[#25D366] text-white' : 'bg-indigo-600 text-white shadow-md active:scale-95'}`}
+                >
+                  {copiedLink ? (
+                    <>
+                      <i className="fa-solid fa-circle-check"></i> Copied
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-regular fa-copy"></i> Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Referrals Count and Progress Tracker */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4 relative z-10">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">Total Invited Friends</p>
+                  <p className="text-2xl font-black font-mono mt-1 text-white">{referredCount} Joined</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10 inline-block">
+                    {referredCount >= 30 ? 'Elite Tier Crown' : `${nextMilestone.remaining} more to unlock`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div>
+                <div className="flex justify-between text-[8px] font-black uppercase tracking-wider mb-1.5 text-indigo-200">
+                  <span>Current Progress</span>
+                  <span>Next: {nextMilestone.label}</span>
+                </div>
+                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${nextMilestone.progressPercent}%` }}
+                    className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
+                  ></div>
+                </div>
+                <div className="flex justify-between text-[7.5px] text-gray-400 font-bold uppercase mt-1">
+                  <span>0 Referred</span>
+                  <span>Target: {nextMilestone.nextTarget}</span>
+                </div>
+              </div>
+
+              {/* Milestones Info Grid */}
+              <div className="border-t border-white/5 pt-3 grid grid-cols-4 gap-1.5 text-center">
+                {[
+                  { target: 3, label: '15% Off', color: referredCount >= 3 ? 'text-emerald-400 font-black' : 'text-gray-500' },
+                  { target: 7, label: '30% Off', color: referredCount >= 7 ? 'text-emerald-400 font-black' : 'text-gray-500' },
+                  { target: 15, label: '50% Off', color: referredCount >= 15 ? 'text-emerald-400 font-black' : 'text-gray-500' },
+                  { target: 30, label: '80% Off', color: referredCount >= 30 ? 'text-emerald-400 font-black' : 'text-gray-500' }
+                ].map((m, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className={`text-[10px] ${m.color}`}>
+                      {referredCount >= m.target ? <i className="fa-solid fa-circle-check text-emerald-400 mr-0.5"></i> : <i className="fa-solid fa-lock text-white/20 text-[8px] mr-0.5"></i>}
+                      {m.target} Ref
+                    </p>
+                    <p className="text-[8px] text-slate-400 font-extrabold uppercase">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Unused Awarded Promo Codes Chest */}
+            {promoCodes.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3 relative z-10">
+                <label className="text-[8px] font-black text-indigo-300 uppercase tracking-widest block">Unlocked Promo Codes Chest</label>
+                <div className="space-y-2 max-h-[160px] overflow-y-auto scrollbar-none">
+                  {promoCodes.map((codeObj, i) => (
+                    <div key={i} className="flex justify-between items-center bg-black/30 p-2.5 rounded-xl border border-white/5">
+                      <div>
+                        <span className="text-[10px] font-mono font-black text-emerald-400 tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10">
+                          {codeObj.code}
+                        </span>
+                        <p className="text-[8px] text-gray-400 font-bold uppercase mt-1">
+                          {codeObj.discount_percent}% Discount • {codeObj.is_used ? 'Redeemed' : 'UNUSED'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (codeObj.is_used) return;
+                          navigator.clipboard.writeText(codeObj.code);
+                          alert(`Promo code ${codeObj.code} copied! Input it on the subscription screen to claim discount.`);
+                        }}
+                        disabled={codeObj.is_used}
+                        className={`text-[8.5px] font-black uppercase px-2.5 py-1.5 rounded-lg ${codeObj.is_used ? 'text-gray-550 bg-white/5 border border-transparent' : 'text-indigo-300 hover:text-white bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500 active:scale-95 transition-all'}`}
+                      >
+                        {codeObj.is_used ? 'Used' : 'Copy Code'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* SAFETY CENTER CARD & FORMS */}
           <div className="bg-red-500 rounded-[35px] text-white p-6 shadow-xl relative overflow-hidden space-y-6">
             {/* Watermark background */}
