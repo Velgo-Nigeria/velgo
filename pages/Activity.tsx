@@ -1289,6 +1289,71 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                       </div>
                     </div>
 
+                    {/* Proposal Quote Breakdown (Real-time Nigerian Context Help) */}
+                    {item.quote_price !== undefined && item.quote_price !== null && (
+                      <div className="bg-slate-50 dark:bg-gray-900/40 p-3.5 border border-gray-100 dark:border-gray-800 rounded-3xl space-y-3 font-sans relative z-10 text-left">
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                           <div>
+                              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Custom Offer Quote</p>
+                              <div className="flex items-baseline gap-1.5 mt-0.5">
+                                 <span className="text-sm font-black text-brand">₦{Number(item.quote_price).toLocaleString()}</span>
+                                 {/* Compare option against task budget */}
+                                 {item.posted_tasks?.budget && Number(item.posted_tasks.budget) !== Number(item.quote_price) && (
+                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${Number(item.quote_price) > Number(item.posted_tasks.budget) ? 'bg-red-50 text-red-650 dark:bg-red-950/20 dark:text-red-400' : 'bg-emerald-50 text-emerald-650 dark:bg-emerald-950/20 dark:text-emerald-400'}`}>
+                                       {Number(item.quote_price) > Number(item.posted_tasks.budget) ? 'Above Budget' : 'Below Budget'}
+                                    </span>
+                                 )}
+                              </div>
+                           </div>
+                           {item.posted_tasks?.budget && (
+                              <div className="text-right">
+                                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Client Budget</p>
+                                 <p className="text-xs font-black text-gray-600 dark:text-gray-300 mt-0.5">₦{Number(item.posted_tasks.budget).toLocaleString()}</p>
+                              </div>
+                           )}
+                        </div>
+
+                        {/* Visual checklist tags */}
+                        <div className="space-y-1">
+                           <p className="text-[7.5px] font-black uppercase text-gray-400 tracking-wider">This estimate includes:</p>
+                           <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              {item.quote_covers_labor && (
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-orange-50 text-orange-650 dark:bg-orange-950/20 dark:text-orange-400 border border-orange-100/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                    🛠️ Labor
+                                 </span>
+                              )}
+                              {item.quote_covers_materials && (
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-655 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                    🧱 Materials
+                                 </span>
+                              )}
+                              {item.quote_covers_transport && (
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-blue-50 text-blue-650 dark:bg-blue-950/20 dark:text-blue-400 border border-blue-100/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                    🚚 Transport
+                                 </span>
+                              )}
+                              {item.quote_covers_other && (
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-purple-50 text-purple-650 dark:bg-purple-950/20 dark:text-purple-400 border border-purple-100/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                    📦 Other Required
+                                 </span>
+                              )}
+                              {!item.quote_covers_labor && !item.quote_covers_materials && !item.quote_covers_transport && !item.quote_covers_other && (
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-gray-50 text-gray-400 px-2 py-0.5 rounded-lg">
+                                    Unspecified Included Items
+                                 </span>
+                              )}
+                           </div>
+                        </div>
+
+                        {/* Optional notes context */}
+                        {item.quote_notes && (
+                           <div className="pt-2 border-t border-gray-100 dark:border-gray-800 text-[10.5px] text-gray-600 dark:text-gray-400 font-bold italic leading-relaxed whitespace-pre-wrap">
+                              "{item.quote_notes}"
+                           </div>
+                        )}
+                      </div>
+                    )}
+
                     {item.status === 'pending' && (
                         <div className="w-full relative z-10 mt-4">
                             {/* CASE 1: JOB APPLICATION (HAS TASK ID) */}

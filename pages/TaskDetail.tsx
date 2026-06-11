@@ -31,6 +31,16 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   // Modals
   const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
+  
+  // Proposal Bid Quote Modal States
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [useClientBudget, setUseClientBudget] = useState(true);
+  const [bidPrice, setBidPrice] = useState('');
+  const [coversLabor, setCoversLabor] = useState(true);
+  const [coversMaterials, setCoversMaterials] = useState(false);
+  const [coversTransport, setCoversTransport] = useState(false);
+  const [coversOther, setCoversOther] = useState(false);
+  const [bidNotes, setBidNotes] = useState('');
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -100,12 +110,44 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
       
       setApplying(true);
       
-      const { error } = await supabase.from('bookings').insert({
+      const parsedPrice = useClientBudget ? task.budget : Number(bidPrice);
+      
+      let insertPayload: any = {
           task_id: task.id,
           client_id: task.client_id,
           worker_id: profile.id,
-          status: 'pending'
-      });
+          status: 'pending',
+          quote_price: parsedPrice,
+          quote_covers_labor: coversLabor,
+          quote_covers_materials: coversMaterials,
+          quote_covers_transport: coversTransport,
+          quote_covers_other: coversOther,
+          quote_notes: bidNotes || null
+      };
+
+      let { error } = await supabase.from('bookings').insert(insertPayload);
+
+      // Robust database protection: If the remote Supabase database columns have not been run/synced,
+      // it returns code '42703' (undefined_column). In that case, we fall back to a simple application insert
+      // so there is ZERO downtime or friction for the artisan.
+      if (error && error.code === '42703') {
+          console.warn("Custom quote columns are missing in database, falling back to clean simple booking insert.", error);
+          const fallbackQuery = await supabase.from('bookings').insert({
+              task_id: task.id,
+              client_id: task.client_id,
+              worker_id: profile.id,
+              status: 'pending'
+          });
+          error = fallbackQuery.error;
+          
+          if (!error) {
+              setHasApplied(true);
+              setApplying(false);
+              setShowProposalModal(false);
+              alert("Application Sent! Note: Your detailed quote price and breakdowns were omitted as database schema configuration is pending admin execution.");
+              return;
+          }
+      }
 
       if (error) {
           alert("Failed to apply: " + error.message);
@@ -113,7 +155,8 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
       } else {
           setHasApplied(true);
           setApplying(false);
-          alert("Application Sent! The client will review your profile.");
+          setShowProposalModal(false);
+          alert("Application Sent! The client will review your detailed quote breakdown.");
       }
   };
 
@@ -389,7 +432,21 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                         </div>
                     )}
                     <button 
-                        onClick={handleApply} 
+                        onClick={() => {
+                            if (!profile) return;
+                            if (!profile.is_verified) {
+                                alert("Verification Required: To secure our marketplace and eliminate fake applicants, Velgo requires you to verify your identity before applying. Please go to your Profile and upload your NIN.");
+                                return;
+                            }
+                            setBidPrice(task ? task.budget.toString() : '');
+                            setUseClientBudget(true);
+                            setCoversLabor(true);
+                            setCoversMaterials(false);
+                            setCoversTransport(false);
+                            setCoversOther(false);
+                            setBidNotes('');
+                            setShowProposalModal(true);
+                        }} 
                         disabled={hasApplied || applying}
                         className={`w-full py-5 rounded-[28px] font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95 ${
                             hasApplied 
@@ -437,6 +494,174 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                 </div>
             </div>
             <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-0.5 rounded-lg font-mono">Pristine</span>
+        </div>
+      )}
+
+      {/* Artisan Quote Proposal Detailed Modal */}
+      {showProposalModal && (
+        <div className="fixed inset-0 bg-black/80 z-[160] flex items-center justify-center p-5 overflow-y-auto backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-gray-800 rounded-[36px] border border-gray-100 dark:border-gray-700 w-full max-w-md p-6 relative shadow-2xl space-y-5 animate-slideUp font-sans">
+            {/* Close Circle Button */}
+            <button 
+              onClick={() => setShowProposalModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-650 dark:hover:text-gray-200 transition-colors w-9 h-9 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-full outline-none"
+            >
+              <i className="fa-solid fa-xmark text-sm"></i>
+            </button>
+
+            {/* Header Title Section */}
+            <div>
+              <span className="text-[8px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-full uppercase tracking-wider">Proposal Customizer</span>
+              <h3 className="text-lg font-black text-gray-900 dark:text-white mt-1.5 leading-tight">Submit Your Quote</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-450 font-bold leading-normal mt-1">Specify transparent pricing and bounds to avoid client disputes.</p>
+            </div>
+
+            {/* Educational Clarity Alert */}
+            <div className="bg-orange-50 dark:bg-orange-955/20 border border-orange-100 dark:border-orange-900/40 p-3.5 rounded-2xl flex items-start gap-3">
+              <span className="text-lg text-orange-500 shrink-0 mt-0.5">💡</span>
+              <p className="text-[10px] text-orange-850 dark:text-orange-300 font-bold leading-normal">
+                <strong>Budget Clarity:</strong> In Nigeria, clients sometimes expect buying parts/materials or covering transport are already included. Be explicitly clear below what is covered.
+              </p>
+            </div>
+
+            {/* Budget segmented toggle buttons */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Select Bid Strategy</label>
+              <div className="bg-gray-50 dark:bg-gray-900 p-1 rounded-2xl border border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => {
+                    setUseClientBudget(true);
+                    setBidPrice(task ? task.budget.toString() : '');
+                  }}
+                  className={`py-2 px-1 rounded-xl text-[10px] font-extrabold uppercase transition-all outline-none ${useClientBudget ? 'bg-white dark:bg-gray-800 text-gray-950 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  Client Budget (₦{(task?.budget || 0).toLocaleString()})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseClientBudget(false)}
+                  className={`py-2 px-1 rounded-xl text-[10px] font-extrabold uppercase transition-all outline-none ${!useClientBudget ? 'bg-white dark:bg-gray-800 text-gray-950 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  Custom Quote (₦)
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Quote Numerical Input */}
+            {!useClientBudget && (
+              <div className="space-y-2 animate-fadeIn">
+                <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Your Bidding Offer (₦)</label>
+                <div className="relative rounded-2xl shadow-sm">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 font-black text-gray-400 text-sm">
+                    ₦
+                  </span>
+                  <input
+                    type="number"
+                    value={bidPrice}
+                    onChange={(e) => setBidPrice(e.target.value)}
+                    className="block w-full rounded-2xl border border-gray-200 dark:border-gray-700 py-3.5 pl-9 pr-4 text-xs font-black text-gray-900 dark:text-white dark:bg-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                    placeholder="e.g. 15000"
+                    min="1"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Breakdown checkboxes */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase block">Includes (What is covered in quote):</label>
+              <div className="grid grid-cols-2 lg:grid-cols-2 gap-2.5">
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${coversLabor ? 'bg-orange-50/50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/40' : 'bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-750'}`}>
+                  <input 
+                    type="checkbox" 
+                    checked={coversLabor} 
+                    onChange={(e) => setCoversLabor(e.target.checked)} 
+                    className="rounded text-brand focus:ring-brand accent-brand h-3.5 w-3.5" 
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-gray-800 dark:text-gray-200">🛠️ Labor fee</span>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">Work Done</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${coversMaterials ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40' : 'bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-750'}`}>
+                  <input 
+                    type="checkbox" 
+                    checked={coversMaterials} 
+                    onChange={(e) => setCoversMaterials(e.target.checked)} 
+                    className="rounded text-brand focus:ring-brand accent-brand h-3.5 w-3.5" 
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-gray-800 dark:text-gray-200">🧱 Materials</span>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">Supply parts</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${coversTransport ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40' : 'bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-750'}`}>
+                  <input 
+                    type="checkbox" 
+                    checked={coversTransport} 
+                    onChange={(e) => setCoversTransport(e.target.checked)} 
+                    className="rounded text-brand focus:ring-brand accent-brand h-3.5 w-3.5" 
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-gray-800 dark:text-gray-200">🚚 Transport</span>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">Transit/Fuel</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${coversOther ? 'bg-purple-50/50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-900/40' : 'bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-750'}`}>
+                  <input 
+                    type="checkbox" 
+                    checked={coversOther} 
+                    onChange={(e) => setCoversOther(e.target.checked)} 
+                    className="rounded text-brand focus:ring-brand accent-brand h-3.5 w-3.5" 
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-gray-805 dark:text-gray-200">📦 Other Cost</span>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">Extra fees</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Quote specific Notes */}
+            <div className="space-y-1.5 animate-fadeIn">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Artisan Quote Notes (Optional)</label>
+              <textarea
+                value={bidNotes}
+                onChange={(e) => setBidNotes(e.target.value)}
+                placeholder="e.g., I will need you to buy the 30-amp board beforehand, or Tell client key prerequisites."
+                className="w-full text-xs p-3 border border-gray-200 dark:border-gray-700 bg-transparent rounded-2xl focus:ring-1 focus:ring-brand focus:border-brand dark:bg-gray-900 font-bold outline-none resize-none h-16"
+                maxLength={400}
+              />
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                onClick={handleApply}
+                disabled={applying || (!useClientBudget && (!bidPrice || Number(bidPrice) <= 0))}
+                className="w-full bg-brand text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider shadow-lg shadow-brand/10 hover:bg-brand-dark active:scale-95 duration-200 disabled:opacity-40 select-none outline-none shrink-0"
+              >
+                {applying ? (
+                  <>
+                    <i className="fa-solid fa-circle-notch animate-spin mr-1.5"></i> Sending application proposal...
+                  </>
+                ) : (
+                  "Confirm & Submit Application"
+                )}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowProposalModal(false)}
+                className="w-full text-gray-400 dark:text-gray-500 py-1 font-black text-[10px] uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-400 transition-colors select-none outline-none mr-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

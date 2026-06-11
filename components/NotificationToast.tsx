@@ -29,17 +29,23 @@ const IndividualToast: React.FC<{
 
     const timer = setInterval(() => {
       setProgress((prev) => {
-        if (prev <= 0) {
+        const next = prev - decrement;
+        if (next <= 0) {
           clearInterval(timer);
-          onClose();
           return 0;
         }
-        return prev - decrement;
+        return next;
       });
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [onClose]);
+  }, []);
+
+  useEffect(() => {
+    if (progress <= 0) {
+      onClose();
+    }
+  }, [progress, onClose]);
 
   // Determine beautiful matching titles based on content keywords
   const getSubTitleText = () => {
