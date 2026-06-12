@@ -120,7 +120,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
           *, 
           client:client_id(id, full_name, email, phone_number, avatar_url),
           worker:worker_id(id, full_name, email, phone_number, avatar_url, bank_name, account_number, account_name), 
-          posted_tasks:task_id(title, description, budget)
+          posted_tasks:task_id(id, title, description, budget, status, assigned_worker_id)
         `)
         .or(`client_id.eq.${profile.id},worker_id.eq.${profile.id}`)
         .order('created_at', { ascending: false })
@@ -193,6 +193,47 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         
         fetchActivity();
     } catch (err: any) { alert("Action failed: " + err.message); }
+  };
+
+  const handleDismissWorker = async (booking: any) => {
+    if (!profile || !booking) return;
+
+    const confirmDismiss = window.confirm(
+      "Are you sure you want to dismiss this artisan and re-open the task for applications? Other pending applicants will instantly become available again, and the hired worker will be removed from this task. Note: Your safety deposit token is not refundable."
+    );
+    if (!confirmDismiss) return;
+
+    try {
+        setLoading(true);
+
+        // 1. Revert active booking back to 'cancelled' status
+        const { error: bookingError } = await supabase
+            .from('bookings')
+            .update({ status: 'cancelled' })
+            .eq('id', booking.id);
+        
+        if (bookingError) throw bookingError;
+
+        // 2. Re-open the task and clear assigned_worker_id
+        if (booking.task_id) {
+            const { error: taskError } = await supabase
+                .from('posted_tasks')
+                .update({ 
+                    status: 'open', 
+                    assigned_worker_id: null 
+                })
+                .eq('id', booking.task_id);
+            
+            if (taskError) throw taskError;
+        }
+
+        alert("Artisan dismissed and job has been successfully re-opened for other applicants!");
+        fetchActivity();
+    } catch (err: any) {
+        alert("Dismiss failed: " + err.message);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleOpenCompleteModal = (item: any) => {
@@ -744,6 +785,20 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                   .from('posted_tasks')
                   .update({ status: 'completed' })
                   .eq('id', completingBooking.task_id);
+
+              // Auto-decline all OTHER remaining pending bookings for that task
+              const { error: declineError } = await supabase
+                  .from('bookings')
+                  .update({ 
+                      status: 'declined',
+                      quote_notes: 'Job successfully completed by another artisan.'
+                  })
+                  .eq('task_id', completingBooking.task_id)
+                  .eq('status', 'pending');
+              
+              if (declineError) {
+                  console.error("Failed to auto-decline other applications on completion:", declineError.message);
+              }
           }
 
           alert("Great! Job marked as completed.");
@@ -873,7 +928,14 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const viewTasks = viewMode === 'hiring' ? tasks.filter(t => t.client_id === profile?.id) : tasks.filter(t => t.assigned_worker_id === profile?.id);
 
   const currentItems = statusFilter === 'requests' 
-      ? viewBookings.filter(b => b.status === 'pending').concat(viewTasks.filter(t => t.status === 'open')) 
+      ? viewBookings.filter(b => {
+          if (b.status !== 'pending') return false;
+          // Hide pending candidates from client's requests tab if another worker was already accepted/hired
+          if (viewMode === 'hiring' && b.task_id && b.posted_tasks?.status && b.posted_tasks?.status !== 'open') {
+              return false;
+          }
+          return true;
+        }).concat(viewTasks.filter(t => t.status === 'open')) 
       : statusFilter === 'ongoing' 
       ? viewBookings.filter(b => b.status === 'accepted').concat(viewTasks.filter(t => t.status === 'assigned'))
       : viewBookings.filter(b => ['completed', 'cancelled', 'declined', 'disputed'].includes(b.status)).concat(viewTasks.filter(t => t.status === 'completed' || t.status === 'cancelled'));
@@ -1244,7 +1306,17 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         return <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg">Direct Request Sent</span>;
                     } else {
                         if (isOpenTask || (item.status === 'assigned' && item.title)) return <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-lg">Assigned Job</span>;
-                        if (item.task_id) return <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg">Application Sent</span>;
+                        if (item.task_id) {
+                            const isAssignedToOther = item.posted_tasks?.status === 'assigned' && item.posted_tasks?.assigned_worker_id !== profile?.id;
+                            if (isAssignedToOther && item.status === 'pending') {
+                                return (
+                                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-lg animate-pulse">
+                                        Under Review by Client
+                                    </span>
+                                );
+                            }
+                            return <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg">Application Sent</span>;
+                        }
                         return <span className="text-[9px] font-black text-purple-500 uppercase tracking-widest bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-lg">Direct Request Recv</span>;
                     }
                 };
@@ -1417,12 +1489,22 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     {['accepted', 'assigned'].includes(item.status) && (
                         <div className="space-y-3 relative z-10">
                             {profile?.id === item.client_id && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(item); }} 
-                                    className="w-full bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-yellow-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <i className="fa-solid fa-circle-check"></i> Complete & Pay
-                                </button>
+                                <div className="flex flex-col gap-2.5">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(item); }} 
+                                        className="w-full bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-yellow-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <i className="fa-solid fa-circle-check"></i> Complete & Pay
+                                    </button>
+                                    {item.task_id && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleDismissWorker(item); }} 
+                                            className="w-full bg-rose-50 hover:bg-rose-100 text-rose-650 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 dark:text-rose-400 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 border border-rose-100 dark:border-rose-900/40 outline-none"
+                                        >
+                                            <i className="fa-solid fa-user-minus"></i> Dismiss & Re-open Job
+                                        </button>
+                                    )}
+                                </div>
                             )}
                              <button 
                                 onClick={(e) => { e.stopPropagation(); handleConnectWhatsApp(item); }} 
