@@ -67,24 +67,37 @@ const App: React.FC = () => {
   const [isInitializingProfile, setIsInitializingProfile] = useState(false);
   const [view, setView] = useState<any>(() => {
     try {
+      const pathname = window.location.pathname.toLowerCase();
+      if (pathname === '/privacy' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/terms-of-service') {
+        return 'legal';
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('view') === 'legal') {
         return 'legal';
       }
     } catch (e) {
-      console.warn('Error parsing initial view query param:', e);
+      console.warn('Error parsing initial view query param/pathname:', e);
     }
     return 'landing';
   });
   const [viewData, setViewData] = useState<any>(() => {
     try {
+      const pathname = window.location.pathname.toLowerCase();
+      if (pathname === '/privacy' || pathname === '/privacy-policy') {
+        return 'privacy';
+      }
+      if (pathname === '/terms' || pathname === '/terms-of-service') {
+        return 'tos';
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('view') === 'legal') {
         const tab = urlParams.get('tab');
         return tab === 'privacy' ? 'privacy' : (tab === 'terms' ? 'tos' : 'tos');
       }
     } catch (e) {
-      console.warn('Error parsing initial viewData query param:', e);
+      console.warn('Error parsing initial viewData query param/pathname:', e);
     }
     return null;
   });
@@ -329,7 +342,26 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!window.history.state) {
-        window.history.replaceState({ view: 'landing', data: null }, '', '');
+        const pathname = window.location.pathname.toLowerCase();
+        let initialView = 'landing';
+        let initialData = null;
+        if (pathname === '/privacy' || pathname === '/privacy-policy') {
+          initialView = 'legal';
+          initialData = 'privacy';
+        } else if (pathname === '/terms' || pathname === '/terms-of-service') {
+          initialView = 'legal';
+          initialData = 'tos';
+        } else {
+          try {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('view') === 'legal') {
+              initialView = 'legal';
+              const tab = urlParams.get('tab');
+              initialData = tab === 'privacy' ? 'privacy' : (tab === 'terms' ? 'tos' : 'tos');
+            }
+          } catch (e) {}
+        }
+        window.history.replaceState({ view: initialView, data: initialData }, '', '');
     }
     const handlePopState = (event: PopStateEvent) => {
         if (event.state && event.state.view) {
@@ -344,7 +376,13 @@ const App: React.FC = () => {
   }, []);
 
   const navigate = (newView: string, data: any = null) => {
-    window.history.pushState({ view: newView, data }, '', '');
+    let url = '';
+    if (newView === 'legal') {
+      url = data === 'privacy' ? '/privacy' : '/terms';
+    } else if (newView === 'landing') {
+      url = '/';
+    }
+    window.history.pushState({ view: newView, data }, '', url);
     setView(newView);
     setViewData(data);
     window.scrollTo(0, 0);
@@ -355,7 +393,8 @@ const App: React.FC = () => {
          window.history.back();
      } else {
          setView(fallbackView);
-         window.history.replaceState({ view: fallbackView, data: null }, '', '');
+         const url = fallbackView === 'landing' ? '/' : '';
+         window.history.replaceState({ view: fallbackView, data: null }, '', url);
      }
   };
 

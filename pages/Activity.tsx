@@ -24,6 +24,16 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Manage client-side hidden or archived bookings/tasks without schema adjustments
+  const [archivedBookingIds, setArchivedBookingIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('velgo_archived_bookings');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Redirect modal states
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [redirectingPartnerName, setRedirectingPartnerName] = useState('');
@@ -233,6 +243,63 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         alert("Dismiss failed: " + err.message);
     } finally {
         setLoading(false);
+    }
+  };
+
+  const handleArchiveBooking = (bookingId: string) => {
+    const updated = [...archivedBookingIds, bookingId];
+    setArchivedBookingIds(updated);
+    localStorage.setItem('velgo_archived_bookings', JSON.stringify(updated));
+    alert("Record successfully archived and removed from your active feeds.");
+  };
+
+  const handleStaleAction = async (booking: any, action: 'reopen' | 'failed' | 'archive') => {
+    if (!profile || !booking) return;
+
+    if (action === 'archive') {
+      handleArchiveBooking(booking.id);
+      return;
+    }
+
+    const confirmMsg = action === 'reopen'
+      ? "Are you sure you want to dismiss this artisan and re-open this task? This will cancel the booking and mark the task as open again for other candidates. Safety deposit tokens are not refundable."
+      : "Are you sure you want to mark this task as FAILED? This will cancel the active booking and mark the job post as officially cancelled on Velgo.";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+
+      // 1. Revert active booking back to 'cancelled' status
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', booking.id);
+      
+      if (bookingError) throw bookingError;
+
+      // 2. Re-open or Cancel the task
+      if (booking.task_id) {
+        const { error: taskError } = await supabase
+          .from('posted_tasks')
+          .update({ 
+            status: action === 'reopen' ? 'open' : 'cancelled', 
+            assigned_worker_id: null 
+          })
+          .eq('id', booking.task_id);
+        
+        if (taskError) throw taskError;
+      }
+
+      alert(action === 'reopen' 
+        ? "Job successfully re-opened! Other candidates can now apply and you can select them."
+        : "Project marked as failed and cancelled."
+      );
+      fetchActivity();
+    } catch (err: any) {
+      alert("Action failed: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -927,7 +994,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   // If viewMode == 'working', tasks where user is assigned_worker.
   const viewTasks = viewMode === 'hiring' ? tasks.filter(t => t.client_id === profile?.id) : tasks.filter(t => t.assigned_worker_id === profile?.id);
 
-  const currentItems = statusFilter === 'requests' 
+  const currentItems = (statusFilter === 'requests' 
       ? viewBookings.filter(b => {
           if (b.status !== 'pending') return false;
           // Hide pending candidates from client's requests tab if another worker was already accepted/hired
@@ -938,7 +1005,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         }).concat(viewTasks.filter(t => t.status === 'open')) 
       : statusFilter === 'ongoing' 
       ? viewBookings.filter(b => b.status === 'accepted').concat(viewTasks.filter(t => t.status === 'assigned'))
-      : viewBookings.filter(b => ['completed', 'cancelled', 'declined', 'disputed'].includes(b.status)).concat(viewTasks.filter(t => t.status === 'completed' || t.status === 'cancelled'));
+      : viewBookings.filter(b => ['completed', 'cancelled', 'declined', 'disputed'].includes(b.status)).concat(viewTasks.filter(t => t.status === 'completed' || t.status === 'cancelled'))
+  ).filter(item => !archivedBookingIds.includes(item.id));
 
   const hiringRequestsBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'pending' && b.task_id != null);
   const hiringOngoingBadge = bookings.some(b => b.client_id === profile?.id && b.status === 'accepted') || tasks.some(t => t.client_id === profile?.id && t.status === 'assigned');
@@ -1296,6 +1364,15 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 // Logic to identify if item is an Open Task (no worker assigned yet)
                 const isOpenTask = item.budget !== undefined && !item.worker_id; 
 
+                // Dynamic stale calculation (Zero-cost, client-side, fully aligned with DB enums)
+                const isBooking = !!item.worker_id;
+                const createdTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+                const referenceTime = item.updated_at ? new Date(item.updated_at).getTime() : (item.created_at ? new Date(item.created_at).getTime() : 0);
+                
+                const isStalePending = isBooking && item.status === 'pending' && createdTime > 0 && (Date.now() - createdTime > 48 * 60 * 60 * 1000);
+                const isStaleOngoing = isBooking && item.status === 'accepted' && referenceTime > 0 && (Date.now() - referenceTime > 3 * 24 * 60 * 60 * 1000);
+                const isStale = isStalePending || isStaleOngoing;
+
                 const renderItemTypeLabel = () => {
                     if (statusFilter === 'history') {
                         return <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${item.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>{item.status}</span>;
@@ -1424,6 +1501,52 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                            </div>
                         )}
                       </div>
+                    )}
+
+                    {/* Dynamic Inactivity Alert and Rail (Client Only) */}
+                    {isStale && profile?.id === item.client_id && (
+                        <div className="space-y-3 relative z-10 pt-2 pb-1 text-left font-sans" onClick={(e) => e.stopPropagation()}>
+                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4 flex gap-3 items-start animate-fadeIn">
+                                <span className="text-amber-500 dark:text-amber-400 text-sm mt-0.5"><i className="fa-solid fa-triangle-exclamation"></i></span>
+                                <div className="space-y-0.5">
+                                    <p className="text-[10px] uppercase font-black tracking-wider text-amber-805 dark:text-amber-400">Inactivity Alert</p>
+                                    <p className="text-[10.5px] leading-relaxed text-amber-700/90 dark:text-amber-300 font-bold">
+                                        {item.status === 'pending' 
+                                            ? "This application has been pending for over 48 hours without any decision."
+                                            : "This hire has been accepted for over 3 days without completion. You can re-open or cancel it."
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Small Modern Button Rail */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleStaleAction(item, 'reopen'); }}
+                                    className="bg-sky-50 dark:bg-sky-950/20 hover:bg-sky-100 text-sky-700 dark:text-sky-450 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-sky-100 dark:border-sky-900/40 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
+                                    title="Dismiss worker and allow other candidates to apply again"
+                                >
+                                    <i className="fa-solid fa-arrows-rotate text-xs"></i>
+                                    <span>Re-open Job</span>
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleStaleAction(item, 'failed'); }}
+                                    className="bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-650 dark:text-rose-450 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-rose-100/60 dark:border-rose-900/40 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
+                                    title="Close this job post without successfully completing it"
+                                >
+                                    <i className="fa-solid fa-ban text-xs"></i>
+                                    <span>Mark Failed</span>
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleArchiveBooking(item.id); }}
+                                    className="bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-gray-100 dark:border-gray-700/60 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
+                                    title="Hide this record from your active dashboard feeds"
+                                >
+                                    <i className="fa-solid fa-trash-can text-xs"></i>
+                                    <span>Archive</span>
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                     {item.status === 'pending' && (
