@@ -9,10 +9,28 @@ import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 interface PostTaskProps { profile: Profile | null; onBack: () => void; onUpgrade: () => void; onRefreshProfile: () => void; }
 
 const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefreshProfile }) => {
+  const ONLINE_CATEGORIES = [
+    "Technology, Data & Digital Services",
+    "Business, Finance & Legal",
+    "Education, Training & Coaching"
+  ];
+
+  const PHYSICAL_CATEGORIES = [
+    "Construction, Engineering & Real Estate",
+    "Artisan Services, Repairs & Maintenance",
+    "Domestic, Personal & Errands",
+    "Events, Hospitality & Entertainment",
+    "Agriculture & Farming",
+    "Manufacturing & Industrial",
+    "Education, Training & Coaching",
+    "Business, Finance & Legal"
+  ];
+
+  const [jobLocationType, setJobLocationType] = useState<'physical' | 'online'>('physical');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
-  const [category, setCategory] = useState(Object.keys(CATEGORY_MAP)[0]);
+  const [category, setCategory] = useState(PHYSICAL_CATEGORIES[0]);
   const [subcategory, setSubcategory] = useState('');
   const [urgency, setUrgency] = useState('normal');
   const [dueDate, setDueDate] = useState('');
@@ -24,6 +42,14 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
+
+  const handleJobLocationTypeChange = (type: 'physical' | 'online') => {
+    setJobLocationType(type);
+    const availableCategories = type === 'online' ? ONLINE_CATEGORIES : PHYSICAL_CATEGORIES;
+    if (!availableCategories.includes(category)) {
+      setCategory(availableCategories[0]);
+    }
+  };
   
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -220,7 +246,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         imageUrl = publicUrl;
       }
 
-      const fullLocation = `${selectedLGA}, ${selectedState}`;
+      const fullLocation = jobLocationType === 'online' ? 'Remote / Online' : `${selectedLGA}, ${selectedState}`;
 
       const { error } = await supabase.from('posted_tasks').insert([{
         client_id: profile.id,
@@ -340,6 +366,8 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   if (data.due_date) setDueDate(data.due_date);
                   
                   if (data.category && CATEGORY_MAP[data.category]) {
+                      const isOnline = ONLINE_CATEGORIES.includes(data.category);
+                      setJobLocationType(isOnline ? 'online' : 'physical');
                       setCategory(data.category);
                   }
                   if (data.state && NIGERIA_STATES.includes(data.state)) {
@@ -395,6 +423,37 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
           <p className="text-center text-[9px] text-gray-400 font-bold mt-2 uppercase">"I need a carpenter in Yaba to fix my door, budget 5k"</p>
       </div>
 
+      {/* Modern Location Type Toggle */}
+      <div className="px-6 pt-2">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Job Execution Style</label>
+        <div className="bg-gray-100 p-1 rounded-2xl grid grid-cols-2 gap-1 dark:bg-gray-800">
+          <button
+            type="button"
+            onClick={() => handleJobLocationTypeChange('physical')}
+            className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all focus:outline-none ${
+              jobLocationType === 'physical'
+                ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                : 'text-gray-400 bg-transparent hover:text-gray-650 dark:text-gray-500'
+            }`}
+          >
+            <i className="fa-solid fa-location-dot text-brand"></i>
+            Physical / Local
+          </button>
+          <button
+            type="button"
+            onClick={() => handleJobLocationTypeChange('online')}
+            className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all focus:outline-none ${
+              jobLocationType === 'online'
+                ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                : 'text-gray-400 bg-transparent hover:text-gray-650 dark:text-gray-500'
+            }`}
+          >
+            <i className="fa-solid fa-laptop text-brand"></i>
+            Online / Virtual
+          </button>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Job Title</label>
@@ -432,7 +491,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Industry Sector</label>
           <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
-            {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+            {(jobLocationType === 'online' ? ONLINE_CATEGORIES : PHYSICAL_CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
@@ -465,20 +524,30 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
           <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 text-gray-700" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
-            <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
-                {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+        {jobLocationType === 'physical' ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
+              <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+                  {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
+              <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
+                  {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
-            <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
-                {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
+        ) : (
+          <div className="bg-brand/5 border border-brand/10 p-5 rounded-2xl flex gap-3.5 items-start">
+            <span className="text-brand text-base mt-0.5"><i className="fa-solid fa-earth-africa"></i></span>
+            <div className="space-y-0.5 text-left">
+              <p className="text-[10px] font-black uppercase text-brand tracking-widest">Virtual Location Activated</p>
+              <p className="text-[11px] text-gray-500 font-bold leading-relaxed">This task will be marked as remote and open for any artisan or digital freelancer across Nigeria. Location fields are disabled.</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-[28px] font-black uppercase tracking-widest shadow-xl mt-4">
           {loading ? 'Posting...' : 'Post Job'}

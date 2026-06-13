@@ -111,8 +111,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
-            if (selectedState !== 'All') query = query.ilike('location', `%${selectedState}%`);
-            if (selectedLGA !== 'All') query = query.ilike('location', `%${selectedLGA}%`);
+            if (selectedState !== 'All') {
+                query = query.or(`location.ilike.%${selectedState}%,location.eq.Remote / Online`);
+            }
+            if (selectedLGA !== 'All') {
+                query = query.or(`location.ilike.%${selectedLGA}%,location.eq.Remote / Online`);
+            }
             if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
         }
         
