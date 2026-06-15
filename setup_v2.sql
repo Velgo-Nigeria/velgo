@@ -13,7 +13,7 @@ CREATE TABLE profiles (
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
     role user_role DEFAULT 'user',
-    tokens INTEGER DEFAULT 5,
+    tokens INTEGER DEFAULT 2,
     bio TEXT,
     category TEXT,
     subcategory TEXT,
@@ -73,7 +73,7 @@ BEGIN
     new.email, 
     new.raw_user_meta_data->>'full_name', 
     'user', 
-    5 -- Initial free tokens
+    2 -- Initial free tokens
   );
   RETURN new;
 END;

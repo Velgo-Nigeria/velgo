@@ -217,7 +217,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                     </div>
                     <div className="pt-6 border-t border-gray-100 text-center">
                         <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Get Started</p>
-                        <p className="text-4xl font-black text-gray-900 italic">5 Free <span className="text-base font-medium text-gray-400">Tokens</span></p>
+                        <p className="text-4xl font-black text-gray-900 italic">2 Free <span className="text-base font-medium text-gray-400">Tokens</span></p>
                     </div>
                 </div>
 

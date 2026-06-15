@@ -20,7 +20,7 @@ const About: React.FC<AboutProps> = ({ profile, onBack }) => {
       },
       {
           q: "How does the Token system work?",
-          a: "Every new user gets 5 Free Tokens. A Token is only deducted when a job block (collaboration) is officially accepted by both parties. Once you run out, you can top up at an affordable rate. This single currency powers the whole app, whether you are hiring or working."
+          a: "Every new user gets 2 Free Tokens. A Token is only deducted when a job block (collaboration) is officially accepted by both parties. Once you run out, you can top up at an affordable rate. This single currency powers the whole app, whether you are hiring or working."
       },
       {
           q: "What if someone refuses to pay or do the job?",
