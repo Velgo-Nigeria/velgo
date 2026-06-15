@@ -68,6 +68,9 @@ const App: React.FC = () => {
   const [view, setView] = useState<any>(() => {
     try {
       const pathname = window.location.pathname.toLowerCase();
+      if (pathname === '/reset-password' || pathname === '/change-password') {
+        return 'reset-password';
+      }
       if (pathname === '/privacy' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/terms-of-service') {
         return 'legal';
       }
@@ -345,7 +348,9 @@ const App: React.FC = () => {
         const pathname = window.location.pathname.toLowerCase();
         let initialView = 'landing';
         let initialData = null;
-        if (pathname === '/privacy' || pathname === '/privacy-policy') {
+        if (pathname === '/reset-password' || pathname === '/change-password') {
+          initialView = 'reset-password';
+        } else if (pathname === '/privacy' || pathname === '/privacy-policy') {
           initialView = 'legal';
           initialData = 'privacy';
         } else if (pathname === '/terms' || pathname === '/terms-of-service') {
@@ -379,6 +384,8 @@ const App: React.FC = () => {
     let url = '';
     if (newView === 'legal') {
       url = data === 'privacy' ? '/privacy' : '/terms';
+    } else if (newView === 'reset-password') {
+      url = '/reset-password';
     } else if (newView === 'landing') {
       url = '/';
     }
@@ -435,7 +442,10 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       if (currentSession) {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'PASSWORD_RECOVERY') {
+            setView('reset-password');
+            window.history.replaceState({ view: 'reset-password', data: null }, '', '/reset-password');
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             fetchProfile(currentSession.user.id, 2, hasLoadedProfileRef.current);
             if (viewRef.current === 'login' || viewRef.current === 'signup' || viewRef.current === 'landing') {
                 setView('home');
@@ -627,7 +637,7 @@ const App: React.FC = () => {
     }
 
     // 2. Logged In but Profile Record Missing or Incomplete
-    if (!profile || !profile.role || !profile.phone_number) {
+    if ((!profile || !profile.role || !profile.phone_number) && view !== 'reset-password' && view !== 'change-password') {
       return <Suspense fallback={<PageSkeleton />}><CompleteProfile session={session} onComplete={() => fetchProfile(session.user.id)} /></Suspense>;
     }
 
@@ -642,7 +652,21 @@ const App: React.FC = () => {
       case 'worker-detail': return <WorkerDetail profile={profile} workerId={viewData} onBack={() => handleBackNavigation('home')} onBook={(id) => navigate('overview')} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} />;
       case 'task-detail': return <TaskDetail profile={profile} taskId={viewData} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'settings': return <Settings profile={profile} onBack={() => handleBackNavigation('profile')} onNavigate={navigate} onRefreshProfile={() => fetchProfile(session.user.id, 2, true)} onShowGuide={() => setShowGuide(true)} onShowNotifications={() => setShowNotifications(true)} unreadCount={unreadNotificationsCount} />;
-      case 'change-password': return <ResetPassword onSuccess={() => { addToast('Password updated!', 'success'); handleBackNavigation('settings'); }} onBack={() => handleBackNavigation('settings')} />;
+      case 'reset-password':
+      case 'change-password': return (
+        <ResetPassword 
+          onSuccess={() => {
+            addToast('Password updated successfully!', 'success');
+            if (view === 'reset-password') {
+              setView('home');
+              window.history.replaceState({ view: 'home', data: null }, '', '/');
+            } else {
+              handleBackNavigation('settings');
+            }
+          }} 
+          onBack={() => handleBackNavigation(view === 'reset-password' ? 'home' : 'settings')} 
+        />
+      );
       case 'post-task': return <PostTask profile={profile} onRefreshProfile={() => fetchProfile(session.user.id)} onBack={() => handleBackNavigation('home')} onUpgrade={() => navigate('subscription')} />;
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
       case 'safety': return <Safety profile={profile} onBack={() => handleBackNavigation('settings')} />;

@@ -39,6 +39,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null); 
   const [isVerified, setIsVerified] = useState(false);
+  const [hasPassword, setHasPassword] = useState<boolean>(true);
 
   // Editable Fields
   const [newBankName, setNewBankName] = useState(profile?.bank_name || '');
@@ -64,6 +65,23 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || profile?.email === 'admin.velgo@gmail.com'; 
+
+  const checkIdentities = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const hasEmailProvider = user.identities?.some(id => id.provider === 'email') ?? false;
+        setHasPassword(hasEmailProvider);
+      }
+    } catch (e) {
+      console.warn("Error checking auth user identities:", e);
+    }
+  };
+
+  // Check if user has an email identity (password set) on mount or whenever they access Settings
+  useEffect(() => {
+    checkIdentities();
+  }, []);
 
   // Check Push Status on Mount
   useEffect(() => {
@@ -316,7 +334,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                     </div>
                     <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                 </button>
-                <button onClick={() => { setReAuthMode('bank'); setIsVerified(false); setPassword(''); setAuthError(null); }} className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
+                <button 
+                  onClick={async () => {
+                    await checkIdentities();
+                    setReAuthMode('bank'); 
+                    setIsVerified(false); 
+                    setPassword(''); 
+                    setAuthError(null); 
+                  }} 
+                  className="w-full p-5 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700"
+                >
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i className="fa-solid fa-building-columns text-xs"></i></div>
                         <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Bank Details</span>
@@ -525,32 +552,51 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                   </div>
 
                   {!isVerified ? (
-                      <div className="space-y-4">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl">
-                              <i className="fa-solid fa-lock mr-2"></i>Security Check Required
-                          </p>
-                          
-                          {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{authError}</span></div>}
-
-                          <div className="relative">
-                            <input 
-                                type={showPassword ? "text" : "password"} 
-                                value={password} 
-                                onChange={e => setPassword(e.target.value)} 
-                                placeholder="Enter Password" 
-                                className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400 pr-12" 
-                            />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                      !hasPassword ? (
+                          <div className="space-y-4 text-center">
+                              <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl leading-relaxed text-left flex items-start gap-2">
+                                  <i className="fa-solid fa-lock mt-0.5 shrink-0"></i>
+                                  <span>You signed up using Google and don't have an account password set yet. To protect your sensitive bank details, please create a secure password first.</span>
+                              </p>
+                              
+                              <button 
+                                  onClick={() => {
+                                      setReAuthMode(null);
+                                      onNavigate('change-password');
+                                  }} 
+                                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-900/10 active:scale-95 transition-all text-center block"
+                              >
+                                  Create Account Password
+                              </button>
                           </div>
-                          
-                          <button 
-                              onClick={handleReAuth} 
-                              disabled={authLoading || !password} 
-                              className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50"
-                          >
-                              {authLoading ? 'Verifying...' : 'Unlock'}
-                          </button>
-                      </div>
+                      ) : (
+                          <div className="space-y-4">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 p-3 rounded-xl">
+                                  <i className="fa-solid fa-lock mr-2"></i>Security Check Required
+                              </p>
+                              
+                              {authError && <div className="p-3 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100 flex items-start gap-2"><i className="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{authError}</span></div>}
+
+                              <div className="relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    value={password} 
+                                    onChange={e => setPassword(e.target.value)} 
+                                    placeholder="Enter Password" 
+                                    className="w-full bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-400 pr-12" 
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                              </div>
+                              
+                              <button 
+                                  onClick={handleReAuth} 
+                                  disabled={authLoading || !password} 
+                                  className="w-full bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50"
+                              >
+                                  {authLoading ? 'Verifying...' : 'Unlock'}
+                              </button>
+                          </div>
+                      )
                   ) : (
                       <div className="space-y-3">
                           <p className="text-[10px] font-black text-green-500 uppercase tracking-widest text-center mb-2">Identity Verified</p>
