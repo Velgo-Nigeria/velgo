@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { VelgoLogo } from '../components/Brand';
+import { PasswordStrengthValidator, calculatePasswordStrength } from '../components/PasswordStrengthValidator';
 
 interface ResetPasswordProps {
   onSuccess: () => void;
@@ -31,6 +32,8 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onBack }) => {
       onSuccess();
     }
   };
+
+  const isPasswordValid = password.length >= 6;
 
   return (
     <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12 relative">
@@ -70,6 +73,8 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onBack }) => {
               </button>
             </div>
 
+            <PasswordStrengthValidator password={password} />
+
             <div className="relative">
               <input 
                 type={showConfirmPassword ? "text" : "password"} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} 
@@ -82,7 +87,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onBack }) => {
             </div>
           </div>
           
-          <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all">
+          <button type="submit" disabled={loading || !isPasswordValid} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all">
             {loading ? 'Processing...' : 'Update Securely'}
           </button>
 

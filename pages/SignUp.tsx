@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole, ClientType } from '../types';
 import { VelgoLogo } from '../components/Brand';
+import { PasswordStrengthValidator } from '../components/PasswordStrengthValidator';
 
 interface SignUpProps {
   onToggle: () => void;
@@ -244,6 +245,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
               </button>
             </div>
 
+            <PasswordStrengthValidator password={password} />
+
             <div className="relative">
               <input 
                 type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
@@ -256,7 +259,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-[2px] shadow-2xl shadow-emerald-900/40 transition-all active:scale-95 mt-6">
+          <button type="submit" disabled={loading || password.length < 6} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-[2px] shadow-2xl shadow-emerald-900/40 transition-all active:scale-95 mt-6">
             {loading ? 'Processing...' : 'Get Started'}
           </button>
         </form>
