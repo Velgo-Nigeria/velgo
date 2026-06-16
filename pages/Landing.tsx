@@ -452,9 +452,9 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
           </div>
 
           <div className="flex justify-center gap-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              <button onClick={() => onViewLegal('tos')} className="hover:text-gray-900">Terms</button>
-              <button onClick={() => onViewLegal('privacy')} className="hover:text-gray-900">Privacy</button>
-              <button onClick={() => onViewLegal('guidelines')} className="hover:text-gray-900">Guidelines</button>
+              <a href="/terms" onClick={(e) => { e.preventDefault(); onViewLegal('tos'); }} className="hover:text-gray-900">Terms</a>
+              <a href="/privacy" onClick={(e) => { e.preventDefault(); onViewLegal('privacy'); }} className="hover:text-gray-900">Privacy</a>
+              <a href="/legal?tab=guidelines" onClick={(e) => { e.preventDefault(); onViewLegal('guidelines'); }} className="hover:text-gray-900">Guidelines</a>
           </div>
           <div className="space-y-1">
              <p className="text-[10px] text-gray-400 uppercase tracking-widest">© 2025 Velgo Nigeria.</p>
