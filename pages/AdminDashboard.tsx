@@ -963,7 +963,12 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       doc.save(`velgo_users_report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredUsers = users.filter(u => 
+      u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.phone_number?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const groupedSupport = supportMessages.reduce((acc: any, msg) => {
       if (!msg.profiles) return acc;
@@ -1297,7 +1302,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
          activeTab === 'users' ? (
             <div className="space-y-4">
                 <div className="flex gap-2">
-                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search users..." className="flex-1 p-4 rounded-2xl border dark:bg-slate-800 dark:border-slate-700 dark:text-white outline-none focus:border-brand" />
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name, ID, email, or phone number..." className="flex-1 p-4 rounded-2xl border dark:bg-slate-800 dark:border-slate-700 dark:text-white outline-none focus:border-brand" />
                     <button 
                         onClick={downloadUsersCSV}
                         className="bg-brand text-white px-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shrink-0"
