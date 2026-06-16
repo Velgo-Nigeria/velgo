@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, SubscriptionTier, Broadcast } from '../lib/types';
 import { TIERS } from '../lib/constants';
-import { GoogleGenAI } from "@google/genai";
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface SparkChartProps {
     data: { label: string; count: number }[];
@@ -151,7 +151,7 @@ const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId }) => {
 };
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'branding' | 'reviews' | 'stats'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -200,17 +200,12 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [bTarget, setBTarget] = useState<'all' | 'user' | 'admin'>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
-  // Branding / Logo Gen
-  const [logoPrompt, setLogoPrompt] = useState(JSON.stringify({
-    subject: "A high-end, 3D corporate logo centered on a stylized 'V' that doubles as a checkmark",
-    composition: "The 'V' is sharp and aerodynamic with deep beveled edges. Two sweeping orbital rings wrap around it, creating a sense of motion.",
-    materials: "Polished chrome and brushed steel with a glossy finish.",
-    colors: "Gradient transitioning from Deep Teal (#008080) to Electric Cyan (#00FFFF) and Cobalt Blue (#2E5BFF). Cool silver highlights.",
-    lighting: "Studio rim lighting, volumetric glow, high contrast against a pure black background.",
-    style: "Professional, industrial, sleek, Octane Render, 8k resolution, Unreal Engine 5 style."
-  }, null, 2));
-  const [generatingLogo, setGeneratingLogo] = useState(false);
-  const [generatedLogoUrl, setGeneratedLogoUrl] = useState<string | null>(null);
+  // Lightbox & Audit UX States
+  const [lightboxUser, setLightboxUser] = useState<Profile | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const [rotate, setRotate] = useState<number>(0);
+  const [panX, setPanX] = useState<number>(0);
+  const [panY, setPanY] = useState<number>(0);
 
   const [selectedTicketUser, setSelectedTicketUser] = useState<any>(null);
   const [adminReply, setAdminReply] = useState('');
@@ -228,8 +223,6 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, [supportMessages, selectedTicketUser]);
 
   const fetchData = async () => {
-    if (activeTab === 'branding') return; 
-    
     setLoading(true);
     setErrorMsg(null);
     
@@ -491,43 +484,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   };
 
-  const handleGenerateLogo = async () => {
-      setGeneratingLogo(true);
-      setGeneratedLogoUrl(null);
-      try {
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-          let promptText = logoPrompt;
-          try {
-              const json = JSON.parse(logoPrompt);
-              promptText = `Generate an image: ${json.subject}. ${json.composition}. Materials: ${json.materials}. Colors: ${json.colors}. Lighting: ${json.lighting}. Style: ${json.style}`;
-          } catch (e) {
-              // Use raw text if JSON parse fails
-          }
 
-          const response = await ai.models.generateContent({
-              model: 'gemini-3-pro-image-preview',
-              contents: { parts: [{ text: promptText }] },
-              config: {
-                  imageConfig: { aspectRatio: "1:1", imageSize: "1K" }
-              }
-          });
-
-          if (response.candidates?.[0]?.content?.parts) {
-              for (const part of response.candidates[0].content.parts) {
-                  if (part.inlineData) {
-                      setGeneratedLogoUrl(`data:image/png;base64,${part.inlineData.data}`);
-                      break;
-                  }
-              }
-          } else {
-              alert("No image generated. Try adjusting the prompt.");
-          }
-      } catch (err: any) {
-          alert("Generation failed: " + err.message);
-      } finally {
-          setGeneratingLogo(false);
-      }
-  };
 
   const handleSendBroadcast = async () => {
       if (!bTitle || !bMessage) return;
@@ -1034,7 +991,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'branding', 'reviews', 'stats'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -1045,7 +1002,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
-                    activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-500 text-white animate-pulse'
+                    activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
                   }`}>
                     {badgeCount}
                   </span>
@@ -1057,7 +1014,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       <div className="p-4 flex-1 overflow-y-auto">
-        {activeTab !== 'branding' && loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
+        {loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
          errorMsg ? (
              activeTab === 'broadcast' && (errorMsg.includes('broadcasts') || errorMsg.includes('schema cache')) ? (
                  <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[32px] border border-amber-200 dark:border-slate-800 space-y-6 animate-fadeIn font-sans max-w-xl mx-auto">
@@ -1163,59 +1120,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
              ) : (
                  <div className="p-6 bg-red-50 text-red-600 rounded-2xl text-center border border-red-100 animate-fadeIn"><p className="text-xs font-bold">{errorMsg}</p></div>
              )
-         ) :
-
-         activeTab === 'branding' ? (
-             <div className="space-y-6 animate-fadeIn">
-                 {/* Branding Tool Logic */}
-                 <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-700">
-                     <div className="flex justify-between items-center mb-4">
-                         <div>
-                             <h3 className="text-lg font-black text-gray-900 dark:text-white">AI Logo Generator</h3>
-                             <p className="text-xs text-gray-500 dark:text-gray-400">Generate high-end 3D assets for the platform.</p>
-                         </div>
-                         <div className="w-10 h-10 bg-brand/10 text-brand rounded-full flex items-center justify-center"><i className="fa-solid fa-wand-magic-sparkles"></i></div>
-                     </div>
-                     
-                     <div className="space-y-4">
-                         <div className="relative">
-                             <textarea 
-                                value={logoPrompt} 
-                                onChange={e => setLogoPrompt(e.target.value)} 
-                                rows={8} 
-                                className="w-full bg-gray-50 dark:bg-slate-900 p-4 rounded-2xl text-xs font-mono border border-gray-100 dark:border-slate-700 outline-none focus:border-brand dark:text-gray-300 resize-y"
-                             />
-                             <div className="absolute top-2 right-2 text-[9px] font-bold text-gray-400 uppercase bg-white dark:bg-slate-800 px-2 py-1 rounded">JSON Config</div>
-                         </div>
-                         
-                         <button 
-                            onClick={handleGenerateLogo} 
-                            disabled={generatingLogo} 
-                            className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                         >
-                             {generatingLogo ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-bolt"></i>}
-                             {generatingLogo ? 'Rendering 3D Model...' : 'Generate Logo'}
-                         </button>
-                     </div>
-                 </div>
-
-                 {generatedLogoUrl && (
-                     <div className="bg-black p-6 rounded-[32px] shadow-2xl border border-gray-800 text-center animate-fadeIn">
-                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Preview Output</p>
-                         <img src={generatedLogoUrl} className="w-full max-w-sm mx-auto rounded-2xl shadow-lg border border-white/10" alt="Generated Logo" />
-                         
-                         <div className="bg-gray-900 mt-6 p-4 rounded-xl border border-gray-700 text-left space-y-2">
-                            <p className="text-[10px] font-black text-brand uppercase">Step 1: Save</p>
-                            <a href={generatedLogoUrl} download="velgo-logo.png" className="block w-full bg-white text-black text-center py-2 rounded-lg font-bold text-xs">Download Image</a>
-                         </div>
-
-                         <div className="mt-6 flex justify-center">
-                             <button onClick={() => setGeneratedLogoUrl(null)} className="px-4 py-3 bg-gray-800 text-white rounded-xl font-bold text-xs uppercase">Dismiss</button>
-                         </div>
-                     </div>
-                 )}
-             </div>
-         ) :
+           ) :
 
          activeTab === 'broadcast' ? (
              <div className="space-y-6 animate-fadeIn">
@@ -1302,9 +1207,9 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                      ))}
                  </div>
              </div>
-         ) :
+                         ) :
 
-         activeTab === 'verify' ? (
+          activeTab === 'verify' ? (
              <div className="space-y-6">
                  {pendingVerifications.length === 0 ? (
                      <div className="text-center py-20 opacity-30">
@@ -1314,49 +1219,74 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                  ) : (
                      pendingVerifications.map(user => (
                          <div key={user.id} className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
-                             <div className="flex items-center gap-4">
-                                 <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}`} className="w-12 h-12 rounded-full object-cover" />
+                             <div className="flex justify-between items-center">
+                                 <div className="flex items-center gap-4">
+                                     <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}`} className="w-12 h-12 rounded-full object-cover" />
+                                     <div>
+                                         <h4 className="font-bold text-gray-900 dark:text-white">{user.full_name}</h4>
+                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">{user.role}</p>
+                                     </div>
+                                 </div>
+                                 <span className="bg-amber-50 dark:bg-amber-950/20 text-[9px] font-black uppercase text-amber-600 px-3 py-1.5 rounded-full border border-amber-100/40 tracking-wider flex items-center gap-1 animate-pulse">
+                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> PENDING REVIEW
+                                 </span>
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-900/60 p-3.5 rounded-2xl text-[11px] font-medium border border-gray-100/60 dark:border-slate-800">
                                  <div>
-                                     <h4 className="font-bold text-gray-900 dark:text-white">{user.full_name}</h4>
-                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">{user.role}</p>
+                                     <span className="text-[8px] font-black uppercase text-gray-400 dark:text-gray-500 block mb-0.5">RESIDENCE LOCATION</span>
+                                     <p className="text-gray-900 dark:text-gray-100 font-bold uppercase truncate">{user.lga || 'N/A'}, {user.state || 'N/A'}</p>
+                                 </div>
+                                 <div>
+                                     <span className="text-[8px] font-black uppercase text-gray-400 dark:text-gray-500 block mb-0.5">TELECOM CONTACT</span>
+                                     <p className="text-gray-950 dark:text-gray-100 font-mono font-bold truncate">{user.phone_number || 'N/A'}</p>
                                  </div>
                              </div>
                              
-                             <div className="bg-gray-100 dark:bg-black rounded-2xl overflow-hidden aspect-video relative group">
+                             <div className="bg-gray-100 dark:bg-black rounded-2xl overflow-hidden aspect-video relative group border border-gray-200 dark:border-slate-800">
                                  <img src={user.nin_image_url} className="w-full h-full object-contain" alt="User ID" />
-                                 <a href={user.nin_image_url} target="_blank" className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-xs uppercase tracking-widest transition-opacity">
-                                     View Full Image
-                                 </a>
+                                 <button 
+                                     onClick={() => {
+                                         setLightboxUser(user);
+                                         setZoom(1);
+                                         setRotate(0);
+                                         setPanX(0);
+                                         setPanY(0);
+                                     }}
+                                     className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white font-bold text-xs uppercase tracking-widest transition-opacity gap-2"
+                                 >
+                                     <i className="fa-solid fa-expand text-2xl text-emerald-400 animate-pulse"></i>
+                                     <span>Click to Audit ID Workspace</span>
+                                     <p className="text-[9px] text-slate-400 font-black uppercase mt-1 tracking-widest">Supports scale, spin & match comparison</p>
+                                 </button>
                              </div>
 
-                             <div className="space-y-1.5 pt-1">
-                                 <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                     Reason for Rejection (required only if rejecting)
-                                 </label>
-                                 <input 
-                                     type="text" 
-                                     placeholder="e.g. Image blurry, name mismatch, expired document..."
-                                     value={rejectionReasons[user.id] || ''}
-                                     onChange={(e) => setRejectionReasons(prev => ({ ...prev, [user.id]: e.target.value }))}
-                                     className="w-full text-xs p-3 rounded-xl border border-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-red-400 dark:focus:border-red-500/50 transition-colors"
-                                 />
-                             </div>
-
-                             <div className="grid grid-cols-2 gap-3">
+                             <div className="flex gap-2">
                                  <button 
-                                    onClick={() => handleVerificationDecision(user.id, 'reject')}
-                                    disabled={processingId === user.id}
-                                    className="py-3 rounded-xl bg-red-50 text-red-600 font-bold text-xs uppercase"
+                                     onClick={() => {
+                                         setLightboxUser(user);
+                                         setZoom(1);
+                                         setRotate(0);
+                                         setPanX(0);
+                                         setPanY(0);
+                                     }}
+                                     className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-brand/90 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                                  >
-                                     Reject
+                                     <i className="fa-solid fa-microscope text-xs"></i> Open Inspection Suite
                                  </button>
-                                 <button 
-                                    onClick={() => handleVerificationDecision(user.id, 'approve')}
-                                    disabled={processingId === user.id}
-                                    className="py-3 rounded-xl bg-green-500 text-white font-bold text-xs uppercase shadow-lg"
-                                 >
-                                     Approve
-                                 </button>
+                                 
+                                 {user.phone_number && (
+                                    <button 
+                                        onClick={() => {
+                                            const testMsg = `Hello ${user.full_name}, this is the Velgo support desk regarding your document verification upload request. Can you chat right now?`;
+                                            openWhatsAppHelper(testMsg, user.phone_number);
+                                        }}
+                                        className="w-12 h-12 bg-green-500 hover:bg-green-600 text-slate-950 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0"
+                                        title="Direct verification support chat via WhatsApp"
+                                    >
+                                        <i className="fa-brands fa-whatsapp text-2xl"></i>
+                                    </button>
+                                 )}
                              </div>
                          </div>
                      ))
@@ -1947,6 +1877,270 @@ GRANT ALL ON public.broadcasts TO service_role;`}
           ) : null
         }
       </div>
+
+      {/* Modern High-Contrast Lightbox Modal Visual Workspace with Rotate, Zoom, Pan & State Comparison */}
+      {lightboxUser && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col md:flex-row items-stretch select-none overflow-hidden animate-fadeIn">
+          
+          {/* Left Panel: Clinical ID Visual Workspace */}
+          <div className="flex-1 bg-slate-900 border-r border-slate-800 flex flex-col p-6 min-h-0 relative">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[3px] block">Security Verification Suite</span>
+                <h3 className="text-white font-bold text-sm">INTERACTIVE GOVERNMENT ID AUDIT</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-bold bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md cursor-default">
+                  ID: {lightboxUser.id.substring(0, 8)}...
+                </span>
+                <button 
+                  onClick={() => setLightboxUser(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-red-550 text-white flex items-center justify-center transition-colors shadow"
+                  title="Close Visual Workspace"
+                >
+                  <i className="fa-solid fa-xmark text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-slate-950 rounded-2xl border border-slate-800/80 relative overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={lightboxUser.nin_image_url || ''} 
+                  alt="NIN Government issued ID document scan" 
+                  draggable={false}
+                  className="max-w-[90%] max-h-[85%] object-contain select-none shadow-2xl transition-transform duration-200"
+                  style={{
+                    transform: `scale(${zoom}) rotate(${rotate}deg) translate(${panX}px, ${panY}px)`
+                  }}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+
+              {(panX !== 0 || panY !== 0 || zoom !== 1 || rotate !== 0) && (
+                <div className="absolute top-4 left-4 bg-slate-900/85 px-3 py-1.5 rounded-lg border border-slate-800 text-[9px] font-semibold text-slate-400 tracking-wider">
+                  SCALE: {zoom.toFixed(2)}x | ACC: {rotate}° { (panX !== 0 || panY !== 0) && `| PAN: ${panX}px, ${panY}px` }
+                </div>
+              )}
+
+              <div className="absolute bottom-4 right-4 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800/80 grid grid-cols-3 gap-1 shadow-2xl">
+                <div />
+                <button onClick={() => setPanY(prev => prev - 20)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white text-[9px] flex items-center justify-center border border-slate-700 active:scale-95"><i className="fa-solid fa-chevron-up"></i></button>
+                <div />
+                <button onClick={() => setPanX(prev => prev - 20)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white text-[9px] flex items-center justify-center border border-slate-700 active:scale-95"><i className="fa-solid fa-chevron-left"></i></button>
+                <button onClick={() => { setPanX(0); setPanY(0); setZoom(1); setRotate(0); }} className="w-6 h-6 rounded bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9px] flex items-center justify-center active:scale-95"><i className="fa-solid fa-arrows-to-dot"></i></button>
+                <button onClick={() => setPanX(prev => prev + 20)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white text-[9px] flex items-center justify-center border border-slate-700 active:scale-95"><i className="fa-solid fa-chevron-right"></i></button>
+                <div />
+                <button onClick={() => setPanY(prev => prev + 20)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white text-[9px] flex items-center justify-center border border-slate-700 active:scale-95"><i className="fa-solid fa-chevron-down"></i></button>
+                <div />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-4 bg-slate-950 p-3 rounded-2xl border border-slate-800 shadow">
+              <button 
+                onClick={() => setZoom(prev => Math.min(prev + 0.25, 4))}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <i className="fa-solid fa-magnifying-glass-plus text-emerald-500"></i> Zoom In
+              </button>
+              <button 
+                onClick={() => setZoom(prev => Math.max(prev - 0.25, 0.5))}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <i className="fa-solid fa-magnifying-glass-minus text-amber-500"></i> Zoom Out
+              </button>
+              <button 
+                onClick={() => setRotate(prev => prev - 90)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <i className="fa-solid fa-rotate-left text-indigo-400"></i> Spin Left
+              </button>
+              <button 
+                onClick={() => setRotate(prev => prev + 90)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <i className="fa-solid fa-rotate-right text-indigo-400"></i> Spin Right
+              </button>
+              <button 
+                onClick={() => { setZoom(1); setRotate(0); setPanX(0); setPanY(0); }}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <i className="fa-solid fa-arrows-to-dot text-amber-500"></i> Reset
+              </button>
+            </div>
+          </div>
+
+          {/* Right Panel: Decision & Profile Audit comparison deck */}
+          <div className="w-full md:w-[420px] bg-slate-950 p-6 overflow-y-auto flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-800">
+            <div className="space-y-6">
+              <div>
+                <span className="text-[10px] font-black uppercase text-indigo-400 tracking-[3px] block">Database Comparison Index</span>
+                <h3 className="text-white font-black text-sm">PROFILE STATE MATCHING MATRIX</h3>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Registered Name (Velgo Profile)</span>
+                      <p className="text-white text-xs font-black mt-1 uppercase tracking-tight">{lightboxUser.full_name}</p>
+                    </div>
+                    <div className="w-6 h-6 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center text-xs" title="Matches Database Name">
+                      <i className="fa-solid fa-check"></i>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    Verify this text matches the exact spelling, ordering, and picture identity on the ID document.
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Contact Phone Number</span>
+                      <p className="text-white text-xs font-mono font-bold mt-1">{lightboxUser.phone_number || 'N/A'}</p>
+                    </div>
+                    {lightboxUser.phone_number && (
+                      <button 
+                        onClick={() => {
+                          const tempText = `Hello ${lightboxUser.full_name},\n\nWe are currently checking your loaded government ID card on the Velgo Verification platform. Can you confirm if you have your physical card or paper slip? Thank you.`;
+                          openWhatsAppHelper(tempText, lightboxUser.phone_number);
+                        }}
+                        className="w-8 h-8 bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-slate-950 rounded-full flex items-center justify-center text-xs transition-colors shrink-0" 
+                        title="WhatsApp Direct Contact"
+                      >
+                        <i className="fa-brands fa-whatsapp text-lg"></i>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    DND bypass routing. Click the WhatsApp badge to query this user directly with zero telco delay.
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-805">
+                  <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Registered Residence State & LGA</span>
+                  <p className="text-white text-xs font-black mt-1 uppercase tracking-tight">
+                    {lightboxUser.state || 'N/A'} STATE • {lightboxUser.lga || 'N/A'} LGA
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    Typically checked on standard Nigerian NIMC NIN slips or Permanent Voter Cards.
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                  <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Velgo Category Scope & Tier</span>
+                  <p className="text-white text-xs font-black mt-1 uppercase tracking-tight">
+                    ROLE: {lightboxUser.role.toUpperCase()} | TIER: {(lightboxUser.subscription_tier || 'basic').toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-rose-400 tracking-[3px] block">Moderate Document Status</span>
+                  <h4 className="text-white font-bold text-xs mt-0.5">Biometrics Decision Deck</h4>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                    Nigerian Reject Presets
+                  </label>
+                  <select 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      setRejectionReasons(prev => ({ ...prev, [lightboxUser.id]: val }));
+                    }}
+                    className="w-full text-xs p-3 rounded-xl bg-slate-900 text-white border border-slate-800 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+                  >
+                    <option value="">-- Choose rejection preset template --</option>
+                    <option value="Photo of NIN slip is too blurry or captured in dark environment. Please upload a clear photo taken in daylight.">NIN photo too blurry/dark</option>
+                    <option value="Name on the ID document does not match the Velgo registered profile name. Ensure you upload your own personal ID.">Name mismatch with profile</option>
+                    <option value="Invalid document class. We require formal government IDs (NIN standard slip, Voter's Card, Driver's License, or Passport).">Invalid ID document class</option>
+                    <option value="Only frontpage was uploaded but details are cutoff. Please upload a full-face scan of your NIN ID.">Cut-off scan boundaries</option>
+                    <option value="The document looks like a photocopy but we require the original color plastic card or paper slip.">Photocopy instead of color slip</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                    Custom Decision Reason (req. if rejecting)
+                  </label>
+                  <textarea 
+                    rows={2}
+                    placeholder="Specify manual rejection parameters if presets do not apply..."
+                    value={rejectionReasons[lightboxUser.id] || ''}
+                    onChange={(e) => setRejectionReasons(prev => ({ ...prev, [lightboxUser.id]: e.target.value }))}
+                    className="w-full text-xs p-3 rounded-xl bg-slate-900 text-white border border-slate-800 outline-none focus:border-indigo-500 resize-none font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button 
+                    onClick={async () => {
+                      const reason = rejectionReasons[lightboxUser.id]?.trim();
+                      if (!reason) {
+                        alert("Please choose a Preset rejection template or write a Custom Reason.");
+                        return;
+                      }
+                      const confirmMsg = `Reject and clear ${lightboxUser.full_name}'s ID? Send corrective guidelines?`;
+                      if (!window.confirm(confirmMsg)) return;
+
+                      await handleVerificationDecision(lightboxUser.id, 'reject');
+                      
+                      const waNotify = `Hello ${lightboxUser.full_name},\n\nThis is the Velgo ID verification desk. Unfortunately, we could not approve your verification request at this time. Reason:\n\n👉 *${reason}*\n\nPlease log in to the Velgo app to re-upload clear credentials so we can verify you fast! Thank you.`;
+                      const originalUser = lightboxUser;
+                      setLightboxUser(null);
+                      
+                      setTimeout(() => {
+                        if (window.confirm("Would you like to dispatch this ID Rejection notice instantly via WhatsApp?")) {
+                          openWhatsAppHelper(waNotify, originalUser.phone_number);
+                        }
+                      }, 300);
+                    }}
+                    disabled={processingId === lightboxUser.id}
+                    className="py-3.5 rounded-xl bg-rose-950/40 hover:bg-rose-950/80 text-rose-500 font-extrabold text-[11px] uppercase border border-rose-900/60 transition-colors shadow flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-ban"></i> Reject ID
+                  </button>
+
+                  <button 
+                    onClick={async () => {
+                      await handleVerificationDecision(lightboxUser.id, 'approve');
+                      const waNotify = `Hello ${lightboxUser.full_name}! 👋\n\nFantastic news! Your Velgo NIN / Identification Verification request has been *Successfully Approved*! 🎉\n\nYou now have the verified badge on your profile. Log in to check out your updated status.\n\nBest regards,\nVelgo Team`;
+                      const originalUser = lightboxUser;
+                      setLightboxUser(null);
+                      
+                      setTimeout(() => {
+                        if (window.confirm("Approve complete! Would you like to dispatch the WhatsApp congratulations message too?")) {
+                          openWhatsAppHelper(waNotify, originalUser.phone_number);
+                        }
+                      }, 300);
+                    }}
+                    disabled={processingId === lightboxUser.id}
+                    className="py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[11px] uppercase transition-all shadow-lg flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-circle-check"></i> Approve ID
+                  </button>
+                </div>
+                
+                {lightboxUser.phone_number && (
+                  <button 
+                    onClick={() => {
+                      const tempMsg = `Hello ${lightboxUser.full_name},\n\nThis is the Velgo verification desk. I am looking at your uploaded ID document right now, and had a quick question regarding the details:\n\n`;
+                      openWhatsAppHelper(tempMsg, lightboxUser.phone_number);
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 mt-2 transition-all"
+                  >
+                    <i className="fa-brands fa-whatsapp text-green-400 text-sm"></i> Launch Direct Verification Chat
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
