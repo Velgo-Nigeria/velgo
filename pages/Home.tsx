@@ -99,7 +99,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
             if (selectedLGA !== 'All') query = query.eq('lga', selectedLGA);
-            if (searchTerm) query = query.or(`full_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,subcategory.ilike.%${searchTerm}%`);
+            if (searchTerm) query = query.or(`full_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,subcategory.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
         } else {
             query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open');
             
@@ -117,7 +117,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (selectedLGA !== 'All') {
                 query = query.or(`location.ilike.%${selectedLGA}%,location.eq.Remote / Online`);
             }
-            if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+            if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
         }
         
         const { data } = await safeFetch<any[]>(async () => await query.limit(50));
@@ -482,7 +482,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                           
                           <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400">
                               <i className="fa-solid fa-location-dot text-brand"></i>
-                              <span className="truncate">{viewMode === 'market' ? `${item.lga}, ${item.state}` : item.location}</span>
+                              <span className="truncate">
+                                {viewMode === 'market' 
+                                  ? (item.address ? `${item.address}, ${item.lga}, ${item.state}` : `${item.lga}, ${item.state}`)
+                                  : (item.address ? `${item.address}, ${item.location}` : item.location)
+                                }
+                              </span>
                           </div>
                       </div>
                       

@@ -214,6 +214,12 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                  <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">{worker?.category}</span>
                  {worker?.is_verified && <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><VerificationBadge className="text-blue-600" /> ID Verified</span>}
               </div>
+              {(worker?.lga || worker?.state) && (
+                 <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-gray-500 dark:text-gray-400">
+                    <i className="fa-solid fa-location-dot text-brand"></i>
+                    <span>{worker?.address ? `${worker.address}, ` : ''}{worker?.lga}, {worker?.state}</span>
+                 </div>
+              )}
           </div>
           <div className="grid grid-cols-3 gap-1 py-8 border-y border-gray-100 dark:border-gray-800">
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Starting</p><p className="font-black text-gray-900 dark:text-white text-xl">₦{worker?.starting_price}</p></div>

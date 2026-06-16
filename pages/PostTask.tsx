@@ -42,6 +42,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
+  const [taskAddress, setTaskAddress] = useState('');
 
   const handleJobLocationTypeChange = (type: 'physical' | 'online') => {
     setJobLocationType(type);
@@ -248,12 +249,24 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
       const fullLocation = jobLocationType === 'online' ? 'Remote / Online' : `${selectedLGA}, ${selectedState}`;
 
+      // Security check: No phone numbers or WhatsApp links in task address
+      if (jobLocationType === 'physical' && taskAddress.trim()) {
+        const cleanedAddress = taskAddress.replace(/[\s\-\(\)\+]/g, '');
+        const phoneRegex = /(070|080|090|081|071|091|01)\d{7,8}/;
+        if (phoneRegex.test(cleanedAddress)) {
+          alert("Safety Filter: Please do not include phone numbers or direct contact lines in the job address field. This protects our system security.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const { error } = await supabase.from('posted_tasks').insert([{
         client_id: profile.id,
         title,
         description,
         budget: parseInt(budget) || 0,
         location: fullLocation,
+        address: jobLocationType === 'online' ? '' : taskAddress.trim(),
         category,
         subcategory,
         urgency,
@@ -525,18 +538,34 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         </div>
 
         {jobLocationType === 'physical' ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
-              <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
-                  {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
+                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+                    {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
+                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
+                    {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
-              <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
-                  {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Workplace Street Address / Landmark</label>
+              <input 
+                required 
+                type="text" 
+                value={taskAddress} 
+                onChange={e => setTaskAddress(e.target.value)} 
+                placeholder="e.g. 15 Adeniran Ogunsanya St, near Shoprite" 
+                className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 placeholder-gray-300" 
+              />
+              <p className="text-[9px] text-gray-450 text-gray-400 font-bold uppercase tracking-wider mt-1.5 px-1 leading-snug">
+                💡 Add street name or nearby landmark only. Avoid exact house/apartment numbers for your general safety before a worker is confirmed.
+              </p>
             </div>
           </div>
         ) : (

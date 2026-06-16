@@ -69,6 +69,7 @@ export interface PostedTask {
   description: string;
   budget: number;
   location: string;
+  address?: string;
   latitude?: number;
   longitude?: number;
   status: TaskStatus;

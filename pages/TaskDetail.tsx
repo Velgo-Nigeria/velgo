@@ -351,8 +351,8 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                 )}
             </div>
             <h1 className="text-3xl font-black mt-3 leading-tight shadow-sm drop-shadow-md">{task.title}</h1>
-            <div className="flex items-center gap-2 mt-2 opacity-90 text-sm font-bold">
-                <i className="fa-solid fa-location-dot text-brand-light"></i> {task.location}
+            <div className="flex items-center gap-3 mt-2 opacity-90 text-sm font-bold flex-wrap">
+                <span className="flex items-center gap-1.5 shrink-0"><i className="fa-solid fa-location-dot text-brand-light"></i> {task.address ? `${task.address}, ${task.location}` : task.location}</span>
             </div>
         </div>
         {/* Gradient Overlay for better text readability */}
