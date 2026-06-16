@@ -12,6 +12,7 @@ interface OverviewProps {
   onShowGuide?: () => void;
   onShowNotifications?: () => void;
   unreadCount?: number;
+  onNavigate?: (view: string, data?: any) => void;
 }
 
 interface ChatMessage {
@@ -21,7 +22,75 @@ interface ChatMessage {
   time: string;
 }
 
-const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrade, onViewLegal, onShowGuide, onShowNotifications, unreadCount }) => {
+const getLocalTierLimit = (tier?: string) => {
+  if (tier === 'lite') return 5;
+  if (tier === 'standard') return 10;
+  if (tier === 'pro') return 15;
+  if (tier === 'enterprise') return 30;
+  return 1; // Default basic / starter
+};
+
+const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrade, onViewLegal, onShowGuide, onShowNotifications, unreadCount, onNavigate }) => {
+  // Profile completion calculations
+  const checklistItems = [
+    {
+      id: 'avatar',
+      label: 'Upload Avatar Photo',
+      desc: 'Real face photos increase client confidence by 300%',
+      points: 15,
+      isCompleted: !!profile?.avatar_url,
+      actionLabel: 'Upload Photo'
+    },
+    {
+      id: 'bio',
+      label: 'Write Professional Bio',
+      desc: 'Introduce your expertise and special talents briefly',
+      points: 15,
+      isCompleted: !!profile?.bio,
+      actionLabel: 'Add Bio'
+    },
+    {
+      id: 'category',
+      label: 'Set Services Industry',
+      desc: 'Assigned category indexes you on the home marketplace',
+      points: 10,
+      isCompleted: !!profile?.category,
+      actionLabel: 'Select Category'
+    },
+    {
+      id: 'portfolio',
+      label: 'Add Portfolio Link',
+      desc: 'A web portfolio or project photos prove quality craftsmanship',
+      points: 15,
+      isCompleted: !!profile?.portfolio_url,
+      actionLabel: 'Link Portfolio'
+    },
+    {
+      id: 'verification',
+      label: 'Verify National Identity (NIN)',
+      desc: 'NIN matches unlock the verified trust badge (+20 visibility score)',
+      points: 25,
+      isCompleted: !!profile?.is_verified,
+      actionLabel: 'Verify ID'
+    },
+    {
+      id: 'bank',
+      label: 'Link Settlement Bank Details',
+      desc: 'Required to show payment info on invoice reminder screen',
+      points: 20,
+      isCompleted: !!(profile?.bank_name && profile?.account_number),
+      actionLabel: 'Link Bank Settings'
+    }
+  ];
+
+  const totalPointsCompleted = checklistItems.reduce((acc, item) => acc + (item.isCompleted ? item.points : 0), 0);
+  const completedCount = checklistItems.filter(item => item.isCompleted).length;
+
+  const handleActionClick = (id: string) => {
+    if (onNavigate) {
+      onNavigate('profile');
+    }
+  };
   // Stats state
   const [viewsCount, setViewsCount] = useState(0);
   const [activeJobsCount, setActiveJobsCount] = useState(0);
@@ -602,11 +671,27 @@ UID: ${profile.id}
 
           {/* Quick Stats overview */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-white/5">
-            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/5">
-              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">In-App Credit</p>
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/5 flex flex-col justify-between space-y-1.5">
+              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest leading-none">In-App Credit (Used/Max)</p>
               <div className="flex items-center gap-1.5 mt-1">
                 <i className="fa-solid fa-coins text-yellow-400 text-sm"></i>
-                <span className="text-base font-black text-gray-100">{profile?.tokens || 0} Tokens</span>
+                <span className="text-base font-black text-gray-100">
+                  {profile?.tokens || 0} <span className="text-xs text-gray-400">/ {getLocalTierLimit(profile?.subscription_tier)}</span>
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    style={{ width: `${Math.min(100, Math.max(8, ((profile?.tokens || 0) / getLocalTierLimit(profile?.subscription_tier)) * 100))}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      ((profile?.tokens || 0) / getLocalTierLimit(profile?.subscription_tier)) * 100 < 30 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-400'
+                    }`}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-[7px] text-gray-400 font-bold uppercase tracking-wider">
+                  <span>Used: {Math.max(0, getLocalTierLimit(profile?.subscription_tier) - (profile?.tokens || 0))}</span>
+                  <span>Left: {profile?.tokens || 0}</span>
+                </div>
               </div>
             </div>
             <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/5">
@@ -658,6 +743,115 @@ UID: ${profile.id}
         
         {/* LEFT COLUMN: Artisan Stats & AI Chat Concierge  (7/12 cols) */}
         <div className="lg:col-span-7 space-y-8">
+
+          {/* PROFILE TRUST SCORE & COMPLETION TRACKER */}
+          <div className="bg-white dark:bg-gray-800 rounded-[35px] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center">
+                  <i className="fa-solid fa-square-poll-vertical text-lg"></i>
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-wider text-xs leading-none">
+                    Profile Trust Meter
+                  </h3>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-1">
+                    Complete your data to win high-paying jobs
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className={`text-[8px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full border ${
+                  totalPointsCompleted < 50
+                    ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 border-amber-100 dark:border-amber-900'
+                    : totalPointsCompleted < 85
+                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 border-blue-100'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-100'
+                }`}>
+                  <i className="fa-solid fa-shield-halved mr-1"></i> {
+                    totalPointsCompleted < 40 ? "Bronze Apprentice" :
+                    totalPointsCompleted < 70 ? "Silver Standard" :
+                    totalPointsCompleted < 95 ? "Gold Trusted Expert" :
+                    "Velgo Elite Certified"
+                  }
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <span className="flex items-center gap-1.5 leading-none"><i className="fa-solid fa-award text-yellow-500 animate-bounce text-[11px]"></i> Trust Level Index</span>
+                <span className="font-mono text-xs text-slate-805 dark:text-slate-100">{totalPointsCompleted}% Done</span>
+              </div>
+              <div className="w-full h-3 bg-gray-50 dark:bg-gray-900 rounded-full overflow-hidden p-0.5 border border-gray-100 dark:border-gray-800 flex items-center">
+                <div 
+                  style={{ width: `${totalPointsCompleted}%` }}
+                  className="h-full bg-gradient-to-r from-amber-500 via-emerald-400 to-emerald-500 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                ></div>
+              </div>
+              <div className="flex justify-between items-center text-[8.5px] text-gray-400 font-bold uppercase mt-1">
+                <span>{completedCount} of 6 Fields Filled</span>
+                {totalPointsCompleted < 100 ? (
+                  <span className="text-amber-500 font-extrabold"><i className="fa-solid fa-circle-exclamation mr-1"></i> Boost trust score by +{100 - totalPointsCompleted}%</span>
+                ) : (
+                  <span className="text-emerald-500 font-black"><i className="fa-solid fa-circle-check mr-1 animate-pulse"></i> Perfect Trust Rating!</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3 bg-gray-50/50 dark:bg-gray-950/20 p-4 rounded-3xl border border-gray-100/70 dark:border-gray-700/35">
+              <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-1">Incentives Checklist</p>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {checklistItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0 gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] ${
+                        item.isCompleted 
+                          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600' 
+                          : 'bg-amber-50 dark:bg-amber-950 text-amber-500'
+                      }`}>
+                        {item.isCompleted ? (
+                          <i className="fa-solid fa-circle-check"></i>
+                        ) : (
+                          <i className="fa-solid fa-circle"></i>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[11px] font-black leading-tight ${item.isCompleted ? 'text-gray-550 dark:text-gray-450 line-through font-medium' : 'text-gray-800 dark:text-gray-100'}`}>
+                            {item.label}
+                          </span>
+                          <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${
+                            item.isCompleted 
+                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-100/10' 
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            +{item.points} Pts
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-gray-400 dark:text-gray-550 font-bold leading-relaxed mt-0.5">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {!item.isCompleted ? (
+                      <button
+                        onClick={() => handleActionClick(item.id)}
+                        className="text-[9px] font-black uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-white dark:bg-gray-700 dark:hover:bg-gray-600 py-1.5 px-3 rounded-lg transition-all active:scale-95 shrink-0"
+                      >
+                        Add
+                      </button>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase text-emerald-500 tracking-wider shrink-0 flex items-center gap-0.5">
+                        Done <i className="fa-solid fa-check text-[9px]"></i>
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           
           {/* STATS BENTO MATRIX */}
           <div className="bg-white dark:bg-gray-800 rounded-[35px] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-6">
