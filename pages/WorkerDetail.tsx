@@ -410,7 +410,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                         : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
                 }`}
             >
-                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : !profile.is_verified ? '🔒 Verify ID to Book' : 'INITIATE BOOKING'}
+                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : !profile.is_verified ? '🔒 Verify ID to Book' : 'HIRE WORKER NOW'}
             </button>
           )}
         </div>
