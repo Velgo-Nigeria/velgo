@@ -4,6 +4,7 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
 import { VerificationBadge } from '../components/VerificationBadge';
+import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -19,6 +20,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [requesting, setRequesting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -55,6 +57,10 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
             .then(({data}) => {
                 if (data) setHasRequested(true);
             });
+    }
+
+    if (profile && workerId) {
+        isBookmarked(profile.id, workerId, 'worker').then(setBookmarked);
     }
 
     const fetchRating = async () => {
@@ -153,6 +159,15 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     }
   };
 
+  const handleToggleBookmark = async () => {
+    if (!profile) {
+      alert("Please log in to save to your bookmarks!");
+      return;
+    }
+    const result = await toggleBookmark(profile.id, workerId, 'worker');
+    setBookmarked(result);
+  };
+
   if (loading) {
     return (
       <div className="text-center py-20 text-gray-400 animate-pulse font-sans bg-white min-h-screen flex flex-col items-center justify-center">
@@ -195,9 +210,18 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
             <button onClick={onBack} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
                 <i className="fa-solid fa-chevron-left"></i>
             </button>
-            <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
-                <i className="fa-solid fa-share-nodes"></i>
-            </button>
+            <div className="flex items-center gap-3">
+                <button onClick={handleToggleBookmark} className={`bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform ${bookmarked ? 'text-red-500' : ''}`} title="Bookmark Worker">
+                    {bookmarked ? (
+                        <i className="fa-solid fa-heart text-rose-500"></i>
+                    ) : (
+                        <i className="fa-regular fa-heart"></i>
+                    )}
+                </button>
+                <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
+                    <i className="fa-solid fa-share-nodes"></i>
+                </button>
+            </div>
         </div>
 
         <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80 relative z-10" />

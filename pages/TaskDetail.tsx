@@ -5,6 +5,7 @@ import { Profile, PostedTask } from '../types';
 import { getTierLimit } from '../lib/constants';
 import { GoogleGenAI } from "@google/genai";
 import { VerificationBadge } from '../components/VerificationBadge';
+import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 
 interface TaskDetailProps { 
   profile: Profile | null; 
@@ -23,6 +24,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
   
   // Translation State
   const [translation, setTranslation] = useState<string | null>(null);
@@ -92,6 +94,8 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                 .eq('worker_id', profile.id)
                 .maybeSingle();
             if (booking) setHasApplied(true);
+            
+            isBookmarked(profile.id, taskId, 'job').then(setBookmarked);
         }
       }
       setLoading(false);
@@ -231,6 +235,15 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
     }
   };
 
+  const handleToggleBookmark = async () => {
+    if (!profile) {
+      alert("Please log in to save to your bookmarks!");
+      return;
+    }
+    const result = await toggleBookmark(profile.id, taskId, 'job');
+    setBookmarked(result);
+  };
+
   const ReviewsModal = () => (
       <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center sm:p-6 backdrop-blur-sm animate-fadeIn">
         <div className="bg-white dark:bg-gray-800 rounded-t-[32px] sm:rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
@@ -334,9 +347,18 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
             <button onClick={onBack} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform">
                 <i className="fa-solid fa-chevron-left"></i>
             </button>
-            <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform">
-                <i className="fa-solid fa-share-nodes"></i>
-            </button>
+            <div className="flex items-center gap-3">
+                <button onClick={handleToggleBookmark} className={`bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform ${bookmarked ? 'text-red-500' : ''}`} title="Bookmark Job">
+                    {bookmarked ? (
+                        <i className="fa-solid fa-heart text-rose-500"></i>
+                    ) : (
+                        <i className="fa-regular fa-heart"></i>
+                    )}
+                </button>
+                <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-95 transition-transform">
+                    <i className="fa-solid fa-share-nodes"></i>
+                </button>
+            </div>
         </div>
         
         <div className="absolute bottom-6 left-6 right-6 text-white z-20">

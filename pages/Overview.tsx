@@ -3,6 +3,7 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { openWhatsAppHelper } from '../lib/whatsapp';
 import { GoogleGenAI } from "@google/genai";
+import { SavedBookmarksWidget } from '../components/SavedBookmarksWidget';
 
 interface OverviewProps {
   profile: Profile | null;
@@ -942,6 +943,11 @@ UID: ${profile.id}
 
             </div>
           </div>
+
+          {/* SAVED LISTINGS / BOOKMARKS */}
+          {profile?.id && (
+            <SavedBookmarksWidget userId={profile.id} onNavigate={onNavigate} />
+          )}
 
           {/* CHAT CONCIERGE (Velgo AI) */}
           <div className="bg-white dark:bg-gray-800 rounded-[35px] border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col h-[520px] overflow-hidden">
