@@ -182,7 +182,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                   onClick={() => setMarketTab('post')}
                   className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${marketTab === 'post' ? 'bg-brand text-white' : 'text-gray-400 dark:text-gray-500'}`}
                 >
-                  <i className="fa-solid fa-plus-circle mr-1.5"></i>Post Job
+                  <i className="fa-solid fa-plus-circle mr-1.5"></i>Post a Job
                 </button>
               </div>
 

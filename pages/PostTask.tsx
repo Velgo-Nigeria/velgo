@@ -579,7 +579,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         )}
 
         <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-[28px] font-black uppercase tracking-widest shadow-xl mt-4">
-          {loading ? 'Posting...' : 'Post Job'}
+          {loading ? 'Posting...' : 'Post a Job'}
         </button>
       </form>
     </div>

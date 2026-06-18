@@ -465,7 +465,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
                             : 'Apply Now'
                         }
                     </button>
-                    {hasApplied && <p className="text-center text-[10px] text-gray-400 font-bold mt-3 uppercase">Check 'Live Jobs' tab for status updates.</p>}
+                    {hasApplied && <p className="text-center text-[10px] text-gray-400 font-bold mt-3 uppercase">Check 'Job Offer' tab for status updates.</p>}
                 </div>
             ) : (
                 <div className="pt-4">

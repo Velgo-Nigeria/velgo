@@ -1797,7 +1797,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     <p className="text-gray-600 dark:text-gray-300 text-xs font-bold mb-2">No activities in this tab</p>
                     
                     <p className="text-[11px] max-w-[250px] leading-relaxed">
-                        Looking for work or need something done? Head over to the Home tab to browse available jobs, hire talent, or post a new task!
+                        Looking for work or need something done? Head over to the Home tab to browse job offers, hire a worker, or post a job!
                     </p>
                 </div>
             )}

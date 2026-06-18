@@ -318,7 +318,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'jobs' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
                   <i className="fa-solid fa-briefcase text-xs"></i>
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Live Jobs</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Job Offer</span>
           </button>
 
           <button 
@@ -328,7 +328,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${viewMode === 'market' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
                   <i className="fa-solid fa-users text-xs"></i>
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Talent</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Hire Worker</span>
           </button>
 
           <button 
@@ -338,7 +338,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-plus text-xs"></i>
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Post Job</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-center">Post a Job</span>
           </button>
       </div>
 
