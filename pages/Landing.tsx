@@ -9,9 +9,10 @@ interface LandingProps {
   onLogin: () => void;
   onViewLegal: (tab: string) => void;
   onViewAbout: () => void;
+  onNavigate?: (view: string, data?: any) => void;
 }
 
-const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout }) => {
+const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout, onNavigate }) => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -131,9 +132,17 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
         </div>
 
         <div className="relative z-10 space-y-6 animate-fadeIn">
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-center w-full">
              <VelgoLogo variant="light" className="h-12" />
-             <button onClick={onLogin} className="velgo-glass px-6 py-2.5 rounded-full text-[11px] font-black uppercase text-white hover:bg-white/20 transition-all">Sign In</button>
+             <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => onNavigate && onNavigate('pricing')} 
+                 className="px-4 py-2 text-[11px] font-black uppercase text-white/95 hover:text-white transition-all bg-white/10 hover:bg-white/20 rounded-full border border-white/10"
+               >
+                 Pricing
+               </button>
+               <button onClick={onLogin} className="velgo-glass px-6 py-2.5 rounded-full text-[11px] font-black uppercase text-white hover:bg-white/20 transition-all">Sign In</button>
+             </div>
           </div>
           
           <h1 className="text-5xl font-black text-white leading-[0.95] tracking-tighter mt-4 drop-shadow-lg">
@@ -452,6 +461,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
           </div>
 
           <div className="flex justify-center gap-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <a href="/pricing" onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('pricing'); }} className="hover:text-gray-900 font-bold">Pricing</a>
               <a href="/terms" onClick={(e) => { e.preventDefault(); onViewLegal('tos'); }} className="hover:text-gray-900">Terms</a>
               <a href="/privacy" onClick={(e) => { e.preventDefault(); onViewLegal('privacy'); }} className="hover:text-gray-900">Privacy</a>
               <a href="/legal?tab=guidelines" onClick={(e) => { e.preventDefault(); onViewLegal('guidelines'); }} className="hover:text-gray-900">Guidelines</a>

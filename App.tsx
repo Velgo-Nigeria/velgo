@@ -24,6 +24,7 @@ const Legal = React.lazy(() => import('./pages/Legal'));
 const Safety = React.lazy(() => import('./pages/Safety'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const About = React.lazy(() => import('./pages/About'));
+const Pricing = React.lazy(() => import('./pages/Pricing').then(m => ({ default: m.Pricing })));
 
 import { VelgoLogo } from './components/Brand';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -73,6 +74,9 @@ const App: React.FC = () => {
       }
       if (pathname === '/privacy' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/terms-of-service') {
         return 'legal';
+      }
+      if (pathname === '/pricing') {
+        return 'pricing';
       }
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -356,6 +360,9 @@ const App: React.FC = () => {
         } else if (pathname === '/terms' || pathname === '/terms-of-service') {
           initialView = 'legal';
           initialData = 'tos';
+        } else if (pathname === '/pricing') {
+          initialView = 'pricing';
+          initialData = null;
         } else {
           try {
             const urlParams = new URLSearchParams(window.location.search);
@@ -386,6 +393,8 @@ const App: React.FC = () => {
       url = data === 'privacy' ? '/privacy' : '/terms';
     } else if (newView === 'reset-password') {
       url = '/reset-password';
+    } else if (newView === 'pricing') {
+      url = '/pricing';
     } else if (newView === 'landing') {
       url = '/';
     }
@@ -396,7 +405,7 @@ const App: React.FC = () => {
   };
 
   const handleBackNavigation = (fallbackView: string) => {
-     if (window.history.state && view !== 'home' && view !== 'landing') {
+     if (window.history.state && view !== 'home' && view !== 'landing' && view !== 'pricing') {
          window.history.back();
      } else {
          setView(fallbackView);
@@ -619,7 +628,8 @@ const App: React.FC = () => {
         case 'reset-password': return <Suspense fallback={<PageSkeleton />}><ResetPassword onSuccess={() => navigate('login')} onBack={() => handleBackNavigation('login')} /></Suspense>;
         case 'legal': return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         case 'about': return <Suspense fallback={<PageSkeleton />}><About profile={null} onBack={() => handleBackNavigation('landing')} /></Suspense>;
-        default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} />;
+        case 'pricing': return <Suspense fallback={<PageSkeleton />}><Pricing onBack={() => handleBackNavigation('landing')} onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} /></Suspense>;
+        default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} onNavigate={navigate} />;
       }
     }
 
@@ -671,6 +681,7 @@ const App: React.FC = () => {
       case 'legal': return <Legal initialTab={viewData} onBack={() => handleBackNavigation('settings')} />;
       case 'safety': return <Safety profile={profile} onBack={() => handleBackNavigation('settings')} />;
       case 'about': return <About profile={profile} onBack={() => handleBackNavigation('settings')} />;
+      case 'pricing': return <Suspense fallback={<PageSkeleton />}><Pricing onBack={() => handleBackNavigation('home')} onGetStarted={() => navigate('home')} onLogin={() => navigate('home')} /></Suspense>;
       case 'admin': return <AdminDashboard onBack={() => handleBackNavigation('settings')} />;
       default: return <Home profile={profile} onViewWorker={(id) => navigate('worker-detail', id)} onViewTask={(id) => navigate('task-detail', id)} onRefreshProfile={() => fetchProfile(session.user.id)} onUpgrade={() => navigate('subscription')} onPostTask={() => navigate('post-task')} onShowGuide={() => setShowGuide(true)} />;
     }
