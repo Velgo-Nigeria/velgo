@@ -208,6 +208,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [panY, setPanY] = useState<number>(0);
 
   const [selectedTicketUser, setSelectedTicketUser] = useState<any>(null);
+  const [blockedBookings, setBlockedBookings] = useState<any[]>([]);
   const [adminReply, setAdminReply] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -472,6 +473,25 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             .not('worker_reply', 'is', null)
             .neq('worker_reply', '')
             .or('worker_reply_approved.is.null,worker_reply_approved.eq.false');
+
+        // 5. Fetch blocked/impeded pending matches where client has 0 tokens remaining
+        try {
+            const { data: bData } = await supabase
+                .from('bookings')
+                .select(`
+                    id,
+                    created_at,
+                    client:client_id(id, full_name, email, tokens),
+                    worker:worker_id(id, full_name, email),
+                    posted_tasks:task_id(id, title)
+                `)
+                .eq('status', 'pending');
+
+            const impeded = (bData || []).filter((b: any) => (b.client?.tokens ?? 0) < 1);
+            setBlockedBookings(impeded);
+        } catch (bErr) {
+            console.error("Failed auditing blocked matches:", bErr);
+        }
 
         setCounts({
             verify: vCount || 0,
@@ -1018,8 +1038,47 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="p-4 flex-1 overflow-y-auto">
-        {loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
+       <div className="p-4 flex-1 overflow-y-auto">
+         {/* Active Token Expiry Matches Impediment Overlay */}
+         {!loading && blockedBookings.length > 0 && (
+             <div className="mb-6 bg-amber-500/10 dark:bg-amber-950/20 rounded-[24px] border border-amber-500/20 p-5 space-y-3 font-sans">
+                 <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-2.5">
+                         <div className="w-9 h-9 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center shrink-0">
+                             <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                         </div>
+                         <div>
+                             <h4 className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">
+                                 ⚠️ Token-Impeded Booking Matches ({blockedBookings.length})
+                             </h4>
+                             <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
+                                 These matches are currently stuck on hold because the client has depleted their remaining tokens.
+                             </p>
+                         </div>
+                     </div>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                     {blockedBookings.slice(0, 6).map((b: any) => (
+                         <div key={b.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-xl p-3 flex flex-col justify-between text-xs space-y-2 shadow-sm">
+                             <div>
+                                 <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-gray-400">
+                                     <span>Task: {b.posted_tasks?.title || 'Direct Hire'}</span>
+                                     <span>{new Date(b.created_at).toLocaleDateString()}</span>
+                                 </div>
+                                 <p className="font-extrabold text-[11px] text-gray-800 dark:text-gray-200 mt-1">
+                                     Client: <span className="text-amber-500 font-black">{b.client?.full_name || b.client?.email || 'N/A'}</span> (0 Tokens)
+                                 </p>
+                                 <p className="text-[10px] font-bold text-gray-500 mt-0.5">
+                                     Ready Worker: <span className="text-slate-900 dark:text-white font-extrabold">{b.worker?.full_name || b.worker?.email || 'N/A'}</span>
+                                 </p>
+                             </div>
+                         </div>
+                     ))}
+                 </div>
+             </div>
+         )}
+
+         {loading ? <div className="text-center py-20 text-gray-400">Loading data...</div> : 
          errorMsg ? (
              activeTab === 'broadcast' && (errorMsg.includes('broadcasts') || errorMsg.includes('schema cache')) ? (
                  <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[32px] border border-amber-200 dark:border-slate-800 space-y-6 animate-fadeIn font-sans max-w-xl mx-auto">

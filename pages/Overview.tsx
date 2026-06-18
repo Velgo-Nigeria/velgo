@@ -96,6 +96,7 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
   const [activeJobsCount, setActiveJobsCount] = useState(0);
   const [completedJobsCount, setCompletedJobsCount] = useState(0);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [hasPendingBookings, setHasPendingBookings] = useState(false);
 
   // Referral Program states
   const [referredCount, setReferredCount] = useState<number>(0);
@@ -357,8 +358,10 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
         if (bookingsData) {
           const ongoing = bookingsData.filter(b => b.status === 'accepted').length;
           const completed = bookingsData.filter(b => b.status === 'completed').length;
+          const pending = bookingsData.some(b => b.status === 'pending');
           setActiveJobsCount(ongoing);
           setCompletedJobsCount(completed);
+          setHasPendingBookings(pending);
         }
       } catch (err) {
         console.error("Failed to load statistics:", err);
@@ -718,6 +721,31 @@ UID: ${profile.id}
           </div>
         </div>
       </div>
+
+      {/* Hiring Impediment Support Warning Badge */}
+      {profile && (profile.tokens !== undefined ? profile.tokens : 0) <= 1 && hasPendingBookings && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-[24px] p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-pulse">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 animate-bounce">
+              <i className="fa-solid fa-triangle-exclamation text-xl"></i>
+            </div>
+            <div>
+              <p className="font-extrabold uppercase tracking-widest text-[9px] text-amber-650 dark:text-amber-400">
+                Hiring Impediment Alert
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-300 font-bold leading-relaxed mt-0.5">
+                ⚠️ You have active hiring offers pending! Refuel tokens to avoid losing your candidate.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onUpgrade}
+            className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white font-black uppercase tracking-widest text-[9.5px] py-3 px-5 rounded-xl shrink-0"
+          >
+            Refuel Tokens
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Hub Tab Switcher */}
       <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-[24px] mb-8 max-w-sm border border-gray-200 dark:border-gray-700/60 shadow-sm mx-1">

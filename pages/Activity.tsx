@@ -111,6 +111,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
   // Upgrade Modal State
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showClientNudgeModal, setShowClientNudgeModal] = useState(false);
+  const [nudgedClientName, setNudgedClientName] = useState('');
 
   // Worker-to-Client Rating Modal State
   const [showWorkerRatingModal, setShowWorkerRatingModal] = useState(false);
@@ -167,7 +169,35 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 p_user_id: profile.id 
             });
             if (error) {
-                if (error.message.includes('INSUFFICIENT_TOKENS')) {
+                if (error.message.includes('INSUFFICIENT_TOKENS_CLIENT')) {
+                    // 1. Double Channel Notification: Trigger Immediate Client In-App alert
+                    await supabase.from('notifications').insert({
+                        user_id: booking.client_id,
+                        title: '⚠️ Urgent: Token Refuel Needed',
+                        message: `An artisan is ready to start your job "${booking.posted_tasks?.title || 'your request'}"! Please purchase a hiring token to unlock instant coordination.`,
+                        type: 'alert'
+                    });
+
+                    // 2. Double Channel Notification: Trigger Immediate Admin In-App alerts
+                    try {
+                        const { data: admins } = await supabase.from('profiles').select('id').or('role.eq.admin,email.eq.admin.velgo@gmail.com');
+                        if (admins && admins.length > 0) {
+                            const adminNotifications = admins.map(admin => ({
+                                user_id: admin.id,
+                                title: '⚠️ Match Impediment: Client Out of Tokens',
+                                message: `Artisan tried to accept booking for task "${booking.posted_tasks?.title || 'a job'}", but Client has 0 tokens remaining. Match is on hold.`,
+                                type: 'alert'
+                            }));
+                            await supabase.from('notifications').insert(adminNotifications);
+                        }
+                    } catch (adminErr) {
+                        console.error("Failed to notify admins of token impediment:", adminErr);
+                    }
+
+                    setNudgedClientName(booking.client?.full_name || 'The Client');
+                    setShowClientNudgeModal(true);
+                    return;
+                } else if (error.message.includes('INSUFFICIENT_TOKENS_WORKER') || error.message.includes('INSUFFICIENT_TOKENS')) {
                     setShowUpgradeModal(true);
                     return;
                 } else {
@@ -1295,6 +1325,30 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         )}
       </div>
 
+      {profile && (profile.tokens !== undefined ? profile.tokens : 0) <= 1 && bookings.some(b => b.status === 'pending') && (
+        <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/20 rounded-[24px] p-4.5 flex items-center justify-between gap-4 animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-triangle-exclamation text-lg"></i>
+            </div>
+            <div>
+              <p className="font-black uppercase tracking-wider text-xs text-amber-600 dark:text-amber-400">
+                Hiring Impediment Warning
+              </p>
+              <p className="text-[11px] text-amber-700/80 dark:text-amber-300 font-bold leading-relaxed mt-0.5">
+                ⚠️ You have active hiring offers pending! Refuel tokens to avoid losing your candidate.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onUpgrade}
+            className="bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white font-black uppercase tracking-wider text-[9px] py-2 px-3.5 rounded-xl shrink-0"
+          >
+            Refuel Tokens
+          </button>
+        </div>
+      )}
+
       <div className="px-6 sticky top-[72px] bg-white dark:bg-gray-900 z-10 pb-2">
         {/* Main Tabs: Hiring vs Working */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-[22px] border border-gray-200 dark:border-gray-700 relative">
@@ -1696,6 +1750,16 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 </div>
                             )}
 
+                            {/* Client sees the approved responses from the artisan */}
+                            {profile?.id === item.client_id && item.worker_reply && item.worker_reply_approved && (
+                                <div className="mt-3 ml-4 pl-4 border-l-2 border-emerald-500 dark:border-emerald-600 space-y-1 font-sans bg-emerald-50/20 dark:bg-emerald-950/10 p-2.5 rounded-xl">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-450 flex items-center gap-1">
+                                        <i className="fa-solid fa-reply"></i> Response from Artisan
+                                    </p>
+                                    <p className="text-xs text-gray-800 dark:text-gray-200">"{item.worker_reply}"</p>
+                                </div>
+                            )}
+
                             {/* Show Worker Feedback Button if missing */}
                             {profile?.id === item.worker_id && !item.client_rating && (
                                 <button 
@@ -1763,6 +1827,29 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     className="w-full text-gray-400 py-3 font-black uppercase tracking-widest hover:text-gray-600 transition-colors text-[10px]"
                 >
                     Cancel
+                </button>
+                </div>
+            </div>
+            </div>
+        )}
+
+        {/* Nudge Client Modal */}
+        {showClientNudgeModal && (
+            <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
+                <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-4 animate-bounce">
+                <i className="fa-solid fa-paper-plane text-2xl"></i>
+                </div>
+                <h3 className="text-xl font-black text-gray-900 leading-tight">Client Nudge Alert!</h3>
+                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    This client ({nudgedClientName}) needs to replenish their hiring tokens to complete the match. We’ve sent them an instant nudge! Once they top up, this job is yours.
+                </p>
+                <div className="pt-2 flex flex-col gap-3">
+                <button 
+                    onClick={() => setShowClientNudgeModal(false)} 
+                    className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:bg-brand-dark active:scale-95 transition-all text-[11px]"
+                >
+                    Acknowledge
                 </button>
                 </div>
             </div>
