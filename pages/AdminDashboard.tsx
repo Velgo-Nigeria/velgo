@@ -150,6 +150,89 @@ const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId }) => {
     );
 };
 
+const SafetyReportRelationsCard: React.FC<{ report: any }> = ({ report }) => {
+  const [reportedUser, setReportedUser] = useState<any>(null);
+  const [relatedTask, setRelatedTask] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchRelations = async () => {
+      if (!report.reported_user_id && !report.related_task_id) return;
+      setLoading(true);
+      try {
+        if (report.reported_user_id) {
+          const { data } = await supabase.from('profiles').select('id, full_name, category, phone_number, email').eq('id', report.reported_user_id).single();
+          if (active && data) setReportedUser(data);
+        }
+        if (report.related_task_id) {
+          const { data } = await supabase.from('posted_tasks').select('id, title, budget, client_id').eq('id', report.related_task_id).single();
+          if (active && data) setRelatedTask(data);
+        }
+      } catch (err) {
+        console.warn("Failed fetching safety extra details:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchRelations();
+    return () => { active = false; };
+  }, [report.reported_user_id, report.related_task_id]);
+
+  if (loading) {
+    return <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide shrink-0 animate-pulse mt-2 p-3 bg-red-50/20 rounded-xl">Analysing Connections...</div>;
+  }
+
+  if (!reportedUser && !relatedTask) return null;
+
+  return (
+    <div className="mt-3.5 p-3 bg-red-50/50 dark:bg-slate-900/40 border border-red-100/45 dark:border-red-950/20 rounded-xl space-y-2 mb-4">
+      <h4 className="text-[9px] font-black uppercase text-red-600 dark:text-red-400 tracking-wider">Report Connections (Interactive Audit)</h4>
+      
+      {reportedUser && (
+        <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-red-100/30">
+          <div>
+            <p className="text-[8px] font-black uppercase text-gray-400">Reported Profile (Accused)</p>
+            <p className="text-xs font-bold text-gray-950 dark:text-gray-100">{reportedUser.full_name}</p>
+            <p className="text-[9px] text-gray-500 font-medium">{reportedUser.category || 'Client Account'}</p>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+             <a 
+               href={`tel:${reportedUser.phone_number}`} 
+               className="w-7 h-7 bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center rounded-lg text-xs" 
+               title="Call Accused User"
+             >
+               <i className="fa-solid fa-phone"></i>
+             </a>
+             <button 
+               type="button"
+               onClick={() => {
+                 const accusedWaMessage = `Hello ${reportedUser.full_name}, this is the Velgo Nigeria Safety Desk. We received an automated incident report regarding your conduct on the platform. Please assist us in verifying the details.`;
+                 openWhatsAppHelper(accusedWaMessage, reportedUser.phone_number);
+               }}
+               className="w-7 h-7 bg-green-50 text-green-600 hover:bg-green-100 flex items-center justify-center rounded-lg text-xs animate-fadeIn" 
+               title="WhatsApp Accused User"
+             >
+               <i className="fa-brands fa-whatsapp text-sm"></i>
+             </button>
+          </div>
+        </div>
+      )}
+
+      {relatedTask && (
+        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-red-100/30 flex justify-between items-center">
+          <div>
+            <p className="text-[8px] font-black uppercase text-gray-400">Linked Job Post</p>
+            <p className="text-xs font-bold text-gray-950 dark:text-gray-100">{relatedTask.title}</p>
+            <p className="text-[9px] font-black text-brand uppercase">Budget: ₦{(relatedTask.budget || 0).toLocaleString()}</p>
+          </div>
+          <p className="text-[8px] text-gray-400 font-mono">ID: {relatedTask.id.substring(0,8)}...</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
@@ -388,7 +471,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         } else if (activeTab === 'safety') {
             result = await safeFetch(() => supabase
                 .from('safety_reports')
-                .select('*, profiles(full_name, phone_number, id, email, avatar_url)')
+                .select('*, profiles:reporter_id(full_name, phone_number, id, email, avatar_url)')
                 .order('created_at', { ascending: false }));
         } else if (activeTab === 'broadcast') {
             result = await safeFetch(() => supabase.from('broadcasts').select('*').order('created_at', { ascending: false }));
@@ -1627,6 +1710,9 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                             }
                             return null;
                         })()}
+
+                        {/* Interactive Accused Profile/Task audit segment */}
+                        <SafetyReportRelationsCard report={report} />
 
                         <div className="flex gap-2">
                             <button onClick={() => { setActiveTab('support'); setSelectedTicketUser(report.profiles); }} className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-black text-[10px] uppercase">Message</button>

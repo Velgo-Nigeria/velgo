@@ -5,6 +5,7 @@ import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -21,6 +22,106 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [loading, setLoading] = useState(true);
   const [showShareToast, setShowShareToast] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+
+  // Profile Reporting Subsystem States
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportIncidentType, setReportIncidentType] = useState('Fraud');
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportEvidenceFile, setReportEvidenceFile] = useState<File | null>(null);
+  const [reportEvidencePreview, setReportEvidencePreview] = useState<string | null>(null);
+
+  const handleReportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setReportEvidenceFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReportEvidencePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile || !worker) return;
+    if (!reportDetails.trim()) {
+      alert("Please provide specific feedback/evidence regarding this artisan.");
+      return;
+    }
+
+    try {
+      setSubmittingReport(true);
+
+      let finalEvidenceUrl = '';
+      if (reportEvidenceFile) {
+        const fileExt = reportEvidenceFile.name.split('.').pop();
+        const fileName = `safety-evidence-${profile.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('verifications')
+          .upload(fileName, reportEvidenceFile);
+        
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('verifications')
+            .getPublicUrl(fileName);
+          finalEvidenceUrl = publicUrl;
+        } else {
+          console.error("Evidence file upload failed:", uploadError);
+        }
+      }
+
+      const richDetails = `
+INCIDENT TYPE: ${reportIncidentType.toUpperCase()}
+TARGET PROFILE: ${worker.full_name} (${worker.id})
+REPORTER EXPLANATION: ${reportDetails}
+EVIDENCE ATTACHED: ${reportEvidenceFile ? 'Yes' : 'No'}
+${finalEvidenceUrl ? `EVIDENCE LINK: ${finalEvidenceUrl}` : ''}
+
+-- REPORTER DATA --
+Name: ${profile.full_name}
+Email: ${profile.email || 'N/A'}
+Phone: ${profile.phone_number}
+UID: ${profile.id}
+      `.trim();
+
+      // Launch official dual-channel WhatsApp reporting line
+      const waMsg = `🚨 VELGO USER PROFILE REPORT 🚨\n\nIncident Type: ${reportIncidentType.toUpperCase()}\nTarget Artisan: ${worker.full_name}\nReporter: ${profile.full_name}\n\nREASON:\n${reportDetails}`;
+      try {
+        openWhatsAppHelper(waMsg);
+      } catch (err) {
+        console.warn("WhatsApp intent skipped:", err);
+      }
+
+      const insertPayload: any = {
+        reporter_id: profile.id,
+        reported_user_id: worker.id,
+        type: reportIncidentType,
+        details: richDetails,
+        status: 'pending',
+        evidence_url: finalEvidenceUrl || null
+      };
+
+      const { error } = await supabase.from('safety_reports').insert([insertPayload]);
+      if (error) {
+        console.warn("Retrying insert without new target relations in case schema update is still propagating in the browser:", error.message);
+        delete insertPayload.reported_user_id;
+        const retryResult = await supabase.from('safety_reports').insert([insertPayload]);
+        if (retryResult.error) throw retryResult.error;
+      }
+
+      alert(`Report submitted! We have successfully registered your ticket. A Velgo Safety Analyst is auditing "${worker.full_name}" (LGA: ${worker.lga || 'N/A'}) to protect citizens in our market.`);
+      setShowReportModal(false);
+      setReportDetails('');
+      setReportEvidenceFile(null);
+      setReportEvidencePreview(null);
+    } catch (err: any) {
+      alert("Failed to transmit incident logs to Velgo Compliance: " + err.message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -218,9 +319,18 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                         <i className="fa-regular fa-heart"></i>
                     )}
                 </button>
-                <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform">
+                <button onClick={handleShare} className="bg-white/20 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-transform" title="Share profile">
                     <i className="fa-solid fa-share-nodes"></i>
                 </button>
+                {profile && profile.id !== workerId && (
+                    <button 
+                        onClick={() => setShowReportModal(true)} 
+                        className="bg-white/20 hover:bg-red-600/35 hover:text-red-300 backdrop-blur-xl text-white w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 transition-colors" 
+                        title="Report/Flag Bad Behavior"
+                    >
+                        <i className="fa-regular fa-flag"></i>
+                    </button>
+                )}
             </div>
         </div>
 
@@ -429,6 +539,103 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
                 </div>
             </div>
             <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-0.5 rounded-lg font-mono">Pristine</span>
+        </div>
+      )}
+
+      {/* Report Modal / Bottom Sheet */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-t-[32px] p-6 space-y-6 shadow-2xl relative translate-y-0 transition-transform duration-300 pointer-events-auto max-h-[85vh] overflow-y-auto">
+                
+                {/* Header */}
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-4">
+                    <div>
+                        <h3 className="text-lg font-black text-red-600 uppercase tracking-wide">Report Profile</h3>
+                        <p className="text-xs text-gray-500">Flag issues with {worker?.full_name}</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowReportModal(false)}
+                        className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors"
+                    >
+                        <i className="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleReportSubmit} className="space-y-5">
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2 block">Incident Type</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {['Fraud', 'Unprofessional', 'Abuse', 'Other'].map(type => (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => setReportIncidentType(type)}
+                                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                                        reportIncidentType === type 
+                                        ? 'bg-red-600 text-white shadow-lg shadow-red-200' 
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                                    }`}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2 block">Details & Explanation</label>
+                        <textarea
+                            required
+                            rows={4}
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                            placeholder="Please supply specific context, booking date, description and what went wrong..."
+                            className="w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl text-xs font-medium outline-none border border-transparent focus:border-red-250 transition-all text-gray-800 dark:text-gray-100 placeholder-gray-400"
+                        />
+                    </div>
+
+                    {/* Evidence Screenshot File Picker */}
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2 block">Attach Evidence Screenshot (Chats, Receipt)</label>
+                        <div className="flex items-center gap-3">
+                            <label className="flex-1 border-2 border-dashed border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-colors group">
+                                <i className="fa-regular fa-image text-gray-400 group-hover:text-red-500 text-2xl mb-1.5 transition-colors"></i>
+                                <span className="text-[10px] font-bold text-gray-500 uppercase">Select Image</span>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleReportFileChange} 
+                                    className="hidden" 
+                                />
+                            </label>
+                            {reportEvidencePreview && (
+                                <div className="w-20 h-20 rounded-2xl relative border border-gray-150 overflow-hidden shrink-0">
+                                    <img src={reportEvidencePreview} className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setReportEvidenceFile(null);
+                                            setReportEvidencePreview(null);
+                                        }}
+                                        className="absolute inset-0 bg-black/40 hover:bg-black/60 flex items-center justify-center text-white"
+                                    >
+                                        <i className="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={submittingReport}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
+                    >
+                        {submittingReport ? 'Lodging Audit Report...' : 'Lodge Complaint & Sync WhatsApp'}
+                    </button>
+                </form>
+            </div>
         </div>
       )}
     </div>
