@@ -408,15 +408,21 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 .not('worker_reply', 'is', null)
                 .neq('worker_reply', '')
                 .order('worker_reply_at', { ascending: false }));
-        } else {
+        } else if (activeTab === 'support') {
             result = await safeFetch(() => supabase
                 .from('support_messages')
                 .select('*, profiles(full_name, email, avatar_url, id)')
                 .order('created_at', { ascending: true }));
+        } else {
+            result = { data: [], error: null };
         }
 
         if (result.error) {
-            setErrorMsg(`Data Error: ${result.error.message}`);
+            if (result.error.message?.includes('admin_reply') || result.error.message?.includes('support_messages')) {
+                setErrorMsg("Database Schema Realignment Required: Please run the SQL migration script located in `/supabase/fix_support_messages_schema.sql` inside your Supabase SQL Editor to provision the Support Desk columns and resolve the connection crash.");
+            } else {
+                setErrorMsg(`Data Error: ${result.error.message}`);
+            }
         }
 
         if (activeTab === 'users') setUsers(result.data || []);
@@ -424,7 +430,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else if (activeTab === 'safety') setSafetyReports(result.data || []);
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
         else if (activeTab === 'reviews') setPendingReplies(result.data || []);
-        else setSupportMessages(result.data || []);
+        else if (activeTab === 'support') setSupportMessages(result.data || []);
 
     } catch (err: any) {
         setErrorMsg(err.message || "Unknown system error occurred.");
@@ -449,21 +455,28 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const sCount = sData ? sData.filter((r: any) => r.status !== 'resolved' && r.status !== 'dismissed').length : 0;
 
         // 3. Support Tickets count (where client sent last message and admin didn't reply yet)
-        const { data: supportMsgs } = await supabase
-            .from('support_messages')
-            .select('id, admin_reply, user_id, created_at, profiles:user_id(id)');
         let supportPendingCount = 0;
-        if (supportMsgs) {
-            const grouped = supportMsgs.reduce((acc: any, msg) => {
-                if (!msg.profiles) return acc;
-                const uid = msg.profiles.id;
-                if (!acc[uid]) acc[uid] = { lastMsg: msg };
-                if (new Date(msg.created_at) > new Date(acc[uid].lastMsg.created_at)) {
-                    acc[uid].lastMsg = msg;
-                }
-                return acc;
-            }, {});
-            supportPendingCount = Object.values(grouped).filter((ticket: any) => !ticket.lastMsg.admin_reply).length;
+        try {
+            const { data: supportMsgs, error: supportErr } = await supabase
+                .from('support_messages')
+                .select('id, admin_reply, user_id, created_at, profiles:user_id(id)');
+            
+            if (supportErr) {
+                console.warn("Support messages table query error (likely pending schema update):", supportErr.message);
+            } else if (supportMsgs) {
+                const grouped = supportMsgs.reduce((acc: any, msg) => {
+                    if (!msg.profiles) return acc;
+                    const uid = msg.profiles.id;
+                    if (!acc[uid]) acc[uid] = { lastMsg: msg };
+                    if (new Date(msg.created_at) > new Date(acc[uid].lastMsg.created_at)) {
+                        acc[uid].lastMsg = msg;
+                    }
+                    return acc;
+                }, {});
+                supportPendingCount = Object.values(grouped).filter((ticket: any) => !ticket.lastMsg.admin_reply).length;
+            }
+        } catch (supportCatchErr) {
+            console.error("Critical error in support ticket count check:", supportCatchErr);
         }
 
         // 4. Artisan Replies count (where worker_reply is set but not yet approved)
@@ -681,9 +694,30 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleSafetyAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
       const status = action === 'resolve' ? 'resolved' : 'dismissed';
+      
+      // Find reporter profile id to trigger automated notification
+      const report = safetyReports.find((r: any) => r.id === reportId);
+      const recipientId = report?.reporter_id || report?.profiles?.id;
+
       const { error } = await supabase.from('safety_reports').update({ status }).eq('id', reportId);
-      if (error) alert("Failed: " + error.message);
-      else fetchData();
+      if (error) {
+          alert("Failed: " + error.message);
+      } else {
+          // If resolving, send an instant database-backed push/in-app notification to the reporter
+          if (action === 'resolve' && recipientId) {
+              try {
+                  await supabase.from('notifications').insert({
+                      user_id: recipientId,
+                      title: '🛡️ Safety Case Resolved',
+                      message: `Your security report regarding "${report?.type || 'incident'}" has been inspected and resolved by Velgo Compliance. Thank you for keeping our community safe.`,
+                      type: 'success'
+                  });
+              } catch (notifErr: any) {
+                  console.error("Warning: Notification sync failed", notifErr.message);
+              }
+          }
+          fetchData();
+      }
   };
 
   const sendAdminReply = async () => {
@@ -695,6 +729,18 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           status: 'open'
       });
       if (!error) {
+          // Send automatic in-app notification to the customer's PWA notification tray
+          try {
+              await supabase.from('notifications').insert({
+                  user_id: selectedTicketUser.id,
+                  title: '💬 New Help Desk Reply',
+                  message: `A Velgo support operator has replied: "${adminReply.length > 50 ? adminReply.substring(0, 50) + '...' : adminReply}"`,
+                  type: 'info'
+              });
+          } catch (notifErr: any) {
+              console.error("Warning: Notification sync failed", notifErr.message);
+          }
+
           setAdminReply('');
           fetchData();
       } else {
@@ -1584,6 +1630,20 @@ GRANT ALL ON public.broadcasts TO service_role;`}
 
                         <div className="flex gap-2">
                             <button onClick={() => { setActiveTab('support'); setSelectedTicketUser(report.profiles); }} className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-black text-[10px] uppercase">Message</button>
+                            
+                            {report.profiles?.phone_number && (
+                                <button 
+                                    onClick={() => {
+                                        const waMessage = `Hello ${report.profiles?.full_name}, this is the Velgo Nigeria Safety Desk regarding the ${report.type || 'security'} report you submitted. We are actively investigating this transaction and want to ask a few clarifying questions. Please let us know if you are available to chat right now.`;
+                                        openWhatsAppHelper(waMessage, report.profiles.phone_number);
+                                    }}
+                                    className="px-4 bg-green-500 hover:bg-green-600 text-slate-950 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0 animate-fade-in"
+                                    title="Contact reporter directly via WhatsApp"
+                                >
+                                    <i className="fa-brands fa-whatsapp text-lg"></i>
+                                </button>
+                            )}
+
                             {report.status !== 'resolved' && (
                                 <button onClick={() => handleSafetyAction(report.id, 'resolve')} className="flex-1 bg-green-500 text-white py-3 rounded-xl font-black text-[10px] uppercase">Resolve</button>
                             )}
