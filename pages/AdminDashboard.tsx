@@ -10,9 +10,10 @@ interface SparkChartProps {
     data: { label: string; count: number }[];
     color: string;
     gradientId: string;
+    type?: 'line' | 'bar';
 }
 
-const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId }) => {
+const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId, type = 'line' }) => {
     if (data.length === 0) return <div className="h-40 flex items-center justify-center text-xs text-gray-400">No data</div>;
     const maxVal = Math.max(...data.map(d => d.count), 5);
     const height = 180;
@@ -21,6 +22,105 @@ const SparkChart: React.FC<SparkChartProps> = ({ data, color, gradientId }) => {
 
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
+
+    if (type === 'bar') {
+        const barGap = 16;
+        const totalGaps = data.length - 1;
+        const barWidth = totalGaps > 0 ? (chartWidth - (totalGaps * barGap)) / data.length : chartWidth;
+
+        const bars = data.map((d, i) => {
+            const barHeight = (d.count / maxVal) * chartHeight;
+            const x = padding.left + i * (barWidth + barGap);
+            const y = padding.top + chartHeight - barHeight;
+            return { x, y, barHeight, label: d.label, count: d.count };
+        });
+
+        return (
+            <div className="w-full relative group">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible font-sans">
+                    <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.8} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0.3} />
+                        </linearGradient>
+                    </defs>
+                    
+                    {/* Horizontal Grid Lines */}
+                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                        const y = padding.top + chartHeight * ratio;
+                        const val = Math.round(maxVal * (1 - ratio));
+                        return (
+                            <g key={idx}>
+                                <line 
+                                    x1={padding.left} 
+                                    y1={y} 
+                                    x2={width - padding.right} 
+                                    y2={y} 
+                                    className="stroke-gray-100 dark:stroke-slate-800/80" 
+                                    strokeWidth={1} 
+                                    strokeDasharray="3 3" 
+                                />
+                                <text 
+                                    x={padding.left - 8} 
+                                    y={y + 3} 
+                                    className="fill-gray-400 dark:fill-gray-500 font-mono text-[8px] text-right font-bold"
+                                    textAnchor="end"
+                                >
+                                    {val}
+                                </text>
+                            </g>
+                        );
+                    })}
+
+                    {/* Bars and labels */}
+                    {bars.map((bar, idx) => (
+                        <g key={idx} className="group/bar cursor-pointer animate-fadeIn">
+                            {/* Bar Rect */}
+                            <rect 
+                                x={bar.x} 
+                                y={bar.y} 
+                                width={barWidth} 
+                                height={Math.max(bar.barHeight, bar.count > 0 ? 3 : 0)} 
+                                rx={Math.min(barWidth / 2, 4)} 
+                                fill={`url(#${gradientId})`}
+                                className="transition-all duration-150 hover:opacity-90" 
+                            />
+                            
+                            {/* Label */}
+                            <text 
+                                x={bar.x + barWidth / 2} 
+                                y={height - 6} 
+                                className="fill-gray-400 dark:fill-gray-500 font-bold text-[8px] uppercase tracking-wider"
+                                textAnchor="middle"
+                            >
+                                {bar.label}
+                            </text>
+
+                            {/* Tooltip on Hover */}
+                            <g className="opacity-0 group-hover/bar:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                <rect 
+                                    x={bar.x + barWidth / 2 - 22} 
+                                    y={bar.y - 24} 
+                                    width={44} 
+                                    height={16} 
+                                    rx={4} 
+                                    className="fill-slate-950/90 dark:fill-white" 
+                                />
+                                <text 
+                                    x={bar.x + barWidth / 2} 
+                                    y={bar.y - 13} 
+                                    className="fill-white dark:fill-slate-950 font-black text-[8px] text-center"
+                                    textAnchor="middle"
+                                >
+                                    {bar.count}
+                                </text>
+                            </g>
+                        </g>
+                    ))}
+                </svg>
+            </div>
+        );
+    }
 
     const points = data.map((d, i) => {
         const x = padding.left + (i / (data.length - 1)) * chartWidth;
@@ -329,9 +429,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (activeTab === 'stats') {
             try {
                 // Fetch stats datasets
-                const { data: allProfiles, error: pErr } = await supabase.from('profiles').select('role, is_verified, subscription_tier, created_at, tokens, updated_at, category');
+                const { data: allProfiles, error: pErr } = await supabase.from('profiles').select('role, is_verified, subscription_tier, created_at, tokens, updated_at, category, subscription_end_date');
                 const { data: allTasks, error: tErr } = await supabase.from('posted_tasks').select('status, budget, created_at, category');
-                const { data: allBookings, error: bErr } = await supabase.from('bookings').select('status, created_at');
+                const { data: allBookings, error: bErr } = await supabase.from('bookings').select('status, created_at, task_id');
 
                 if (pErr || tErr || bErr) {
                     throw new Error(pErr?.message || tErr?.message || bErr?.message || "Error fetching records");
@@ -361,9 +461,14 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     if (p.is_verified) verifiedCount++;
 
                     const tier = p.subscription_tier || 'basic';
-                    if (tier in tiers) {
-                        tiers[tier as keyof typeof tiers]++;
-                    } else {
+                    // Only count 'basic' tier as bought if they have a non-null subscription_end_date
+                    if (tier === 'lite') {
+                        tiers.lite++;
+                    } else if (tier === 'standard') {
+                        tiers.standard++;
+                    } else if (tier === 'pro') {
+                        tiers.pro++;
+                    } else if (tier === 'basic' && p.subscription_end_date) {
                         tiers.basic++;
                     }
 
@@ -401,39 +506,75 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     bookingStatus[b.status] = (bookingStatus[b.status] || 0) + 1;
                 });
 
-                // Group User Growth by month (last 6 months)
+                // Calculate direct bookings vs applications
+                const totalApplications = bookingsList.filter(b => b.task_id != null).length;
+                const totalDirectBookings = bookingsList.filter(b => b.task_id == null).length;
+
+                // Group User Growth by Week (last 8 weeks)
                 const userGrowthMap: Record<string, number> = {};
-                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const weekStartTimes: { label: string; start: number; end: number }[] = [];
                 const now = new Date();
-                for (let i = 5; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
-                    userGrowthMap[key] = 0;
+                
+                for (let i = 7; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (i * 7));
+                    d.setHours(0, 0, 0, 0);
+                    // Start of week (Sunday)
+                    const dayOfWeek = d.getDay();
+                    const weekStart = new Date(d);
+                    weekStart.setDate(d.getDate() - dayOfWeek);
+                    weekStart.setHours(0, 0, 0, 0);
+                    
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 7);
+                    
+                    const label = `${weekStart.getDate()} ${weekStart.toLocaleString('default', { month: 'short' })}`;
+                    userGrowthMap[label] = 0;
+                    weekStartTimes.push({ label, start: weekStart.getTime(), end: weekEnd.getTime() });
                 }
 
                 profilesList.forEach((p: any) => {
                     if (!p.created_at) return;
-                    const d = new Date(p.created_at);
-                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
-                    if (key in userGrowthMap) {
-                        userGrowthMap[key]++;
+                    const t = new Date(p.created_at).getTime();
+                    const matched = weekStartTimes.find(w => t >= w.start && t < w.end);
+                    if (matched) {
+                        userGrowthMap[matched.label]++;
                     }
                 });
 
-                // Group Task Volume by month (last 6 months)
-                const taskVolMap: Record<string, number> = {};
-                for (let i = 5; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
-                    taskVolMap[key] = 0;
+                // Group Job Traffic (Posts & Direct Bookings) by Day (last 7 days window)
+                const dailyPostMap: Record<string, number> = {};
+                const dayStartTimes: { label: string; start: number; end: number }[] = [];
+                
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    d.setHours(0, 0, 0, 0);
+                    
+                    const dayEnd = new Date(d);
+                    dayEnd.setDate(d.getDate() + 1);
+                    
+                    const label = `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`;
+                    dailyPostMap[label] = 0;
+                    dayStartTimes.push({ label, start: d.getTime(), end: dayEnd.getTime() });
                 }
 
                 tasksList.forEach((t: any) => {
                     if (!t.created_at) return;
-                    const d = new Date(t.created_at);
-                    const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
-                    if (key in taskVolMap) {
-                        taskVolMap[key]++;
+                    const time = new Date(t.created_at).getTime();
+                    const matched = dayStartTimes.find(d => time >= d.start && time < d.end);
+                    if (matched) {
+                        dailyPostMap[matched.label]++;
+                    }
+                });
+
+                bookingsList.forEach((b: any) => {
+                    if (b.task_id != null) return; // Count only direct bookings (marketplace tasks are already counted)
+                    if (!b.created_at) return;
+                    const time = new Date(b.created_at).getTime();
+                    const matched = dayStartTimes.find(d => time >= d.start && time < d.end);
+                    if (matched) {
+                        dailyPostMap[matched.label]++;
                     }
                 });
 
@@ -451,8 +592,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     revenueMRR,
                     averageBudget,
                     categoryDistribution,
+                    totalApplications,
+                    totalDirectBookings,
                     userGrowth: Object.entries(userGrowthMap).map(([label, count]) => ({ label, count })),
-                    taskVolumeWeekly: Object.entries(taskVolMap).map(([label, count]) => ({ label, count }))
+                    taskVolumeWeekly: Object.entries(dailyPostMap).map(([label, count]) => ({ label, count }))
                 });
             } catch (err: any) {
                 console.error("Failed to compile stats: ", err);
@@ -600,7 +743,130 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   };
 
-
+  const handleDownloadPdf = () => {
+    if (!stats) return;
+    
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFillColor(15, 23, 42); // slate-900 background for a sleek header card
+    doc.rect(10, 10, 190, 25, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("VELGO NIGERIA compliance desk", 15, 20);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`PLATFORM AUDIT & METRICS REPORT • GENERATED ON: ${new Date().toLocaleString()}`, 15, 28);
+    
+    // Section 1: Core User Stats
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("1. USER BASE & REGISTRATION METRICS", 12, 45);
+    
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(10, 48, 200, 48);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    
+    doc.text(`Total Registered Users: ${stats.totalUsers}`, 15, 55);
+    doc.text(`Verified Users (NIN Badging): ${stats.verifiedCount} (${Math.round((stats.verifiedCount / (stats.totalUsers || 1)) * 100)}%)`, 15, 61);
+    doc.text(`Weekly Active Users (7-day activity window): ${stats.weeklyActiveCount}`, 15, 67);
+    
+    // User Role Distribution table
+    doc.text("User Roles Breakdown:", 120, 55);
+    doc.text(`- Clients (Hiring accounts): ${stats.roles.client}`, 125, 61);
+    doc.text(`- Artisans / Workers (Providing services): ${stats.roles.worker}`, 125, 67);
+    doc.text(`- Platform Administrators: ${stats.roles.admin}`, 125, 73);
+    
+    // Section 2: Finances and Token Sales
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text("2. PREMIUM TOKEN CONVERSION & REVENUE ANALYSIS", 12, 85);
+    doc.line(10, 88, 200, 88);
+    
+    // Total Revenue
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Cumulative Revenue: NGN ${stats.revenueMRR.toLocaleString()}`, 15, 96);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text("(Based solely on standard token packages purchased by platform members)", 15, 102);
+    
+    // Package breakdown table
+    doc.text(`- Starter Pack (NGN 900 • 1 Token): ${stats.tiers.basic || 0} packs sold (NGN ${((stats.tiers.basic || 0) * 900).toLocaleString()})`, 15, 110);
+    doc.text(`- Standard Pack (NGN 3,999 • 5 Tokens): ${stats.tiers.lite || 0} packs sold (NGN ${((stats.tiers.lite || 0) * 3999).toLocaleString()})`, 15, 116);
+    doc.text(`- Pro Pack (NGN 6,999 • 10 Tokens): ${stats.tiers.standard || 0} packs sold (NGN ${((stats.tiers.standard || 0) * 6999).toLocaleString()})`, 15, 122);
+    doc.text(`- Power Pack (NGN 9,999 • 15 Tokens): ${stats.tiers.pro || 0} packs sold (NGN ${((stats.tiers.pro || 0) * 9999).toLocaleString()})`, 15, 128);
+    
+    // Section 3: Job Flow & Posting Volume
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text("3. MARKETPLACE FLOWS & JOB METRICS", 12, 140);
+    doc.line(10, 143, 200, 143);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    
+    doc.text(`Unified Task Flow (Total Volume): ${stats.totalTasks + (stats.totalDirectBookings || 0)}`, 15, 150);
+    doc.text(`- Marketplace Job Postings: ${stats.totalTasks}`, 15, 156);
+    doc.text(`- Direct Artisan Bookings/Hires: ${stats.totalDirectBookings || 0}`, 15, 162);
+    doc.text(`- Applications / Bidding Volume: ${stats.totalApplications || 0}`, 15, 168);
+    doc.text(`- Active/Completed Matches: ${stats.totalBookings}`, 15, 174);
+    
+    // Right col: financial metrics
+    doc.text("Job Metrics Overview:", 120, 150);
+    doc.text(`- Mean Client Budget: NGN ${stats.averageBudget.toLocaleString()}`, 125, 156);
+    doc.text(`- Current Open Listings: ${stats.taskStatus.open || 0} tasks`, 125, 162);
+    doc.text(`- Successful Matches (Completed): ${stats.bookingStatus.completed || 0} jobs`, 125, 168);
+    
+    // Section 4: Industry Categories
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text("4. TOP DEMAND CATEGORIES & SECTORS", 12, 185);
+    doc.line(10, 188, 200, 188);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    
+    const sortedCats = Object.entries(stats.categoryDistribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+      
+    let yOffset = 195;
+    sortedCats.forEach(([cat, count], idx) => {
+      const share = Math.round((count / (stats.totalTasks || 1)) * 100);
+      if (yOffset <= 270) {
+        doc.text(`${idx + 1}. ${cat}: ${count} posts (${share}% of platform traffic)`, 15, yOffset);
+        yOffset += 6;
+      }
+    });
+    
+    // Footer notice
+    doc.setDrawColor(226, 232, 240);
+    doc.line(10, 278, 200, 278);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Confidential Internal Document. Designed for Velgo compliance desks & administrators in Nigeria.", 15, 283);
+    doc.text("Velgo Nigeria Corp © 2026", 170, 283);
+    
+    doc.save(`Velgo-Nigeria-System-Audit-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const handleSendBroadcast = async () => {
       if (!bTitle || !bMessage) return;
@@ -1878,6 +2144,23 @@ GRANT ALL ON public.broadcasts TO service_role;`}
           ) : 
 
           activeTab === 'stats' && stats ? (
+              <>
+              {/* Executive Header Banner */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm">
+                  <div>
+                      <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                          <i className="fa-solid fa-chart-line text-indigo-500"></i> Velgo Compliance Analytics
+                      </h2>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Metrics and compliance telemetry overview</p>
+                  </div>
+                  <button 
+                      onClick={handleDownloadPdf}
+                      className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white py-2.5 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm"
+                      title="Generate official audit PDF"
+                  >
+                      <i className="fa-solid fa-file-pdf text-sm"></i> Download PDF Report
+                  </button>
+              </div>
               <div className="space-y-6 animate-fadeIn pb-12 font-sans max-w-6xl mx-auto">
                   {/* Overview Card Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1909,10 +2192,10 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                       <div className="bg-white dark:bg-slate-800 p-5 rounded-[24px] border border-gray-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
                           <div>
                               <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Total Task Flow</p>
-                              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.totalTasks}</h3>
+                              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.totalTasks + (stats.totalDirectBookings || 0)}</h3>
                           </div>
                           <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
-                              <span>{stats.totalBookings} Active Bookings</span>
+                              <span>{stats.totalDirectBookings || 0} Direct / {stats.totalTasks} Market</span>
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                           </div>
                       </div>
@@ -1924,7 +2207,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                               <h3 className="text-2xl font-black text-amber-500 mt-1">₦{stats.revenueMRR.toLocaleString()}</h3>
                           </div>
                           <div className="flex justify-between items-center text-[9px] font-bold text-gray-500 mt-2">
-                              <span>Subscription Model</span>
+                              <span>Packs Sold Count</span>
                               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                           </div>
                       </div>
@@ -1936,10 +2219,10 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
                           <div>
                               <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">User Growth Trend</h4>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Registered profiles over last 6 months</p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Registered profiles over last 8 weeks (weekly intervals)</p>
                           </div>
                           <div className="pt-2">
-                              <SparkChart data={stats.userGrowth} color="#4f46e5" gradientId="userGrowthGrad" />
+                              <SparkChart data={stats.userGrowth} color="#4f46e5" gradientId="userGrowthGrad" type="bar" />
                           </div>
                       </div>
 
@@ -1947,10 +2230,10 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
                           <div>
                               <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Job Traffic & Posting Volume</h4>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posted task submissions over last 6 months</p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posted task submissions & direct bookings over last 7 days</p>
                           </div>
                           <div className="pt-2">
-                              <SparkChart data={stats.taskVolumeWeekly} color="#10b981" gradientId="taskVolumeGrad" />
+                              <SparkChart data={stats.taskVolumeWeekly} color="#10b981" gradientId="taskVolumeGrad" type="bar" />
                           </div>
                       </div>
                   </div>
@@ -2022,7 +2305,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700/60 shadow-sm space-y-4">
                           <div>
                               <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Job Metrics Overview</h4>
-                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Financial metrics per listing</p>
+                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Ecosystem Activity breakdown</p>
                           </div>
                           <div className="space-y-3 text-xs pt-1.5">
                               <div className="flex justify-between items-center py-2.5 border-b dark:border-slate-700/50">
@@ -2030,8 +2313,16 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                   <span className="font-black text-gray-900 dark:text-white text-sm">₦{stats.averageBudget.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between items-center py-2.5 border-b dark:border-slate-700/50">
-                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Open Listings</span>
-                                  <span className="font-black text-indigo-500 font-mono text-sm">{stats.taskStatus.open || 0} tasks</span>
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Marketplace Listings</span>
+                                  <span className="font-bold text-gray-950 dark:text-gray-100">{stats.totalTasks} postings</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b dark:border-slate-700/50">
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Direct Bookings (No Post)</span>
+                                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{stats.totalDirectBookings || 0} hires</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b dark:border-slate-700/50">
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Artisan Applications</span>
+                                  <span className="font-bold text-blue-500">{stats.totalApplications || 0} bids</span>
                               </div>
                               <div className="flex justify-between items-center py-2.5">
                                   <span className="font-bold text-gray-500 uppercase text-[9px]">Completed Bookings</span>
@@ -2079,6 +2370,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                       )}
                   </div>
               </div>
+              </>
           ) : activeTab === 'stats' ? (
               <div className="text-center py-20 text-gray-400 animate-pulse font-sans">
                   <i className="fa-solid fa-cloud-arrow-down text-4xl mb-3 text-indigo-500 animate-bounce"></i>
