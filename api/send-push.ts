@@ -92,15 +92,39 @@ export default async function handler(req: any, res: any) {
     let body = 'New Activity';
     let url = '/';
 
-    // 1. New Booking (Notify Worker)
-    if (table === 'bookings' && type === 'INSERT' && record.status === 'pending') {
+    // 1. Handling unified notifications
+    if (table === 'notifications' && type === 'INSERT') {
+       userIdToNotify = record.user_id;
+       title = record.title || 'Velgo Notification';
+       body = record.message || 'New update from Velgo. Tap to view.';
+       
+       const lowerTitle = title.toLowerCase();
+       const lowerBody = body.toLowerCase();
+       if (lowerTitle.includes('booking') || lowerTitle.includes('job') || lowerTitle.includes('application') || lowerTitle.includes('activity') || lowerTitle.includes('hired')) {
+           url = '/activity';
+       } else if (lowerTitle.includes('verify') || lowerTitle.includes('identity') || lowerTitle.includes('profile')) {
+           url = '/profile';
+       } else if (lowerTitle.includes('message') || lowerTitle.includes('chat')) {
+           url = '/messages';
+       } else if (lowerTitle.includes('token') || lowerTitle.includes('pack') || lowerTitle.includes('refuel') || lowerTitle.includes('coin')) {
+           url = '/overview';
+       } else if (lowerTitle.includes('referral') || lowerTitle.includes('reward') || lowerTitle.includes('promo')) {
+           url = '/overview';
+       } else if (lowerTitle.includes('dispute') || lowerTitle.includes('report') || lowerTitle.includes('resolved')) {
+           url = '/activity';
+       } else {
+           url = '/activity';
+       }
+    }
+
+    // 2. Fallbacks and Direct Triggers (for fast real-time messaging or old schema events)
+    else if (table === 'bookings' && type === 'INSERT' && record.status === 'pending') {
        userIdToNotify = record.worker_id;
        title = 'New Job Request! 🚀';
        body = 'A client wants to hire you. Open to view details.';
        url = '/activity';
     }
     
-    // 2. Booking Accepted (Notify Client)
     else if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
        userIdToNotify = record.client_id;
        title = 'Job Accepted! ✅';
@@ -108,7 +132,6 @@ export default async function handler(req: any, res: any) {
        url = '/activity';
     }
 
-    // 3. New Message (Notify Receiver)
     else if (table === 'messages' && type === 'INSERT') {
        userIdToNotify = record.receiver_id;
        title = 'New Message 💬';
@@ -116,7 +139,6 @@ export default async function handler(req: any, res: any) {
        url = '/messages';
     }
 
-    // 4. ID Verification Success (Notify User)
     else if (table === 'profiles' && type === 'UPDATE') {
        const { old_record } = payload;
        if (record.is_verified === true && (!old_record || old_record.is_verified === false)) {
