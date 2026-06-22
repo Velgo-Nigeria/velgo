@@ -69,28 +69,8 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
     const message = `Hello! I am contacting you regarding our contract for '${jobTitle}' on Velgo Nigeria.`;
     
-    setRedirectingPartnerName(partnerName);
-    setRedirectingPhone(partnerPhone);
-    setRedirectingMessage(message);
-    setShowRedirectModal(true);
-
-    const isIOSorSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
-                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
-                          (navigator.userAgent.toLowerCase().includes('safari') && !navigator.userAgent.toLowerCase().includes('chrome') && !navigator.userAgent.toLowerCase().includes('chromium'));
-    const isStandalone = (window.navigator as any).standalone === true || 
-                       window.matchMedia('(display-mode: standalone)').matches;
-
-    // WebKit popup blockers in Safari and added-to-homescreen PWA mode block synthetic clicks after any asynchronous delay.
-    // So we resolve Safari/iOS natively, synchronously inline.
-    if (isIOSorSafari || isStandalone) {
-      openWhatsAppHelper(message, partnerPhone);
-    } else {
-      // Maintain premium transition for Android/Desktop/Chrome
-      setTimeout(() => {
-        setShowRedirectModal(false);
-        openWhatsAppHelper(message, partnerPhone);
-      }, 2500);
-    }
+    // Call unified global countdown redirector helper natively on both iOS and Android!
+    openWhatsAppHelper(message, partnerPhone, partnerName);
   };
 
   // Client Completion Modal State
@@ -1611,7 +1591,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     // Hiring View: Accept/Decline Worker's Application
                                     <div className="flex gap-3">
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'declined'); }} 
                                             className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
                                         >
                                             Decline
@@ -1638,7 +1618,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     // Working View: Accept/Decline Client's Request
                                     <div className="flex gap-3">
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'cancelled'); }} 
+                                            onClick={(e) => { e.stopPropagation(); updateBookingStatus(item, 'declined'); }} 
                                             className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-300 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
                                         >
                                             Decline
@@ -1865,50 +1845,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
             </div>
         )}
 
-        {/* Beautiful WhatsApp Interstitial Redirect Modal */}
-        {showRedirectModal && (
-          <div className="fixed inset-0 bg-black/90 z-[160] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl border border-gray-100 dark:border-gray-700 space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-[#25D366]"></div>
-              
-              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center mx-auto text-[#25D366] text-3xl animate-pulse">
-                <i className="fa-brands fa-whatsapp"></i>
-              </div>
 
-              <div className="space-y-2">
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">Secure Direct Chat</h3>
-                <p className="text-[10px] font-black uppercase text-emerald-500 tracking-widest bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full w-max mx-auto">Redirecting to WhatsApp...</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-bold pt-2">
-                  Opening safe and direct conversation thread with <span className="text-gray-900 dark:text-white font-black">{redirectingPartnerName}</span>.
-                </p>
-              </div>
-
-              <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex flex-col items-center justify-center gap-1 animate-fadeIn">
-                <p className="text-[8px] uppercase tracking-widest text-gray-400 font-extrabold mb-1">Prefilled Message Context:</p>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium italic border border-dashed border-gray-100 dark:border-gray-700/60 p-2.5 rounded-lg max-w-[250px] overflow-hidden whitespace-nowrap text-ellipsis mb-4">
-                  "{redirectingMessage}"
-                </p>
-                
-                <button
-                  onClick={() => {
-                    openWhatsAppHelper(redirectingMessage, redirectingPhone);
-                    setShowRedirectModal(false);
-                  }}
-                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <i className="fa-brands fa-whatsapp text-lg animate-bounce"></i> Open Chat Now
-                </button>
-
-                <button
-                  onClick={() => setShowRedirectModal(false)}
-                  className="mt-2 text-[9px] font-black uppercase text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 tracking-wider transition-colors pt-2"
-                >
-                  Stay on Velgo
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

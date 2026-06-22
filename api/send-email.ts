@@ -41,6 +41,25 @@ export default async function handler(req: any, res: any) {
        const titleColor = record.type === 'alert' ? '#b91c1c' : '#059669';
        const icon = record.type === 'alert' ? '⚠️' : record.type === 'success' ? '✅' : '🔔';
        
+       let customGraphic = '';
+       if (record.title?.includes('Safety') || record.title?.includes('🛡️')) {
+          customGraphic = `
+            <div style="text-align: center; padding: 16px 0;">
+              <div style="display: inline-block; background-color: #ecfdf5; border: 2px solid #10b981; border-radius: 50%; padding: 16px; margin: 0 auto;">
+                <span style="font-size: 40px; line-height: 1;">🛡️</span>
+              </div>
+            </div>
+          `;
+       } else if (record.title?.includes('Declined') || record.title?.includes('⚠️')) {
+          customGraphic = `
+            <div style="text-align: center; padding: 16px 0;">
+              <div style="display: inline-block; background-color: #fef2f2; border: 2px solid #ef4444; border-radius: 50%; padding: 16px; margin: 0 auto;">
+                <span style="font-size: 40px; line-height: 1;">⚠️</span>
+              </div>
+            </div>
+          `;
+       }
+       
        html = `
          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 16px; background-color: #f3f4f6; color: #1f2937; min-height: 100%;">
            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
@@ -53,14 +72,15 @@ export default async function handler(req: any, res: any) {
              
              <!-- Content Body -->
              <div style="padding: 32px 24px;">
-               <div style="display: flex; align-items: center; margin-bottom: 24px;">
-                 <span style="font-size: 32px; margin-right: 12px;">${icon}</span>
-                 <h2 style="color: ${titleColor}; margin: 0; font-weight: 800; font-size: 20px; line-height: 1.2;">
+               ${customGraphic}
+               
+               <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 24px; text-align: center;">
+                 <h2 style="color: ${titleColor}; margin: 0 auto; font-weight: 800; font-size: 20px; line-height: 1.2; text-align: center;">
                    ${record.title}
                  </h2>
                </div>
                
-               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 28px;">
+               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 28px; text-align: center;">
                  ${record.message || 'You have a new update waiting on Velgo Nigeria.'}
                </p>
                
