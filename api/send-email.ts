@@ -33,8 +33,67 @@ export default async function handler(req: any, res: any) {
     let subject = '';
     let html = '';
 
+    // 0. Unified In-App Notifications Integration
+    if (table === 'notifications' && type === 'INSERT') {
+       userIdToNotify = record.user_id;
+       subject = record.title || 'New Update on Velgo 🔔';
+       
+       const titleColor = record.type === 'alert' ? '#b91c1c' : '#059669';
+       const icon = record.type === 'alert' ? '⚠️' : record.type === 'success' ? '✅' : '🔔';
+       
+       html = `
+         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 16px; background-color: #f3f4f6; color: #1f2937; min-height: 100%;">
+           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+             
+             <!-- Header Banner -->
+             <div style="background-color: #111827; padding: 24px; text-align: center;">
+               <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Velgo Nigeria</h1>
+               <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">On-Demand Safety-Verified Artisans</p>
+             </div>
+             
+             <!-- Content Body -->
+             <div style="padding: 32px 24px;">
+               <div style="display: flex; align-items: center; margin-bottom: 24px;">
+                 <span style="font-size: 32px; margin-right: 12px;">${icon}</span>
+                 <h2 style="color: ${titleColor}; margin: 0; font-weight: 800; font-size: 20px; line-height: 1.2;">
+                   ${record.title}
+                 </h2>
+               </div>
+               
+               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 28px;">
+                 ${record.message || 'You have a new update waiting on Velgo Nigeria.'}
+               </p>
+               
+               <!-- Transaction call to action -->
+               <div style="text-align: center; margin-top: 32px; margin-bottom: 24px;">
+                 <a href="https://www.velgo.com.ng/activity" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 14px; text-align: center; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);">
+                   View in Dashboard
+                 </a>
+               </div>
+               
+               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 28px 0;" />
+               
+               <!-- Tips panel -->
+               <div style="background-color: #f9fafb; padding: 16px; border-radius: 12px; border-left: 4px solid #111827;">
+                 <p style="font-size: 12px; line-height: 1.5; color: #4b5563; margin: 0;">
+                   <strong>🛡️ Safety Tip:</strong> Always coordinate payments and details through safe communication channels. Make sure you confirm identities through the verified badges on Velgo.
+                 </p>
+               </div>
+               
+             </div>
+             
+             <!-- Footer Section -->
+             <div style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+               <p style="margin: 0 0 8px 0;">This is an automated notification. Please do not reply directly to this email.</p>
+               <p style="margin: 0;">© 2026 Velgo Nigeria. All rights reserved.</p>
+             </div>
+             
+           </div>
+         </div>
+       `;
+    }
     // 1. Booking Accepted (Notify Client)
-    if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
+    else if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
        userIdToNotify = record.client_id;
        subject = 'Job Accepted! ✅';
        html = `<p>Your worker has accepted your job. You can now chat with them to discuss further details.</p>`;

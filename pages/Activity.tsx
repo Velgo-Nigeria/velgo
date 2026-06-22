@@ -1683,6 +1683,15 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                     )}
                                 </div>
                             )}
+                             <div className="bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-100 dark:border-emerald-900/40 p-3.5 rounded-2xl flex items-start gap-2.5 my-1.5 shadow-sm">
+                                 <i className="fa-brands fa-whatsapp text-emerald-500 dark:text-emerald-400 text-base mt-0.5 animate-pulse"></i>
+                                 <div className="flex-1">
+                                     <p className="text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest mb-0.5">Direct Live chat</p>
+                                     <p className="text-[10.5px] text-emerald-700 dark:text-gray-300 leading-snug font-medium">
+                                         Contract active! Move your coordination to WhatsApp to share location, send voice messages, or upload job photos seamlessly.
+                                     </p>
+                                 </div>
+                             </div>
                              <button 
                                 onClick={(e) => { e.stopPropagation(); handleConnectWhatsApp(item); }} 
                                 className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-green-100/10 active:scale-95 transition-all flex items-center justify-center gap-2"
