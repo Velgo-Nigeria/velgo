@@ -262,7 +262,8 @@ export default async function handler(req: any, res: any) {
             from: 'Velgo Notifications <notifications@velgo.com.ng>',
             to: recipients,
             subject: subject,
-            html: html
+            html: html,
+            reply_to: 'velgonigeria.uni@gmail.com'
         })
     });
 
