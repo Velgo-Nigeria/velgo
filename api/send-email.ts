@@ -189,6 +189,25 @@ export default async function handler(req: any, res: any) {
          </div>
        `;
     }
+    // 8.5 Admin Response to Support (Notify Customer)
+    else if (table === 'support_messages' && type === 'INSERT' && record.admin_reply) {
+       userIdToNotify = record.user_id;
+       subject = '💬 Response from Velgo Support Team';
+       html = `
+         <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; background-color: #fff; color: #1f2937;">
+           <div style="display: flex; align-items: center; margin-bottom: 20px;">
+             <span style="font-size: 32px; margin-right: 12px;">💬</span>
+             <h2 style="color: #059669; margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: -0.5px;">Velgo Help Reply</h2>
+           </div>
+           <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">You have received a reply from the Velgo support team regarding your query:</p>
+           <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+           
+           <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #059669; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; font-style: italic;">"${record.content || record.message || 'Details provided'}"</div>
+           
+           <p style="font-size: 13px; color: #6b7280; margin-top: 16px;">Log in to your Velgo account to follow up on this query.</p>
+         </div>
+       `;
+    }
 
     if (!userIdToNotify) {
         return res.status(200).json({ message: 'No email to send for this event.' });
