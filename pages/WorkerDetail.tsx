@@ -355,8 +355,9 @@ UID: ${profile.id}
                  </div>
               )}
           </div>
-          <div className="grid grid-cols-3 gap-1 py-8 border-y border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-4 gap-1 py-8 border-y border-gray-100 dark:border-gray-800">
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Starting</p><p className="font-black text-gray-900 dark:text-white text-xl">₦{worker?.starting_price}</p></div>
+            <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Trust</p><p className="font-black text-emerald-500 flex items-end justify-center gap-0.5 text-xl">{worker?.trust_score || 0}<span className="text-[10px] text-emerald-600/60 pb-1">Pts</span></p></div>
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Rating</p><p className="font-black text-gray-900 dark:text-white text-xl flex items-center justify-center gap-1">{worker?.worker_avg_rating || rating} <i className="fa-solid fa-star text-xs text-yellow-400"></i></p></div>
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Jobs</p><p className="font-black text-green-500 text-xl">{worker?.worker_rating_count || reviewCount} Done</p></div>
           </div>

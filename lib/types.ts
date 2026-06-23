@@ -72,6 +72,7 @@ export interface Profile {
   views_count?: number;
   referral_code?: string;
   referrer_id?: string;
+  trust_score?: number;
 }
 
 export interface PromoCode {

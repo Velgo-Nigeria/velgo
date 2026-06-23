@@ -326,21 +326,25 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             {isWorker ? (
                 // Worker Metrics Overview
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
-                    <div className="grid grid-cols-3 gap-2 mb-2 items-end">
-                        <div>
-                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Avg Rating</p>
-                            <p className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-0.5 whitespace-nowrap">{profile?.worker_avg_rating || 5.0} <i className="fa-solid fa-star text-yellow-400 text-sm"></i></p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate text-[#25D366]">Monthly Views</p>
-                            <p className="text-xl font-black text-brand flex items-center justify-center gap-1">
+                    <div className="grid grid-cols-4 gap-2 mb-2 items-end">
+                        <div className="text-left">
+                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 text-[#25D366] uppercase truncate">Views</p>
+                            <p className="text-xl font-black text-brand flex items-center justify-start gap-1">
                                 <i className="fa-solid fa-eye text-xs"></i>
-                                {totalProfileViews !== null ? totalProfileViews : '...'}
+                                {totalProfileViews !== null ? totalProfileViews : '0'}
                             </p>
                         </div>
+                        <div className="text-center">
+                            <p className="text-[9px] font-bold text-emerald-600/70 dark:text-emerald-500/80 uppercase truncate">Trust</p>
+                            <p className="text-xl font-black text-emerald-500 flex items-baseline justify-center gap-0.5">{profile?.trust_score || 0}<span className="text-[9px] pb-[2px] font-bold text-emerald-600/60">Pts</span></p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Rating</p>
+                            <p className="text-xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-0.5 whitespace-nowrap">{profile?.worker_avg_rating || 5.0} <i className="fa-solid fa-star text-yellow-400 text-[10px]"></i></p>
+                        </div>
                         <div className="text-right">
-                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Jobs Done</p>
-                            <p className="text-xl font-black text-green-500">{profile?.worker_rating_count || 0}</p>
+                            <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Jobs</p>
+                            <p className="text-xl font-black text-gray-900 dark:text-white">{profile?.worker_rating_count || 0}</p>
                         </div>
                     </div>
                     
