@@ -70,6 +70,7 @@ export interface Profile {
   subscription_tier?: SubscriptionTier;
   subscription_end_date?: string;
   views_count?: number;
+  referral_code?: string;
   referrer_id?: string;
 }
 

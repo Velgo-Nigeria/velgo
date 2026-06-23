@@ -277,8 +277,13 @@ const App: React.FC = () => {
       const jobIdParam = urlParams.get('jobId');
       const workerIdParam = urlParams.get('workerId');
       const refParam = urlParams.get('ref');
+      const codeParam = urlParams.get('code');
       let redirectHappened = false;
 
+      if (codeParam) {
+        localStorage.setItem('velgo_referrer_code', codeParam.toUpperCase());
+        redirectHappened = true;
+      }
       if (refParam) {
         localStorage.setItem('velgo_referrer_id', refParam);
         redirectHappened = true;
@@ -477,7 +482,33 @@ const App: React.FC = () => {
   useEffect(() => {
     if (profile && profile.id) {
       const storedReferrer = localStorage.getItem('velgo_referrer_id');
-      if (storedReferrer && storedReferrer !== profile.id && !profile.referrer_id) {
+      const storedReferrerCode = localStorage.getItem('velgo_referrer_code');
+
+      if (storedReferrerCode && !profile.referrer_id) {
+        // Resolve code to UUID
+        supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', storedReferrerCode)
+          .single()
+          .then(({ data, error }) => {
+            if (data && data.id && data.id !== profile.id) {
+               supabase
+                 .from('profiles')
+                 .update({ referrer_id: data.id })
+                 .eq('id', profile.id)
+                 .then(({ error: updateError }) => {
+                   if (!updateError) {
+                     console.log("Successfully linked referrer via code:", storedReferrerCode);
+                     localStorage.removeItem('velgo_referrer_code');
+                     fetchProfile(profile.id, 1, true);
+                   }
+               });
+            } else {
+               if (error) localStorage.removeItem('velgo_referrer_code');
+            }
+          });
+      } else if (storedReferrer && storedReferrer !== profile.id && !profile.referrer_id) {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (uuidRegex.test(storedReferrer)) {
           supabase

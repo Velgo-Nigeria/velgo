@@ -27,6 +27,12 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
   const [otpToken, setOtpToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+
+  useEffect(() => {
+    const savedCode = localStorage.getItem('velgo_referrer_code') || '';
+    if (savedCode) setReferralCode(savedCode);
+  }, []);
 
   useEffect(() => { setRole(initialRole); }, [initialRole]);
 
@@ -45,6 +51,10 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
       return;
     }
     
+    if (referralCode.trim()) {
+      localStorage.setItem('velgo_referrer_code', referralCode.trim().toUpperCase());
+    }
+
     setLoading(true);
 
     const metaData = {
@@ -256,6 +266,14 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
               <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-400">
                 <i className={`fa-solid ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
               </button>
+            </div>
+
+            <div className="relative">
+              <input 
+                type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500 uppercase tracking-widest"
+                placeholder="Referral Code (Optional)"
+              />
             </div>
           </div>
 

@@ -104,6 +104,7 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState<boolean>(true);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
   // Safety form state
   const [incidentType, setIncidentType] = useState('Fraud');
@@ -1055,17 +1056,18 @@ UID: ${profile.id}
 
             {/* Link Sharing Box */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 relative z-10">
-              <label className="text-[8px] font-black text-indigo-300 uppercase tracking-widest block">Your Unique Referral Link</label>
+              <label className="text-[8px] font-black text-indigo-300 uppercase tracking-widest block">Your Referral Code / Link</label>
               <div className="flex items-center gap-2">
                 <input
                   readOnly
-                  value={`${window.location.origin}?ref=${profile?.id || 'guest'}`}
-                  className="flex-1 bg-black/20 text-[10px] font-mono p-3 rounded-xl outline-none border border-white/5 text-slate-300 truncate"
+                  value={profile?.referral_code ? `${window.location.origin}?code=${profile.referral_code}` : `${window.location.origin}?ref=${profile?.id || 'guest'}`}
+                  className="flex-1 bg-black/20 text-[10px] font-mono p-3 rounded-xl outline-none border border-white/5 text-slate-300 truncate select-all"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}?ref=${profile?.id}`);
+                    const stringToCopy = profile?.referral_code ? `${window.location.origin}?code=${profile.referral_code}` : `${window.location.origin}?ref=${profile?.id}`;
+                    navigator.clipboard.writeText(stringToCopy);
                     setCopiedLink(true);
                     setTimeout(() => setCopiedLink(false), 2000);
                   }}
@@ -1082,6 +1084,29 @@ UID: ${profile.id}
                   )}
                 </button>
               </div>
+              {profile?.referral_code && (
+                <div className="mt-4 border-t border-white/5 pt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 font-bold">Your Short Code:</span>
+                    <span className="text-emerald-400 font-mono text-[12px] font-black tracking-widest bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-500/20 shadow-inner select-all">{profile.referral_code}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(profile.referral_code!);
+                      setCopiedCode(true);
+                      setTimeout(() => setCopiedCode(false), 2000);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${copiedCode ? 'bg-[#25D366] text-white' : 'bg-slate-700 hover:bg-slate-600 text-white active:scale-95'}`}
+                  >
+                    {copiedCode ? (
+                      <><i className="fa-solid fa-check"></i> Copied!</>
+                    ) : (
+                      <><i className="fa-regular fa-copy"></i> Copy Code</>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Referrals Count and Progress Tracker */}
