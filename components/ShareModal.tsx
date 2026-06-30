@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldIcon, VelgoLogo } from './Brand';
+import { toPng } from 'html-to-image';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, data }) => {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
   // Set up the shareable URL and text descriptions
   let shareUrl = window.location.origin;
@@ -34,6 +34,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
     textDesc = `Join Velgo Nigeria to find and book verified local artisans near you! Use my referral link.`;
     title = "Join Velgo Nigeria";
   }
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=022c22&bgcolor=ffffff&data=${encodeURIComponent(shareUrl)}`;
+
+  // Determine images
+  const workerAvatar = data?.avatar_url || data?.nin_image_url;
+  const taskImage = data?.image_url;
 
   // Copy link handler
   const handleCopyLink = async () => {
@@ -66,276 +72,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
     }
   };
 
-  // Draw procedural QR-like code on canvas
-  const drawProceduralQRCode = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x, y, size, size);
-    
-    // Draw outer dark frame
-    ctx.strokeStyle = '#022c22';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
-
-    const drawCornerPattern = (cx: number, cy: number, pSize: number) => {
-      ctx.fillStyle = '#022c22';
-      // Outer box
-      ctx.fillRect(cx, cy, pSize, pSize);
-      // Inner white
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cx + pSize/6, cy + pSize/6, pSize - (pSize/3), pSize - (pSize/3));
-      // Inner dark center
-      ctx.fillStyle = '#022c22';
-      ctx.fillRect(cx + pSize/3, cy + pSize/3, pSize - (pSize*2/3), pSize - (pSize*2/3));
-    };
-
-    const patternSize = size * 0.28;
-    // Draw 3 standard corner boxes
-    drawCornerPattern(x + 4, y + 4, patternSize); // Top-left
-    drawCornerPattern(x + size - patternSize - 4, y + 4, patternSize); // Top-right
-    drawCornerPattern(x + 4, y + size - patternSize - 4, patternSize); // Bottom-left
-
-    // Draw tiny random modules (reproducible using coordinates)
-    ctx.fillStyle = '#022c22';
-    const numBlocks = 18;
-    const blockSize = (size - 8) / numBlocks;
-
-    for (let col = 0; col < numBlocks; col++) {
-      for (let row = 0; row < numBlocks; row++) {
-        // Skip corner areas where patterns are drawn
-        const inTopLeft = col < 6 && row < 6;
-        const inTopRight = col > numBlocks - 7 && row < 6;
-        const inBottomLeft = col < 6 && row > numBlocks - 7;
-        
-        if (!inTopLeft && !inTopRight && !inBottomLeft) {
-          // Semi-random deterministic grid
-          const seed = (col * 31 + row * 17) % 100;
-          if (seed > 45) {
-            ctx.fillRect(
-              x + 4 + col * blockSize,
-              y + 4 + row * blockSize,
-              blockSize + 0.5,
-              blockSize + 0.5
-            );
-          }
-        }
-      }
-    }
-  };
-
-  // Generate and download the custom PNG image using HTML5 Canvas
+  // Generate and download the custom PNG image using html-to-image
   const handleDownloadImage = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!cardRef.current) return;
     setDownloading(true);
 
     try {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const width = 800;
-      const height = 500;
-      canvas.width = width;
-      canvas.height = height;
-
-      // 1. Draw Background Gradient
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      if (type === 'worker') {
-        gradient.addColorStop(0, '#022c22'); // Deep emerald
-        gradient.addColorStop(0.5, '#064e3b'); 
-        gradient.addColorStop(1, '#022c22');
-      } else if (type === 'task') {
-        gradient.addColorStop(0, '#0f172a'); // Midnight slate
-        gradient.addColorStop(0.6, '#1e1b4b'); // Deep indigo accent
-        gradient.addColorStop(1, '#0f172a');
-      } else {
-        gradient.addColorStop(0, '#022c22'); // Rich Velgo gold-emerald
-        gradient.addColorStop(0.5, '#0f172a');
-        gradient.addColorStop(1, '#111827');
-      }
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Add elegant visual background accents
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < width; i += 40) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i + 200, height);
-        ctx.stroke();
-      }
-
-      // 2. Draw Velgo Logo text & tagline at top left
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 italic 32px sans-serif';
-      ctx.fillText('VELGO', 45, 65);
-
-      ctx.fillStyle = '#10b981'; // Emerald
-      ctx.font = '900 12px sans-serif';
-      ctx.fillText('NIGERIA', 45, 82);
-
-      // Draw subtle separator line
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(45, 105);
-      ctx.lineTo(width - 45, 105);
-      ctx.stroke();
-
-      // 3. Draw Main Graphic Content
-      if (type === 'worker') {
-        // --- WORKER GRAPHIC ---
-        // Profile Circle Badge
-        ctx.fillStyle = '#059669';
-        ctx.beginPath();
-        ctx.arc(110, 230, 60, 0, Math.PI * 2);
-        ctx.fill();
-
-        // White border around avatar
-        ctx.strokeStyle = '#34d399';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        // Worker Initials inside Avatar
-        const initials = data?.full_name ? data.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'VA';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(initials, 110, 242);
-        ctx.textAlign = 'left'; // Reset
-
-        // Worker Name and Category
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 30px sans-serif';
-        ctx.fillText(data?.full_name || 'Verified Artisan', 195, 215);
-
-        ctx.fillStyle = '#a7f3d0'; // Soft emerald text
-        ctx.font = 'bold 18px sans-serif';
-        ctx.fillText(data?.category || 'Professional Service', 195, 242);
-
-        // Verification Badge Tag
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-        ctx.fillRect(195, 255, 180, 28);
-        ctx.fillStyle = '#34d399';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('✓ VERIFIED NIGERIAN ARTISAN', 205, 273);
-
-        // Grid Metrics Info boxes
-        const drawMetricBox = (x: number, y: number, label: string, val: string, isAccent = false) => {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-          ctx.fillRect(x, y, 140, 75);
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.strokeRect(x, y, 140, 75);
-
-          ctx.fillStyle = '#9ca3af';
-          ctx.font = 'bold 10px sans-serif';
-          ctx.fillText(label.toUpperCase(), x + 12, y + 25);
-
-          ctx.fillStyle = isAccent ? '#10b981' : '#ffffff';
-          ctx.font = '900 18px sans-serif';
-          ctx.fillText(val, x + 12, y + 55);
-        };
-
-        drawMetricBox(45, 340, 'Starting At', `₦${data?.starting_price || '0'}`);
-        drawMetricBox(195, 340, 'Rating', `${data?.worker_avg_rating || '5.0'} ★`);
-        drawMetricBox(345, 340, 'Trust Score', `${data?.trust_score || '0'} Pts`, true);
-
-      } else if (type === 'task') {
-        // --- JOB / TASK GRAPHIC ---
-        // Status chip
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
-        ctx.fillRect(45, 140, 160, 28);
-        ctx.fillStyle = '#818cf8';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('✦ VERIFIED JOB OPENING', 55, 158);
-
-        // Job Title (word wrap)
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 32px sans-serif';
-        const titleStr = data?.title || 'Job Request';
-        if (titleStr.length > 35) {
-          ctx.fillText(titleStr.substring(0, 32) + '...', 45, 215);
-        } else {
-          ctx.fillText(titleStr, 45, 215);
-        }
-
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '600 18px sans-serif';
-        ctx.fillText(`Category: ${data?.category || 'General Labor'}`, 45, 250);
-
-        // Budget Card
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        ctx.fillRect(45, 285, 220, 130);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.strokeRect(45, 285, 220, 130);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('ESTIMATED BUDGET', 60, 315);
-
-        ctx.fillStyle = '#10b981'; // Emerald Green Price
-        ctx.font = '900 28px sans-serif';
-        ctx.fillText(`₦${data?.budget ? Number(data.budget).toLocaleString() : 'Negotiable'}`, 60, 355);
-
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = '500 12px sans-serif';
-        ctx.fillText(data?.address_city ? `📍 ${data.address_city}, ${data.address_state || 'Nigeria'}` : '📍 Lagos, Nigeria', 60, 395);
-
-        // Job details point list on the right
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = '600 14px sans-serif';
-        ctx.fillText('✓ Direct, verified client interaction', 300, 310);
-        ctx.fillText('✓ Transparent work milestones & updates', 300, 345);
-        ctx.fillText('✓ Connect directly on WhatsApp/Phone', 300, 380);
-
-      } else {
-        // --- GENERAL APP SHARE GRAPHIC ---
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 36px sans-serif';
-        ctx.fillText("Nigeria's Trusted Artisan Hub", 45, 160);
-
-        ctx.fillStyle = '#a7f3d0';
-        ctx.font = '500 16px sans-serif';
-        ctx.fillText("Directly find, book, and chat with 100% verified local professionals.", 45, 195);
-
-        // Core App Features Points
-        const drawFeatureBullet = (y: number, title: string, desc: string) => {
-          ctx.fillStyle = '#10b981';
-          ctx.beginPath();
-          ctx.arc(60, y + 5, 6, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 15px sans-serif';
-          ctx.fillText(title, 80, y + 10);
-
-          ctx.fillStyle = '#9ca3af';
-          ctx.font = '500 13px sans-serif';
-          ctx.fillText(desc, 320, y + 10);
-        };
-
-        drawFeatureBullet(240, 'NIN-Verified Professionals', 'Full background & identity validation');
-        drawFeatureBullet(285, 'Direct WhatsApp Integration', 'No platform middlemen, connect instantly');
-        drawFeatureBullet(330, 'Milestone Tracking', 'Easy coordination of project updates');
-        drawFeatureBullet(375, 'Zero Platform Commissions', 'Keep 100% of your earnings');
-      }
-
-      // 4. Draw QR Code and Brand Call-To-Action on Right Edge
-      const qrX = width - 180;
-      const qrY = height - 195;
-      const qrSize = 135;
-      drawProceduralQRCode(ctx, qrX, qrY, qrSize);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px sans-serif';
-      ctx.fillText('SCAN TO CONNECT', qrX + 22, qrY + qrSize + 20);
-
-      ctx.fillStyle = '#10b981';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillText('velgo.ng', qrX + 42, qrY + qrSize + 35);
-
-      // 5. Finalize Download trigger
-      const dataUrl = canvas.toDataURL('image/png');
+      // html-to-image to extract the component
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
       const link = document.createElement('a');
       link.download = `velgo_${type}_share_card.png`;
       link.href = dataUrl;
@@ -378,159 +122,134 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Live Graphic Preview</label>
             
-            {/* HTML Rendering of Graphic Card */}
-            <div className={`relative overflow-hidden rounded-[24px] p-6 text-white border text-left aspect-[1.6/1] w-full flex flex-col justify-between shadow-lg ${
-              type === 'worker' 
-                ? 'bg-gradient-to-br from-emerald-950 via-teal-900 to-emerald-950 border-emerald-500/20' 
-                : type === 'task'
-                  ? 'bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-950 border-indigo-500/20'
-                  : 'bg-gradient-to-br from-emerald-950 via-slate-950 to-slate-950 border-emerald-500/20'
-            }`}>
-              
-              {/* Background fine lines decoration */}
-              <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
-              
-              {/* Top Row: Velgo Brand and Mini Shield Logo */}
-              <div className="flex justify-between items-start z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+            {/* THIS IS THE ACTUAL DOM RENDERED TO IMAGE */}
+            <div className="overflow-hidden rounded-[24px] shadow-lg border border-slate-200">
+              <div 
+                ref={cardRef}
+                className="relative bg-white text-slate-900 p-8 w-full flex flex-col justify-between"
+                style={{ width: '800px', height: '420px', transformOrigin: 'top left', transform: 'scale(0.42)', marginBottom: '-240px' }} // Scale it down for preview, but export at full resolution
+              >
+                {/* Background Pattern */}
+                <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                
+                {/* Header: Logo and Brand */}
+                <div className="flex justify-between items-center z-10">
+                  <div className="flex items-center gap-3">
                     <img 
                       src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png" 
-                      className="w-5 h-5 object-contain"
-                      alt="Velgo"
+                      className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100"
+                      alt="Velgo Icon"
+                      crossOrigin="anonymous"
                     />
-                  </div>
-                  <div>
-                    <h4 className="font-black italic tracking-tighter text-sm leading-none">VELGO</h4>
-                    <span className="text-emerald-500 text-[8px] font-black uppercase tracking-wider leading-none block mt-0.5">NIGERIA</span>
-                  </div>
-                </div>
-                
-                {/* Visual verified badge or indicator */}
-                <div className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[8px] uppercase tracking-widest font-black text-slate-200">
-                    {type === 'worker' ? 'Verified Expert' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Middle Row: Content */}
-              <div className="my-4 z-10 flex-1 flex flex-col justify-center">
-                {type === 'worker' && data && (
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-emerald-700 text-white rounded-full flex items-center justify-center font-black text-lg border-2 border-emerald-400/50 shadow-inner">
-                      {data.full_name ? data.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'VA'}
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-black tracking-tight text-white line-clamp-1">{data.full_name}</h3>
-                      <p className="text-xs text-emerald-300 font-bold tracking-wide">{data.category || 'Professional Service'}</p>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[8px] font-black tracking-widest uppercase">
-                        ✓ Identity Checked
-                      </span>
+                    <div>
+                      <h4 className="font-black italic tracking-tighter text-3xl leading-none text-emerald-950">VELGO</h4>
+                      <span className="text-emerald-500 font-black uppercase tracking-[0.2em] text-xs leading-none block mt-1">NIGERIA</span>
                     </div>
                   </div>
-                )}
-
-                {type === 'task' && data && (
-                  <div className="space-y-1.5">
-                    <span className="text-[8px] uppercase tracking-widest font-black text-indigo-400">Task Title</span>
-                    <h3 className="text-lg font-black tracking-tight text-white line-clamp-1">{data.title}</h3>
-                    <p className="text-xs text-slate-300 font-bold tracking-wide flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                      {data.category || 'Professional Labor'}
-                    </p>
+                  <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full border border-emerald-100 flex items-center gap-2 shadow-sm">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-sm font-black uppercase tracking-widest">
+                      {type === 'worker' ? 'Verified Artisan' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
+                    </span>
                   </div>
-                )}
+                </div>
 
-                {type === 'app' && (
-                  <div className="space-y-1">
-                    <h3 className="text-base font-black tracking-tight text-white leading-tight">Nigeria's Trusted Artisan Hub</h3>
-                    <p className="text-[10px] text-slate-300 font-semibold leading-relaxed">
-                      Connect directly on WhatsApp with vetted, identity-verified local plumbers, electricians, painters & and technicians!
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Row: Details and QR Code representation */}
-              <div className="flex justify-between items-end border-t border-white/5 pt-3 z-10">
-                <div className="flex items-center gap-4 text-left">
-                  {type === 'worker' && (
-                    <div className="flex gap-4">
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-bold">Starts at</span>
-                        <span className="text-xs font-black text-white">₦{data?.starting_price || '0'}</span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-bold">Rating</span>
-                        <span className="text-xs font-black text-white flex items-center gap-0.5">{data?.worker_avg_rating || '5.0'} <i className="fa-solid fa-star text-yellow-400 text-[10px]"></i></span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-emerald-400 uppercase tracking-widest block font-bold">Trust Score</span>
-                        <span className="text-xs font-black text-emerald-400">{data?.trust_score || '0'} Pts</span>
+                {/* Main Body */}
+                <div className="flex-1 flex items-center my-6 z-10">
+                  {type === 'worker' && data && (
+                    <div className="flex gap-6 items-center w-full">
+                      {workerAvatar ? (
+                        <img src={workerAvatar} className="w-32 h-32 rounded-full object-cover border-4 border-emerald-100 shadow-md" crossOrigin="anonymous" alt="Worker" />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center text-4xl font-black text-emerald-700 shadow-md">
+                          {data.full_name ? data.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'VA'}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <h2 className="text-4xl font-black text-slate-900 leading-tight mb-2">{data.full_name}</h2>
+                        <p className="text-xl font-bold text-emerald-600 mb-3">{data.category || 'Professional Service'}</p>
+                        <div className="flex gap-4 mt-4">
+                          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Starting At</p>
+                            <p className="text-xl font-black text-slate-800">₦{data.starting_price || '0'}</p>
+                          </div>
+                          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Rating</p>
+                            <p className="text-xl font-black text-slate-800">{data.worker_avg_rating || '5.0'} ★</p>
+                          </div>
+                          <div className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Trust</p>
+                            <p className="text-xl font-black text-emerald-700">{data.trust_score || '0'} Pts</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {type === 'task' && (
-                    <div className="flex gap-4">
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-bold">Budget</span>
-                        <span className="text-xs font-black text-emerald-400">₦{data?.budget ? Number(data.budget).toLocaleString() : 'Negotiable'}</span>
+                  {type === 'task' && data && (
+                    <div className="flex gap-6 items-center w-full">
+                      <div className="flex-1">
+                        <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-black uppercase tracking-widest rounded-md mb-4 border border-indigo-100">Task Opening</span>
+                        <h2 className="text-4xl font-black text-slate-900 leading-tight mb-3 line-clamp-2">{data.title}</h2>
+                        <p className="text-xl font-bold text-slate-600 flex items-center gap-2 mb-4">
+                           {data.category || 'Professional Labor'}
+                        </p>
+                        <div className="flex gap-4 mt-2">
+                          <div className="bg-emerald-50 px-5 py-3 rounded-xl border border-emerald-100">
+                            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Estimated Budget</p>
+                            <p className="text-2xl font-black text-emerald-700 mt-1">₦{data.budget ? Number(data.budget).toLocaleString() : 'Negotiable'}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-bold">Location</span>
-                        <span className="text-xs font-black text-white truncate max-w-[100px] block">
-                          {data?.address_city ? `${data.address_city}, ${data.address_state || ''}` : 'Lagos, NG'}
-                        </span>
-                      </div>
+                      {taskImage && (
+                        <img src={taskImage} className="w-40 h-40 object-cover rounded-2xl shadow-md border border-slate-100" crossOrigin="anonymous" alt="Task" />
+                      )}
                     </div>
                   )}
 
                   {type === 'app' && (
-                    <div>
-                      {data?.referral_code ? (
-                        <div>
-                          <span className="text-[8px] text-emerald-400 uppercase tracking-widest block font-bold">Invite Code</span>
-                          <span className="text-xs font-black text-emerald-400 tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25">{data.referral_code}</span>
+                    <div className="flex-1 pr-10">
+                      <h2 className="text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Nigeria's Trusted Artisan Hub</h2>
+                      <p className="text-xl font-medium text-slate-600 leading-relaxed mb-6">
+                        Connect directly on WhatsApp with vetted, identity-verified local plumbers, electricians, painters & technicians.
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                          <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
+                          <span className="font-bold text-slate-700 text-lg">Strict NIN & Identity Validation</span>
                         </div>
-                      ) : (
-                        <div>
-                          <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-bold">Scan to visit</span>
-                          <span className="text-xs font-black text-emerald-400">velgo.ng</span>
+                        <div className="flex items-center gap-3">
+                          <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
+                          <span className="font-bold text-slate-700 text-lg">Zero Platform Commissions</span>
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* QR Code Graphic Mockup */}
-                <div className="w-12 h-12 bg-white rounded-lg p-1 border border-white/20 flex items-center justify-center">
-                  <div className="grid grid-cols-4 gap-0.5 w-full h-full opacity-90">
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-transparent"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    
-                    <div className="bg-transparent"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-transparent"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-transparent"></div>
-                    
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-transparent"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
+                {/* Footer Section: URL and QR */}
+                <div className="flex justify-between items-end border-t-2 border-slate-100 pt-6 z-10">
+                  <div>
+                    {type === 'app' && data?.referral_code && (
+                      <div className="mb-2">
+                        <span className="text-sm font-black text-slate-400 uppercase tracking-widest block">Invite Code</span>
+                        <span className="text-2xl font-black text-emerald-600 tracking-widest">{data.referral_code}</span>
+                      </div>
+                    )}
+                    <span className="text-sm font-black text-slate-400 uppercase tracking-widest block mb-1">Scan to Visit</span>
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">velgo.com.ng</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm font-black text-slate-800">Scan this QR Code</p>
+                      <p className="text-xs font-medium text-slate-500">to view on your phone</p>
+                    </div>
+                    <img src={qrCodeUrl} className="w-24 h-24 rounded-xl shadow-sm border border-slate-200 p-1 bg-white" crossOrigin="anonymous" alt="QR Code" />
                   </div>
                 </div>
-              </div>
 
+              </div>
             </div>
           </div>
 
@@ -558,17 +277,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
             <button
               onClick={handleDownloadImage}
               disabled={downloading}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black text-sm py-4 px-6 rounded-2xl active:scale-95 transition-all disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black text-sm py-4 px-6 rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg"
             >
               {downloading ? (
                 <>
                   <i className="fa-solid fa-circle-notch animate-spin"></i>
-                  Generating...
+                  Exporting...
                 </>
               ) : (
                 <>
-                  <i className="fa-solid fa-circle-arrow-down text-base"></i>
-                  Download PNG Card
+                  <i className="fa-solid fa-image text-base"></i>
+                  Save Image
                 </>
               )}
             </button>
@@ -582,17 +301,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
             </button>
 
           </div>
-
-          {/* Hidden Canvas used to compile the actual downloadable high-res image */}
-          <canvas ref={canvasRef} className="hidden" />
-
         </div>
-
-        {/* Modal Footer disclaimer */}
-        <div className="p-4 bg-slate-950/50 border-t border-slate-800/80 text-center text-[10px] text-slate-500 font-medium">
-          ✦ Premium visual shares from Velgo Nigeria. Trusted services. Zero commissions.
-        </div>
-
       </div>
     </div>
   );
