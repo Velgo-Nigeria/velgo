@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { VerificationBadge } from '../components/VerificationBadge';
 import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 import { openWhatsAppHelper } from '../lib/whatsapp';
+import { ShareModal } from '../components/ShareModal';
 
 interface TaskDetailProps { 
   profile: Profile | null; 
@@ -34,6 +35,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgr
   // Modals
   const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
   // Proposal Bid Quote Modal States
   const [showProposalModal, setShowProposalModal] = useState(false);
@@ -305,38 +307,9 @@ UID: ${profile.id}
       }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!task) return;
-    const text = `Check out this job: "${task.title}" on Velgo Nigeria! Find verified local artisans and client work.`;
-    const url = `${window.location.origin}/?jobId=${task.id}`;
-    
-    // Copy URL to clipboard automatically so user can paste it anywhere
-    try {
-        await navigator.clipboard.writeText(url);
-    } catch (err) {
-        console.warn("Clipboard copy failed: ", err);
-    }
-
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: `Velgo Nigeria Job: ${task.title}`,
-                text: text,
-                url: url
-            });
-        } catch (err: any) {
-            // User aborted or error occurred; show secondary feedback toast
-            if (err.name !== 'AbortError') {
-                setShowShareToast(true);
-                setTimeout(() => setShowShareToast(false), 3000);
-            }
-        }
-    } else {
-        // Fallback: Open WhatsApp with prefilled message
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 3000);
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n\nLink: ' + url)}`, '_blank');
-    }
+    setIsShareModalOpen(true);
   };
 
   const handleToggleBookmark = async () => {
@@ -913,6 +886,14 @@ UID: ${profile.id}
             </div>
         </div>
       )}
+
+      {/* Share Graphic Card Modal */}
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        type="task" 
+        data={task} 
+      />
     </div>
   );
 };

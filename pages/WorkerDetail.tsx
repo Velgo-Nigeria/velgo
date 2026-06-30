@@ -6,6 +6,7 @@ import { getTierLimit } from '../lib/constants';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 import { openWhatsAppHelper } from '../lib/whatsapp';
+import { ShareModal } from '../components/ShareModal';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -22,6 +23,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [loading, setLoading] = useState(true);
   const [showShareToast, setShowShareToast] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Profile Reporting Subsystem States
   const [showReportModal, setShowReportModal] = useState(false);
@@ -227,37 +229,9 @@ UID: ${profile.id}
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!worker) return;
-    const text = `Check out "${worker.full_name}" (${worker.category || 'Professional Artisan'}) on Velgo Nigeria! Hire verified local expertise.`;
-    const url = `${window.location.origin}/?workerId=${worker.id}`;
-    
-    // Copy URL to clipboard automatically so user can paste it anywhere
-    try {
-        await navigator.clipboard.writeText(url);
-    } catch (err) {
-        console.warn("Clipboard copy failed: ", err);
-    }
-
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: `Velgo Nigeria Artisan: ${worker.full_name}`,
-                text: text,
-                url: url
-            });
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                setShowShareToast(true);
-                setTimeout(() => setShowShareToast(false), 3000);
-            }
-        }
-    } else {
-        // Fallback: Open WhatsApp with prefilled message
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 3000);
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n\nLink: ' + url)}`, '_blank');
-    }
+    setIsShareModalOpen(true);
   };
 
   const handleToggleBookmark = async () => {
@@ -639,6 +613,14 @@ UID: ${profile.id}
             </div>
         </div>
       )}
+
+      {/* Sharing Graphic Card Modal */}
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        type="worker" 
+        data={worker} 
+      />
     </div>
   );
 };

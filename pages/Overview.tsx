@@ -4,6 +4,7 @@ import { Profile } from '../lib/types';
 import { openWhatsAppHelper } from '../lib/whatsapp';
 import { GoogleGenAI } from "@google/genai";
 import { SavedBookmarksWidget } from '../components/SavedBookmarksWidget';
+import { ShareModal } from '../components/ShareModal';
 
 interface OverviewProps {
   profile: Profile | null;
@@ -105,6 +106,7 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
   const [loadingReferrals, setLoadingReferrals] = useState<boolean>(true);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
   // Safety form state
   const [incidentType, setIncidentType] = useState('Fraud');
@@ -1107,6 +1109,17 @@ UID: ${profile.id}
                   </button>
                 </div>
               )}
+
+              <div className="pt-3 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <i className="fa-solid fa-share-nodes text-xs"></i>
+                  Share Premium Graphic Card
+                </button>
+              </div>
             </div>
 
             {/* Referrals Count and Progress Tracker */}
@@ -1561,6 +1574,13 @@ UID: ${profile.id}
         </div>
       )}
 
+      {/* Share Custom App Card Modal */}
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        type="app" 
+        data={profile} 
+      />
     </div>
   );
 };
