@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { toPng } from 'html-to-image';
+import { VelgoLogo } from './Brand';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -13,24 +14,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
   const [downloading, setDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  // Force production domain for shared links and QR codes
+  const baseUrl = "https://velgo.com.ng";
+
   // Set up the shareable URL and text descriptions
-  let shareUrl = window.location.origin;
+  let shareUrl = baseUrl;
   let textDesc = "Connect with verified local artisans on Velgo Nigeria!";
   let title = "Velgo Nigeria";
 
   if (type === 'worker' && data) {
-    shareUrl = `${window.location.origin}/?workerId=${data.id}`;
+    shareUrl = `${baseUrl}/?workerId=${data.id}`;
     textDesc = `Hire ${data.full_name} (${data.category || 'Professional Artisan'}) on Velgo Nigeria. Verified local expertise.`;
     title = `Artisan: ${data.full_name}`;
   } else if (type === 'task' && data) {
-    shareUrl = `${window.location.origin}/?jobId=${data.id}`;
+    shareUrl = `${baseUrl}/?jobId=${data.id}`;
     textDesc = `New Job on Velgo Nigeria: "${data.title}" - Category: ${data.category || 'Artisan'}. Check details and apply.`;
     title = `Job Post: ${data.title}`;
   } else if (type === 'app') {
     const referralCode = data?.referral_code;
     shareUrl = referralCode 
-      ? `${window.location.origin}/?code=${referralCode}` 
-      : (data?.id ? `${window.location.origin}/?ref=${data.id}` : window.location.origin);
+      ? `${baseUrl}/?code=${referralCode}` 
+      : (data?.id ? `${baseUrl}/?ref=${data.id}` : baseUrl);
     textDesc = `Join Velgo Nigeria to find and book verified local artisans near you! Use my referral link.`;
     title = "Join Velgo Nigeria";
   }
@@ -78,8 +82,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
     setDownloading(true);
 
     try {
-      // html-to-image to extract the component
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      // html-to-image to extract the component.
+      // We pass the actual width and height to force the correct canvas size, avoiding the scale bug.
+      const dataUrl = await toPng(cardRef.current, { 
+        cacheBust: true, 
+        pixelRatio: 2,
+        width: 800,
+        height: 420,
+        style: {
+          transform: 'none' // Ensure no transforms are applied to the captured node
+        }
+      });
       const link = document.createElement('a');
       link.download = `velgo_${type}_share_card.png`;
       link.href = dataUrl;
@@ -122,134 +135,135 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Live Graphic Preview</label>
             
-            {/* THIS IS THE ACTUAL DOM RENDERED TO IMAGE */}
-            <div className="overflow-hidden rounded-[24px] shadow-lg border border-slate-200">
-              <div 
-                ref={cardRef}
-                className="relative bg-white text-slate-900 p-8 w-full flex flex-col justify-between"
-                style={{ width: '800px', height: '420px', transformOrigin: 'top left', transform: 'scale(0.42)', marginBottom: '-240px' }} // Scale it down for preview, but export at full resolution
-              >
-                {/* Background Pattern */}
-                <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-                
-                {/* Header: Logo and Brand */}
-                <div className="flex justify-between items-center z-10">
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src="https://mrnypajnlltkuitfzgkh.supabase.co/storage/v1/object/public/branding/velgo-app-icon.png" 
-                      className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100"
-                      alt="Velgo Icon"
-                      crossOrigin="anonymous"
-                    />
-                    <div>
-                      <h4 className="font-black italic tracking-tighter text-3xl leading-none text-emerald-950">VELGO</h4>
-                      <span className="text-emerald-500 font-black uppercase tracking-[0.2em] text-xs leading-none block mt-1">NIGERIA</span>
+            {/* THIS IS THE ACTUAL DOM RENDERED TO IMAGE. We wrap it in a scaling div for the preview so the target node itself is full size. */}
+            <div className="overflow-hidden rounded-[24px] shadow-lg border border-slate-200 relative bg-slate-100" style={{ height: '220px' }}>
+              
+              <div style={{ transform: 'scale(0.48)', transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, width: '800px', height: '420px' }}>
+                <div 
+                  ref={cardRef}
+                  className="bg-white text-slate-900 p-8 w-full flex flex-col justify-between"
+                  style={{ width: '800px', height: '420px' }}
+                >
+                  {/* Background Pattern */}
+                  <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                  
+                  {/* Header: Logo and Brand */}
+                  <div className="flex justify-between items-center z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 bg-emerald-950 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-emerald-500">
+                        <VelgoLogo className="w-10 h-10" />
+                      </div>
+                      <div>
+                        <h4 className="font-black italic tracking-tighter text-3xl leading-none text-emerald-950">VELGO</h4>
+                        <span className="text-emerald-500 font-black uppercase tracking-[0.2em] text-xs leading-none block mt-1">NIGERIA</span>
+                      </div>
+                    </div>
+                    <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full border border-emerald-100 flex items-center gap-2 shadow-sm">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      <span className="text-sm font-black uppercase tracking-widest">
+                        {type === 'worker' ? 'Verified Artisan' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
+                      </span>
                     </div>
                   </div>
-                  <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full border border-emerald-100 flex items-center gap-2 shadow-sm">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span className="text-sm font-black uppercase tracking-widest">
-                      {type === 'worker' ? 'Verified Artisan' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Main Body */}
-                <div className="flex-1 flex items-center my-6 z-10">
-                  {type === 'worker' && data && (
-                    <div className="flex gap-6 items-center w-full">
-                      {workerAvatar ? (
-                        <img src={workerAvatar} className="w-32 h-32 rounded-full object-cover border-4 border-emerald-100 shadow-md" crossOrigin="anonymous" alt="Worker" />
-                      ) : (
-                        <div className="w-32 h-32 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center text-4xl font-black text-emerald-700 shadow-md">
-                          {data.full_name ? data.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'VA'}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h2 className="text-4xl font-black text-slate-900 leading-tight mb-2">{data.full_name}</h2>
-                        <p className="text-xl font-bold text-emerald-600 mb-3">{data.category || 'Professional Service'}</p>
-                        <div className="flex gap-4 mt-4">
-                          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Starting At</p>
-                            <p className="text-xl font-black text-slate-800">₦{data.starting_price || '0'}</p>
+                  {/* Main Body */}
+                  <div className="flex-1 flex items-center my-6 z-10">
+                    {type === 'worker' && data && (
+                      <div className="flex gap-6 items-center w-full">
+                        {workerAvatar ? (
+                          <img src={workerAvatar} className="w-32 h-32 rounded-full object-cover border-4 border-emerald-100 shadow-md" alt="Worker" />
+                        ) : (
+                          <div className="w-32 h-32 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center text-4xl font-black text-emerald-700 shadow-md">
+                            {data.full_name ? data.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'VA'}
                           </div>
-                          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Rating</p>
-                            <p className="text-xl font-black text-slate-800">{data.worker_avg_rating || '5.0'} ★</p>
-                          </div>
-                          <div className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
-                            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Trust</p>
-                            <p className="text-xl font-black text-emerald-700">{data.trust_score || '0'} Pts</p>
+                        )}
+                        <div className="flex-1">
+                          <h2 className="text-4xl font-black text-slate-900 leading-tight mb-2">{data.full_name}</h2>
+                          <p className="text-xl font-bold text-emerald-600 mb-3">{data.category || 'Professional Service'}</p>
+                          <div className="flex gap-4 mt-4">
+                            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Starting At</p>
+                              <p className="text-xl font-black text-slate-800">₦{data.starting_price || '0'}</p>
+                            </div>
+                            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Rating</p>
+                              <p className="text-xl font-black text-slate-800">{data.worker_avg_rating || '5.0'} ★</p>
+                            </div>
+                            <div className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                              <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Trust</p>
+                              <p className="text-xl font-black text-emerald-700">{data.trust_score || '0'} Pts</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {type === 'task' && data && (
-                    <div className="flex gap-6 items-center w-full">
-                      <div className="flex-1">
-                        <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-black uppercase tracking-widest rounded-md mb-4 border border-indigo-100">Task Opening</span>
-                        <h2 className="text-4xl font-black text-slate-900 leading-tight mb-3 line-clamp-2">{data.title}</h2>
-                        <p className="text-xl font-bold text-slate-600 flex items-center gap-2 mb-4">
-                           {data.category || 'Professional Labor'}
-                        </p>
-                        <div className="flex gap-4 mt-2">
-                          <div className="bg-emerald-50 px-5 py-3 rounded-xl border border-emerald-100">
-                            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Estimated Budget</p>
-                            <p className="text-2xl font-black text-emerald-700 mt-1">₦{data.budget ? Number(data.budget).toLocaleString() : 'Negotiable'}</p>
-                          </div>
-                        </div>
-                      </div>
-                      {taskImage && (
-                        <img src={taskImage} className="w-40 h-40 object-cover rounded-2xl shadow-md border border-slate-100" crossOrigin="anonymous" alt="Task" />
-                      )}
-                    </div>
-                  )}
-
-                  {type === 'app' && (
-                    <div className="flex-1 pr-10">
-                      <h2 className="text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Nigeria's Trusted Artisan Hub</h2>
-                      <p className="text-xl font-medium text-slate-600 leading-relaxed mb-6">
-                        Connect directly on WhatsApp with vetted, identity-verified local plumbers, electricians, painters & technicians.
-                      </p>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                          <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
-                          <span className="font-bold text-slate-700 text-lg">Strict NIN & Identity Validation</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
-                          <span className="font-bold text-slate-700 text-lg">Zero Platform Commissions</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Section: URL and QR */}
-                <div className="flex justify-between items-end border-t-2 border-slate-100 pt-6 z-10">
-                  <div>
-                    {type === 'app' && data?.referral_code && (
-                      <div className="mb-2">
-                        <span className="text-sm font-black text-slate-400 uppercase tracking-widest block">Invite Code</span>
-                        <span className="text-2xl font-black text-emerald-600 tracking-widest">{data.referral_code}</span>
                       </div>
                     )}
-                    <span className="text-sm font-black text-slate-400 uppercase tracking-widest block mb-1">Scan to Visit</span>
-                    <span className="text-2xl font-black text-slate-900 tracking-tight">velgo.com.ng</span>
+
+                    {type === 'task' && data && (
+                      <div className="flex gap-6 items-center w-full">
+                        <div className="flex-1">
+                          <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-black uppercase tracking-widest rounded-md mb-4 border border-indigo-100">Task Opening</span>
+                          <h2 className="text-4xl font-black text-slate-900 leading-tight mb-3 line-clamp-2">{data.title}</h2>
+                          <p className="text-xl font-bold text-slate-600 flex items-center gap-2 mb-4">
+                             {data.category || 'Professional Labor'}
+                          </p>
+                          <div className="flex gap-4 mt-2">
+                            <div className="bg-emerald-50 px-5 py-3 rounded-xl border border-emerald-100">
+                              <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Estimated Budget</p>
+                              <p className="text-2xl font-black text-emerald-700 mt-1">₦{data.budget ? Number(data.budget).toLocaleString() : 'Negotiable'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        {taskImage && (
+                          <img src={taskImage} className="w-40 h-40 object-cover rounded-2xl shadow-md border border-slate-100" alt="Task" />
+                        )}
+                      </div>
+                    )}
+
+                    {type === 'app' && (
+                      <div className="flex-1 pr-10">
+                        <h2 className="text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Nigeria's Trusted Artisan Hub</h2>
+                        <p className="text-xl font-medium text-slate-600 leading-relaxed mb-6">
+                          Connect directly on WhatsApp with vetted, identity-verified local plumbers, electricians, painters & technicians.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
+                            <span className="font-bold text-slate-700 text-lg">Strict NIN & Identity Validation</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <i className="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
+                            <span className="font-bold text-slate-700 text-lg">Zero Platform Commissions</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-sm font-black text-slate-800">Scan this QR Code</p>
-                      <p className="text-xs font-medium text-slate-500">to view on your phone</p>
+                  {/* Footer Section: URL and QR */}
+                  <div className="flex justify-between items-end border-t-2 border-slate-100 pt-6 z-10">
+                    <div>
+                      {type === 'app' && data?.referral_code && (
+                        <div className="mb-2">
+                          <span className="text-sm font-black text-slate-400 uppercase tracking-widest block">Invite Code</span>
+                          <span className="text-2xl font-black text-emerald-600 tracking-widest">{data.referral_code}</span>
+                        </div>
+                      )}
+                      <span className="text-sm font-black text-slate-400 uppercase tracking-widest block mb-1">Scan to Visit</span>
+                      <span className="text-2xl font-black text-slate-900 tracking-tight">velgo.com.ng</span>
                     </div>
-                    <img src={qrCodeUrl} className="w-24 h-24 rounded-xl shadow-sm border border-slate-200 p-1 bg-white" crossOrigin="anonymous" alt="QR Code" />
-                  </div>
-                </div>
 
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm font-black text-slate-800">Scan this QR Code</p>
+                        <p className="text-xs font-medium text-slate-500">to view on your phone</p>
+                      </div>
+                      <img src={qrCodeUrl} className="w-24 h-24 rounded-xl shadow-sm border border-slate-200 p-1 bg-white" alt="QR Code" />
+                    </div>
+                  </div>
+
+                </div>
               </div>
+
             </div>
           </div>
 
@@ -306,3 +320,4 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
     </div>
   );
 };
+
