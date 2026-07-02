@@ -112,7 +112,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
           *, 
           client:client_id(id, full_name, email, phone_number, avatar_url),
           worker:worker_id(id, full_name, email, phone_number, avatar_url, bank_name, account_number, account_name), 
-          posted_tasks:task_id(id, title, description, budget, status, assigned_worker_id)
+          posted_tasks:task_id(id, title, description, budget, budget_type, status, assigned_worker_id)
         `)
         .or(`client_id.eq.${profile.id},worker_id.eq.${profile.id}`)
         .order('created_at', { ascending: false })
@@ -1491,7 +1491,13 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                            {item.posted_tasks?.budget && (
                               <div className="text-right">
                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Client Budget</p>
-                                 <p className="text-xs font-black text-gray-600 dark:text-gray-300 mt-0.5">₦{Number(item.posted_tasks.budget).toLocaleString()}</p>
+                                 <p className="text-xs font-black text-gray-600 dark:text-gray-300 mt-0.5">
+                                   {item.posted_tasks.budget_type === 'negotiable' ? (
+                                      "Negotiable"
+                                   ) : (
+                                      <>₦{Number(item.posted_tasks.budget).toLocaleString()}{item.posted_tasks.budget_type && item.posted_tasks.budget_type !== 'fixed' ? <span className="text-[10px] ml-0.5 font-bold">/{item.posted_tasks.budget_type === 'daily' ? 'day' : item.posted_tasks.budget_type === 'weekly' ? 'wk' : 'mo'}</span> : ''}</>
+                                   )}
+                                 </p>
                               </div>
                            )}
                         </div>
@@ -1521,7 +1527,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                  </span>
                               )}
                               {!item.quote_covers_labor && !item.quote_covers_materials && !item.quote_covers_transport && !item.quote_covers_other && (
-                                 <span className="text-[8px] font-black uppercase tracking-wider bg-gray-50 text-gray-400 px-2 py-0.5 rounded-lg">
+                                 <span className="text-[8px] font-black uppercase tracking-wider bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-300 px-2 py-0.5 rounded-lg">
                                     Unspecified Included Items
                                  </span>
                               )}
@@ -1796,11 +1802,11 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         {/* Upgrade / Token Refill Modal */}
         {showUpgradeModal && (
             <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 mb-4">
                 <i className="fa-solid fa-coins text-2xl"></i>
                 </div>
-                <h3 className="text-xl font-black text-gray-900 leading-tight">Out of Tokens!</h3>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight">Out of Tokens!</h3>
                 <p className="text-sm text-gray-500 font-medium leading-relaxed">
                 You need a Token to accept this job. Please buy a refill pack to continue.
                 </p>
@@ -1825,11 +1831,11 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         {/* Nudge Client Modal */}
         {showClientNudgeModal && (
             <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl space-y-4">
                 <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-4 animate-bounce">
                 <i className="fa-solid fa-paper-plane text-2xl"></i>
                 </div>
-                <h3 className="text-xl font-black text-gray-900 leading-tight">Client Nudge Alert!</h3>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight">Client Nudge Alert!</h3>
                 <p className="text-sm text-gray-500 font-medium leading-relaxed">
                     This client ({nudgedClientName}) needs to replenish their hiring tokens to complete the match. We’ve sent them an instant nudge! Once they top up, this job is yours.
                 </p>

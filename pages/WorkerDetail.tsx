@@ -245,7 +245,7 @@ UID: ${profile.id}
 
   if (loading) {
     return (
-      <div className="text-center py-20 text-gray-400 animate-pulse font-sans bg-white min-h-screen flex flex-col items-center justify-center">
+      <div className="text-center py-20 text-gray-400 animate-pulse font-sans bg-white dark:bg-gray-950 min-h-screen flex flex-col items-center justify-center">
           <i className="fa-solid fa-cloud-arrow-down text-4xl mb-3 text-brand animate-bounce"></i>
           <p className="font-black uppercase tracking-wider text-[10px]">Retrieving Artisan Profile...</p>
       </div>
@@ -254,12 +254,12 @@ UID: ${profile.id}
 
   if (!worker) {
     return (
-      <div className="p-10 text-center min-h-screen bg-white flex flex-col items-center justify-center space-y-6 animate-fadeIn">
+      <div className="p-10 text-center min-h-screen bg-white dark:bg-gray-950 flex flex-col items-center justify-center space-y-6 animate-fadeIn">
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-2xl font-black">
               <i className="fa-solid fa-triangle-exclamation animate-bounce"></i>
           </div>
           <div className="space-y-2">
-              <h2 className="text-lg font-black text-gray-900 uppercase tracking-wide">Artisan Offline</h2>
+              <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wide">Artisan Offline</h2>
               <p className="text-xs text-gray-500 max-w-xs mx-auto">This artisan public profile might have been suspended, deleted, or is temporarily unavailable.</p>
           </div>
           <button onClick={onBack} className="px-6 py-3 bg-brand text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-transform">
@@ -270,7 +270,7 @@ UID: ${profile.id}
   }
 
   return (
-    <div className="bg-white min-h-screen pb-24 relative">
+    <div className="bg-white dark:bg-gray-950 min-h-screen pb-24 relative">
 
       <div className="relative h-[45vh] bg-gray-900 overflow-hidden">
         
@@ -311,11 +311,11 @@ UID: ${profile.id}
         <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80 relative z-10" />
       </div>
       <div className="px-6 -mt-24 relative z-10">
-        <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white shadow-2xl object-cover bg-white" />
+        <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white dark:border-gray-900 shadow-2xl object-cover bg-white dark:bg-gray-900" />
         <div className="mt-6 space-y-8">
           <div>
               <div className="flex items-center gap-2 mb-1">
-                 <h1 className="text-3xl font-black text-gray-900">{worker?.full_name}</h1>
+                 <h1 className="text-3xl font-black text-gray-900 dark:text-white">{worker?.full_name}</h1>
                  {worker?.is_verified && <VerificationBadge className="text-blue-500 text-xl" />}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -417,7 +417,7 @@ UID: ${profile.id}
           <div className="space-y-4">
               <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide">Recent Reviews</h3>
               {reviews.length === 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-2xl text-center text-xs text-gray-400 font-medium italic">No written reviews yet.</div>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl text-center text-xs text-gray-400 font-medium italic">No written reviews yet.</div>
               ) : (
                   <>
                   {reviews.map((r, i) => {

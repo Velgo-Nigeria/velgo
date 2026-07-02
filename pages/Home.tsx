@@ -477,7 +477,10 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                           </div>
                           
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5">
-                              {viewMode === 'market' ? (item.subcategory || item.category || 'General Worker') : `Budget: ₦${(item.budget || 0).toLocaleString()}`}
+                              {viewMode === 'market' ? (item.subcategory || item.category || 'General Worker') : (
+                                item.budget_type === 'negotiable' ? 'Negotiable Budget' :
+                                `Budget: ₦${(item.budget || 0).toLocaleString()}${item.budget_type && item.budget_type !== 'fixed' ? '/' + (item.budget_type === 'daily' ? 'day' : item.budget_type === 'weekly' ? 'wk' : 'mo') : ''}`
+                              )}
                           </p>
                           
                           <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400">

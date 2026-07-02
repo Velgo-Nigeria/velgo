@@ -93,6 +93,7 @@ CREATE TABLE posted_tasks (
     category TEXT NOT NULL,
     location TEXT NOT NULL, -- or state/city
     budget INTEGER NOT NULL,
+    budget_type TEXT DEFAULT 'fixed',
     status task_status DEFAULT 'open',
     assigned_worker_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())

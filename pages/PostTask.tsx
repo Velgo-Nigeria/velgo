@@ -30,6 +30,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
+  const [budgetType, setBudgetType] = useState<'fixed' | 'daily' | 'weekly' | 'monthly' | 'negotiable'>('fixed');
   const [category, setCategory] = useState(PHYSICAL_CATEGORIES[0]);
   const [subcategory, setSubcategory] = useState('');
   const [urgency, setUrgency] = useState('normal');
@@ -265,6 +266,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         title,
         description,
         budget: parseInt(budget) || 0,
+        budget_type: budgetType,
         location: fullLocation,
         address: jobLocationType === 'online' ? '' : taskAddress.trim(),
         category,
@@ -349,7 +351,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   contents: {
                       parts: [
                           { inlineData: { mimeType: 'audio/webm', data: base64data } },
-                          { text: "Extract job details into JSON: title, description (detailed), budget (number), urgency (normal/urgent/emergency), due_date (YYYY-MM-DDTHH:mm), state (Nigeria), lga (Nigeria), category. Map vague inputs to the nearest valid Nigerian State/LGA and Category." }
+                          { text: "Extract job details into JSON: title, description (detailed), budget (number), budget_type (fixed/daily/weekly/monthly/negotiable), urgency (normal/urgent/emergency), due_date (YYYY-MM-DDTHH:mm), state (Nigeria), lga (Nigeria), category. Map vague inputs to the nearest valid Nigerian State/LGA and Category." }
                       ]
                   },
                   config: {
@@ -360,6 +362,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                               title: { type: Type.STRING },
                               description: { type: Type.STRING },
                               budget: { type: Type.INTEGER },
+                              budget_type: { type: Type.STRING },
                               urgency: { type: Type.STRING },
                               due_date: { type: Type.STRING },
                               state: { type: Type.STRING },
@@ -375,6 +378,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                   if (data.title) setTitle(data.title);
                   if (data.description) setDescription(data.description);
                   if (data.budget) setBudget(data.budget.toString());
+                  if (data.budget_type && ['fixed', 'daily', 'weekly', 'monthly', 'negotiable'].includes(data.budget_type.toLowerCase())) setBudgetType(data.budget_type.toLowerCase());
                   if (data.urgency && ['normal', 'urgent', 'emergency'].includes(data.urgency.toLowerCase())) setUrgency(data.urgency.toLowerCase());
                   if (data.due_date) setDueDate(data.due_date);
                   
@@ -402,9 +406,9 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
   };
 
   return (
-    <div className="bg-white min-h-screen pb-24 relative">
-      <div className="px-6 pt-10 pb-4 border-b border-gray-50 flex items-center gap-4 sticky top-0 bg-white z-10">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center"><i className="fa-solid fa-chevron-left text-gray-500"></i></button>
+    <div className="bg-white dark:bg-gray-950 min-h-screen pb-24 relative">
+      <div className="px-6 pt-10 pb-4 border-b border-gray-50 flex items-center gap-4 sticky top-0 bg-white dark:bg-gray-950 dark:border-gray-800 z-10">
+        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 dark:text-white flex items-center justify-center"><i className="fa-solid fa-chevron-left text-gray-500"></i></button>
         <h1 className="text-2xl font-black">Post a Job</h1>
       </div>
 
@@ -470,7 +474,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Job Title</label>
-          <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+          <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
         </div>
 
         <div>
@@ -483,7 +487,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                </button>
              </div>
            ) : (
-             <div onClick={() => fileInputRef.current?.click()} className="h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-all">
+             <div onClick={() => fileInputRef.current?.click()} className="h-32 bg-gray-50 dark:bg-gray-800 dark:text-white border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-all">
                <i className="fa-solid fa-camera text-2xl text-gray-300 mb-2"></i>
                <p className="text-xs font-bold text-gray-400">Upload</p>
                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
@@ -498,34 +502,46 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                <i className={`fa-solid fa-wand-magic-sparkles ${isEnhancing ? 'animate-spin' : ''}`}></i> {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
              </button>
           </div>
-          <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you need..." className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand/20 resize-none" />
+          <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you need..." className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand/20 resize-none" />
         </div>
 
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Industry Sector</label>
-          <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+          <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
             {(jobLocationType === 'online' ? ONLINE_CATEGORIES : PHYSICAL_CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Role / Specialization</label>
-          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
             <option value="">General / Any</option>
             {CATEGORY_MAP[category]?.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
-        <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Budget (₦)</label>
-          <input required type="number" value={budget} onChange={e => setBudget(e.target.value)} placeholder="5000" className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Budget (₦)</label>
+            <input required type="number" value={budget} onChange={e => setBudget(e.target.value)} placeholder="5000" className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Payment Type</label>
+            <select value={budgetType} onChange={e => setBudgetType(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 appearance-none">
+              <option value="fixed">Fixed / Project</option>
+              <option value="daily">Per Day</option>
+              <option value="weekly">Per Week</option>
+              <option value="monthly">Per Month</option>
+              <option value="negotiable">Negotiable</option>
+            </select>
+          </div>
         </div>
 
         <div>
            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Urgency</label>
            <div className="flex gap-2">
              {['normal', 'urgent', 'emergency'].map(u => (
-               <button key={u} type="button" onClick={() => setUrgency(u)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase ${urgency === u ? 'bg-brand text-white' : 'bg-gray-50 text-gray-400'}`}>
+               <button key={u} type="button" onClick={() => setUrgency(u)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase ${urgency === u ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-300'}`}>
                  {u}
                </button>
              ))}
@@ -534,7 +550,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Due Date (Optional)</label>
-          <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 text-gray-700" />
+          <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 text-gray-700 dark:text-white" />
         </div>
 
         {jobLocationType === 'physical' ? (
@@ -542,13 +558,13 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
-                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
                     {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
-                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
+                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
                     {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
@@ -561,7 +577,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                 value={taskAddress} 
                 onChange={e => setTaskAddress(e.target.value)} 
                 placeholder="e.g. 15 Adeniran Ogunsanya St, near Shoprite" 
-                className="w-full bg-gray-50 p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 placeholder-gray-300" 
+                className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 placeholder-gray-300" 
               />
               <p className="text-[9px] text-gray-450 text-gray-400 font-bold uppercase tracking-wider mt-1.5 px-1 leading-snug">
                 💡 Add street name or nearby landmark only. Avoid exact house/apartment numbers for your general safety before a worker is confirmed.

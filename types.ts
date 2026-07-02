@@ -62,12 +62,15 @@ export interface Profile {
   views_count?: number;
 }
 
+export type BudgetType = 'fixed' | 'daily' | 'weekly' | 'monthly' | 'negotiable';
+
 export interface PostedTask {
   id: string;
   client_id: string;
   title: string;
   description: string;
   budget: number;
+  budget_type?: BudgetType;
   location: string;
   address?: string;
   latitude?: number;
