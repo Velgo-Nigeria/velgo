@@ -38,16 +38,17 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
 
   const isWorker = true; // All users are essentially both workers and clients now
 
-  // Celebrate View Milestones State
+  // Celebrate Jobs Milestone State
   const [celebratedMilestone, setCelebratedMilestone] = useState<number | null>(null);
   const [totalProfileViews, setTotalProfileViews] = useState<number | null>(null);
+  const [totalCompletedJobs, setTotalCompletedJobs] = useState<number>(0);
 
   useEffect(() => {
     if (!profile) return;
-
-    const checkViewMilestones = async () => {
+    
+    // Legacy Views Fetcher (without milestones)
+    const fetchProfileViews = async () => {
       try {
-        // Fetch exact views from the profile_views audit table in the past 30 days
         let dbViewsCount = 0;
         try {
           const thirtyDaysAgo = new Date();
@@ -62,7 +63,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
           if (!countError && count !== null) {
             dbViewsCount = count;
           } else {
-            // Fallback: load direct cached column
             const { data: profileVal } = await supabase
               .from('profiles')
               .select('views_count')
@@ -73,28 +73,36 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
         } catch (dbError) {
           console.warn("Database views_count query fallback:", dbError);
         }
-
-        // Establish matching baseline views
         const idChars = profile.id.split('');
         const hashSum = idChars.reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const baselineSeed = 120 + (hashSum % 60);
-        
-        const finalViews = baselineSeed + dbViewsCount;
-        setTotalProfileViews(finalViews);
+        setTotalProfileViews(baselineSeed + dbViewsCount);
+      } catch(err) {}
+    };
 
-        // Milestones lists to check (e.g. 50, 100, 150, 200, 250, 300, 500, 1000 total views)
-        const milestones = [50, 100, 150, 200, 250, 300, 500, 1000, 2500, 5000, 10000];
+    const checkJobMilestones = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('worker_id', profile.id)
+          .in('status', ['accepted', 'completed', 'assigned']);
+
+        const completedJobs = count || profile.worker_rating_count || 0;
+        setTotalCompletedJobs(completedJobs);
+
+        // Milestones for completed/accepted jobs
+        const milestones = [1, 5, 10, 20, 50, 100, 250, 500, 1000];
         
-        // Find the absolute highest milestone the user has crossed
         let highestReachedMilestone: number | null = null;
         for (const m of milestones) {
-          if (finalViews >= m) {
+          if (completedJobs >= m) {
             highestReachedMilestone = m;
           }
         }
 
         if (highestReachedMilestone !== null) {
-          const lKey = `velgo_milestone_shown_${profile.id}_${highestReachedMilestone}`;
+          const lKey = `velgo_job_milestone_shown_${profile.id}_${highestReachedMilestone}`;
           const alreadyShown = localStorage.getItem(lKey);
           
           if (!alreadyShown) {
@@ -103,11 +111,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
           }
         }
       } catch (err) {
-        console.warn("Milestone check error:", err);
+        console.warn("Job milestone check error:", err);
       }
     };
 
-    checkViewMilestones();
+    fetchProfileViews();
+    checkJobMilestones();
   }, [profile]);
 
   useEffect(() => {
@@ -646,10 +655,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                 Milestone Achieved!
               </span>
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">
-                {celebratedMilestone}+ Views
+                {celebratedMilestone} Jobs Done
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px] mx-auto">
-                Congratulations, <span className="font-bold text-gray-800 dark:text-gray-200">{profile?.full_name}</span>! Your skilled listings and craftsmanship have attracted massive demand in the marketplace. Keep winning!
+                Congratulations, <span className="font-bold text-gray-800 dark:text-gray-200">{profile?.full_name}</span>! You have successfully completed {celebratedMilestone} jobs on Velgo. Your high-quality craftsmanship keeps the marketplace thriving. Keep winning!
               </p>
             </div>
 

@@ -151,6 +151,11 @@ UID: ${profile.id}
   };
 
   useEffect(() => {
+    // Increment task views
+    if (taskId) {
+      supabase.rpc('increment_task_views', { target_id: taskId }).then();
+    }
+
     const fetchTaskDetails = async () => {
       setLoading(true);
       
@@ -460,6 +465,9 @@ UID: ${profile.id}
                         <i className="fa-regular fa-calendar"></i> Due: {new Date(task.due_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                 )}
+                <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-black/40 border border-white/10 flex items-center gap-1 backdrop-blur-md">
+                    <i className="fa-regular fa-eye"></i> {task.views_count || 0}
+                </span>
             </div>
             <h1 className="text-3xl font-black mt-3 leading-tight shadow-sm drop-shadow-md">{task.title}</h1>
             <div className="flex items-center gap-3 mt-2 opacity-90 text-sm font-bold flex-wrap">

@@ -83,6 +83,7 @@ export interface PostedTask {
   subcategory?: string;
   created_at: string;
   image_url?: string;
+  views_count?: number;
 }
 
 export interface Booking {
