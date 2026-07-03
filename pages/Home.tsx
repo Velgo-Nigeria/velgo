@@ -203,7 +203,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
       {showInsights && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
           <div className="bg-white dark:bg-slate-800 rounded-[40px] p-8 w-full max-w-sm relative max-h-[85vh] overflow-y-auto">
-             <button onClick={() => setShowInsights(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+             <button onClick={() => setShowInsights(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white"><i className="fa-solid fa-xmark"></i></button>
              <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-magnifying-glass-chart"></i></div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white">Market Insights</h3>

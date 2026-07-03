@@ -474,7 +474,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Job Title</label>
-          <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+          <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Fix my kitchen sink" className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20" />
         </div>
 
         <div>
@@ -502,19 +502,19 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                <i className={`fa-solid fa-wand-magic-sparkles ${isEnhancing ? 'animate-spin' : ''}`}></i> {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
              </button>
           </div>
-          <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you need..." className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand/20 resize-none" />
+          <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you need..." className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-medium placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20 resize-none" />
         </div>
 
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Industry Sector</label>
-          <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+          <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
             {(jobLocationType === 'online' ? ONLINE_CATEGORIES : PHYSICAL_CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Role / Specialization</label>
-          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+          <select value={subcategory} onChange={e => setSubcategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
             <option value="">General / Any</option>
             {CATEGORY_MAP[category]?.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -523,11 +523,11 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Budget (₦)</label>
-            <input required type="number" value={budget} onChange={e => setBudget(e.target.value)} placeholder="5000" className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20" />
+            <input required type="number" value={budget} onChange={e => setBudget(e.target.value)} placeholder="5000" className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20" />
           </div>
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Payment Type</label>
-            <select value={budgetType} onChange={e => setBudgetType(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 appearance-none">
+            <select value={budgetType} onChange={e => setBudgetType(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20 appearance-none">
               <option value="fixed">Fixed / Project</option>
               <option value="daily">Per Day</option>
               <option value="weekly">Per Week</option>
@@ -550,7 +550,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Due Date (Optional)</label>
-          <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 text-gray-700 dark:text-white" />
+          <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20" />
         </div>
 
         {jobLocationType === 'physical' ? (
@@ -558,13 +558,13 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
-                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
                     {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
-                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
+                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
                     {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
@@ -577,7 +577,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
                 value={taskAddress} 
                 onChange={e => setTaskAddress(e.target.value)} 
                 placeholder="e.g. 15 Adeniran Ogunsanya St, near Shoprite" 
-                className="w-full bg-gray-50 dark:bg-gray-800 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20 placeholder-gray-300" 
+                className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-brand/20 placeholder-gray-400 dark:placeholder-gray-500" 
               />
               <p className="text-[9px] text-gray-450 text-gray-400 font-bold uppercase tracking-wider mt-1.5 px-1 leading-snug">
                 💡 Add street name or nearby landmark only. Avoid exact house/apartment numbers for your general safety before a worker is confirmed.

@@ -325,7 +325,7 @@ UID: ${profile.id}
       <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center sm:p-6 backdrop-blur-sm animate-fadeIn">
         <div className="bg-white dark:bg-gray-800 rounded-t-[32px] sm:rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-black text-gray-900 dark:text-white dark:text-white">Reviews on {client?.full_name}</h3>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white">Reviews on {client?.full_name}</h3>
                 <button onClick={() => setShowReviewsModal(false)} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
             </div>
 
@@ -337,7 +337,7 @@ UID: ${profile.id}
                         <div>
                             <div className="flex justify-between items-end mb-1">
                                 <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Communication</span>
-                                <span className="text-[10px] font-black text-gray-900 dark:text-white dark:text-gray-100">{client?.client_avg_communication || (clientRating?.avg || 5)}</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{client?.client_avg_communication || (clientRating?.avg || 5)}</span>
                             </div>
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                                 <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((client?.client_avg_communication || (clientRating?.avg || 5)) / 5) * 100}%` }}></div>
@@ -346,7 +346,7 @@ UID: ${profile.id}
                         <div>
                             <div className="flex justify-between items-end mb-1">
                                 <span className="text-[9px] font-bold text-gray-600 dark:text-gray-400 uppercase">Fairness/Respect</span>
-                                <span className="text-[10px] font-black text-gray-900 dark:text-white dark:text-gray-100">{client?.client_avg_fairness || (clientRating?.avg || 5)}</span>
+                                <span className="text-[10px] font-black text-gray-900 dark:text-gray-100">{client?.client_avg_fairness || (clientRating?.avg || 5)}</span>
                             </div>
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                                 <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${((client?.client_avg_fairness || (clientRating?.avg || 5)) / 5) * 100}%` }}></div>
@@ -643,7 +643,7 @@ UID: ${profile.id}
             {/* Header Title Section */}
             <div>
               <span className="text-[8px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-full uppercase tracking-wider">Proposal Customizer</span>
-              <h3 className="text-lg font-black text-gray-900 dark:text-white dark:text-white mt-1.5 leading-tight">Submit Your Quote</h3>
+              <h3 className="text-lg font-black text-gray-900 dark:text-white mt-1.5 leading-tight">Submit Your Quote</h3>
               <p className="text-[11px] text-gray-500 dark:text-gray-450 font-bold leading-normal mt-1">Specify transparent pricing and bounds to avoid client disputes.</p>
             </div>
 
@@ -690,7 +690,7 @@ UID: ${profile.id}
                     type="number"
                     value={bidPrice}
                     onChange={(e) => setBidPrice(e.target.value)}
-                    className="block w-full rounded-2xl border border-gray-200 dark:border-gray-700 py-3.5 pl-9 pr-4 text-xs font-black text-gray-900 dark:text-white dark:text-white dark:bg-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                    className="block w-full rounded-2xl border border-gray-200 dark:border-gray-700 py-3.5 pl-9 pr-4 text-xs font-black text-gray-900 dark:text-white dark:bg-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                     placeholder="e.g. 15000"
                     min="1"
                     required

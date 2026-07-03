@@ -273,7 +273,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
     const confirmMsg = action === 'reopen'
       ? "Are you sure you want to dismiss this artisan and re-open this task? This will cancel the booking and mark the task as open again for other candidates. Safety deposit tokens are not refundable."
-      : "Are you sure you want to mark this task as FAILED? This will cancel the active booking and mark the job post as officially cancelled on Velgo.";
+      : booking.task_id
+        ? "Are you sure you want to mark this task as FAILED? This will cancel the active booking and mark the job post as officially cancelled on Velgo."
+        : "Are you sure you want to cancel this direct hire? This will cancel the active booking.";
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -303,7 +305,9 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
       alert(action === 'reopen' 
         ? "Job successfully re-opened! Other candidates can now apply and you can select them."
-        : "Project marked as failed and cancelled."
+        : booking.task_id
+          ? "Project marked as failed and cancelled."
+          : "Hire cancelled successfully."
       );
       fetchActivity();
     } catch (err: any) {
@@ -1034,7 +1038,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       {showReplyModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
             <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-hidden flex flex-col font-sans">
-                <button onClick={() => setShowReplyModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setShowReplyModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white dark:hover:text-white transition-colors">
                     <i className="fa-solid fa-xmark text-lg"></i>
                 </button>
 
@@ -1120,7 +1124,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 </div>
 
                 <div className="relative z-10 overflow-y-auto max-h-[80vh]">
-                    <button onClick={() => setShowCompleteModal(false)} className="absolute top-0 right-0 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+                    <button onClick={() => setShowCompleteModal(false)} className="absolute top-0 right-0 text-gray-400 hover:text-gray-900 dark:hover:text-white"><i className="fa-solid fa-xmark"></i></button>
                     
                     <div className="text-center">
                         <div className="w-16 h-16 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-receipt"></i></div>
@@ -1226,7 +1230,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       {showWorkerRatingModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
             <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-                <button onClick={() => setShowWorkerRatingModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900"><i className="fa-solid fa-xmark"></i></button>
+                <button onClick={() => setShowWorkerRatingModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white"><i className="fa-solid fa-xmark"></i></button>
                 
                 <div className="text-center">
                     <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl rotate-3"><i className="fa-solid fa-user-pen"></i></div>
@@ -1560,22 +1564,24 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                             </div>
 
                             {/* Small Modern Button Rail */}
-                            <div className="grid grid-cols-3 gap-2">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleStaleAction(item, 'reopen'); }}
-                                    className="bg-sky-50 dark:bg-sky-950/20 hover:bg-sky-100 text-sky-700 dark:text-sky-450 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-sky-100 dark:border-sky-900/40 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
-                                    title="Dismiss worker and allow other candidates to apply again"
-                                >
-                                    <i className="fa-solid fa-arrows-rotate text-xs"></i>
-                                    <span>Re-open Job</span>
-                                </button>
+                            <div className={`grid ${item.task_id ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
+                                {item.task_id && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleStaleAction(item, 'reopen'); }}
+                                        className="bg-sky-50 dark:bg-sky-950/20 hover:bg-sky-100 text-sky-700 dark:text-sky-450 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-sky-100 dark:border-sky-900/40 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
+                                        title="Dismiss worker and allow other candidates to apply again"
+                                    >
+                                        <i className="fa-solid fa-arrows-rotate text-xs"></i>
+                                        <span>Re-open Job</span>
+                                    </button>
+                                )}
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleStaleAction(item, 'failed'); }}
                                     className="bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-650 dark:text-rose-450 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-rose-100/60 dark:border-rose-900/40 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
-                                    title="Close this job post without successfully completing it"
+                                    title={item.task_id ? "Close this job post without successfully completing it" : "Cancel this direct hire"}
                                 >
                                     <i className="fa-solid fa-ban text-xs"></i>
-                                    <span>Mark Failed</span>
+                                    <span>{item.task_id ? 'Mark Failed' : 'Cancel Hire'}</span>
                                 </button>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleArchiveBooking(item.id); }}
