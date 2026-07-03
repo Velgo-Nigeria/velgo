@@ -495,7 +495,7 @@ UID: ${profile.id}
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</p>
-                    <p className="text-sm font-bold text-gray-800">{task.category}</p>
+                    <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{task.category}</p>
                 </div>
             </div>
 
@@ -545,7 +545,7 @@ UID: ${profile.id}
                         </button>
                     )}
                 </div>
-                <p className="text-sm text-gray-600 font-medium leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed whitespace-pre-wrap">
                     {translation || task.description}
                 </p>
                 {translation && <p className="text-[9px] text-gray-400 font-bold uppercase mt-2 italic text-right">Translated by AI</p>}

@@ -336,7 +336,7 @@ UID: ${profile.id}
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Jobs</p><p className="font-black text-green-500 text-xl">{worker?.worker_rating_count || reviewCount} Done</p></div>
           </div>
 
-          <p className="text-sm text-gray-500 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory} available in ${worker?.address}.`}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory} available in ${worker?.address}.`}</p>
           
           {/* Detailed Performance Metrics */}
           {(worker?.worker_rating_count || reviewCount) > 0 && (
