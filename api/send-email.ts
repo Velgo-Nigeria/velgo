@@ -19,12 +19,13 @@ export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
     const resendApiKey = process.env.RESEND_API_KEY;
+    const brevoApiKey = process.env.BREVO_API_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
        return res.status(500).json({ error: 'Missing Supabase Config' });
     }
-    if (!resendApiKey) {
-       return res.status(500).json({ error: 'Missing RESEND_API_KEY. Please add it to your Vercel Environment Variables.' });
+    if (!resendApiKey && !brevoApiKey) {
+       return res.status(500).json({ error: 'Missing RESEND_API_KEY or BREVO_API_KEY. Please add one to your Vercel Environment Variables.' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -251,28 +252,82 @@ export default async function handler(req: any, res: any) {
         recipients = [profile.email];
     }
 
-    // Send email using Resend REST API
-    const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${resendApiKey}`
-        },
-        body: JSON.stringify({
-            from: 'Velgo Notifications <notifications@velgo.com.ng>',
-            to: recipients,
+    // Try sending email via Brevo first (if key exists)
+    let emailSent = false;
+    let lastError = null;
+    let resData = null;
+
+    if (brevoApiKey) {
+      try {
+        const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'api-key': brevoApiKey,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'Velgo Nigeria', email: 'velgonigeria.uni@gmail.com' },
+            to: recipients.map(email => ({ email })),
             subject: subject,
-            html: html,
-            reply_to: 'velgonigeria.uni@gmail.com'
-        })
-    });
+            htmlContent: html,
+            replyTo: { email: 'velgonigeria.uni@gmail.com' }
+          })
+        });
 
-    const resData = await resendRes.json();
+        // Brevo might return empty JSON on success sometimes, so we need to handle this
+        const brevoData = await brevoRes.json().catch(() => ({ message: 'Brevo Success, no JSON returned' }));
+        
+        if (brevoRes.ok) {
+          emailSent = true;
+          resData = { provider: 'brevo', ...brevoData };
+        } else {
+          lastError = brevoData;
+          console.error("Brevo failed:", brevoData);
+        }
+      } catch (err: any) {
+        lastError = err.message || err;
+        console.error("Brevo request error:", err);
+      }
+    }
 
-    if (resendRes.ok) {
+    // Fallback to Resend if Brevo failed or isn't configured
+    if (!emailSent && resendApiKey) {
+      try {
+        const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${resendApiKey}`
+            },
+            body: JSON.stringify({
+                from: 'Velgo Notifications <notifications@velgo.com.ng>',
+                to: recipients,
+                subject: subject,
+                html: html,
+                reply_to: 'velgonigeria.uni@gmail.com'
+            })
+        });
+
+        const resendData = await resendRes.json();
+
+        if (resendRes.ok) {
+            emailSent = true;
+            resData = { provider: 'resend', ...resendData };
+        } else {
+            lastError = resendData;
+            console.error("Resend failed:", resendData);
+        }
+      } catch (err: any) {
+        lastError = err.message || err;
+        console.error("Resend request error:", err);
+      }
+    }
+
+    if (emailSent) {
         return res.status(200).json({ success: true, data: resData });
     } else {
-        return res.status(400).json({ error: resData });
+        return res.status(400).json({ error: lastError || 'Both providers failed or neither is configured' });
     }
 
   } catch (e: any) {
