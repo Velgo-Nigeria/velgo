@@ -267,7 +267,7 @@ export default async function handler(req: any, res: any) {
             'content-type': 'application/json'
           },
           body: JSON.stringify({
-            sender: { name: 'Velgo Nigeria', email: 'velgonigeria.uni@gmail.com' },
+            sender: { name: 'Velgo Nigeria', email: 'notifications@velgo.com.ng' },
             to: recipients.map(email => ({ email })),
             subject: subject,
             htmlContent: html,
