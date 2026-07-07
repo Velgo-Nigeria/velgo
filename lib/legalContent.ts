@@ -1,5 +1,4 @@
-export const TERMS_OF_SERVICE = `
-1. Terms of Service (TOS) and User Agreement
+export const TERMS_OF_SERVICE = `1. Terms of Service (TOS) and User Agreement
 Title: Velgo Nigeria Platform User Agreement - The Binding Contract
 
 1.1 Velgo’s Limited Role and Scope of Service
@@ -19,17 +18,19 @@ This section defines the financial relationship and Velgo’s complete disassoci
 - Worker Risk: The Worker acknowledges that they bear the full risk of non-payment or delayed payment by the Client and agrees that their recourse is against the Client, not Velgo.
 - Limited Recourse: Velgo will only intervene in non-payment disputes to provide communication logs and contact information as permissible by law, but WILL NOT refund or pay the service fee on behalf of the Client.
 
-1.4 Account Termination and Suspension
-Velgo reserves the right to immediately suspend or terminate any account without notice if a user is found to be in breach of these terms, including, but not limited to: repeated non-payment (Client), repeated poor service/fraudulent claims (Worker), or attempts to circumvent the subscription/payment protocols.
-`;
+1.4 Transactional Communications
+By creating an account, you explicitly consent to receive system-generated transactional emails, push notifications, and in-app messages required for the proper functioning of the service. These include but are not limited to account verification alerts, password resets, job application updates, direct booking alerts, and safety notifications. These are considered essential to the service.
 
-export const PRIVACY_POLICY = `
-2. Privacy Policy
+1.5 Account Termination and Suspension
+Velgo reserves the right to immediately suspend or terminate any account without notice if a user is found to be in breach of these terms, including, but not limited to: repeated non-payment (Client), repeated poor service/fraudulent claims (Worker), or attempts to circumvent the subscription/payment protocols.`;
+
+export const PRIVACY_POLICY = `2. Privacy Policy
 Title: Velgo Nigeria Data Security and Your Privacy Rights
 
 2.1 Data Collection and Legal Basis
 We collect data to execute the core function of the platform: matching, verification, and service delivery. Our legal basis for processing data is primarily Contractual Necessity (to provide the service you signed up for) and Legitimate Interest (to ensure platform security and prevent fraud).
 - Identity and Verification Data: Full Name, Phone Number, Email, Physical Address. This data is used for profile verification only.
+- Transactional Communications: Your email address is collected and used strictly to send essential system-generated transactional updates related to your account, such as job status changes, security alerts, and verifications. We do not use your email for marketing or spam without explicit separate consent.
 - Financial Data (Display Only): Workers' Bank Account Name, Number, and Bank Name. This data is stored securely and is only displayed to the Client on the payment reminder screen. We do not collect or store any bank passwords or card security codes (CVVs).
 - Geolocation Data: Collected only during an active booking to monitor Worker proximity to the job site. This data is not tracked in the background.
 
@@ -39,8 +40,7 @@ We collect data to execute the core function of the platform: matching, verifica
 - Legal Compliance: We will disclose data only when legally required by a court order, regulatory mandate, or to protect the rights and safety of Velgo, our users, or the general public.
 
 2.3 Data Retention
-We retain personal data as long as your account is active and for a mandatory minimum period of three (3) years after account termination to comply with Nigerian regulatory requirements concerning financial transactions and dispute resolution records. You may request deletion of your account, but core transactional records will be anonymized, not permanently erased.
-`;
+We retain personal data as long as your account is active and for a mandatory minimum period of three (3) years after account termination to comply with Nigerian regulatory requirements concerning financial transactions and dispute resolution records. You may request deletion of your account, but core transactional records will be anonymized, not permanently erased.`;
 
 export const WORKER_GUIDELINES = `
 3. Worker Guidelines and Safety Protocols
