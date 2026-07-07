@@ -113,11 +113,31 @@ export default async function handler(req: any, res: any) {
          </div>
        `;
     }
-    // 1. Booking Accepted (Notify Client)
-    else if (table === 'bookings' && type === 'UPDATE' && record.status === 'accepted') {
-       userIdToNotify = record.client_id;
-       subject = 'Job Accepted! ✅';
-       html = `<p>Your worker has accepted your job. You can now chat with them to discuss further details.</p>`;
+    // 1. Booking Accepted (Notify Client) & Artisan Reply Alert (Notify Admin)
+    else if (table === 'bookings' && type === 'UPDATE') {
+       const oldRecord = payload.old_record || {};
+       if (record.status === 'accepted' && oldRecord.status !== 'accepted') {
+           userIdToNotify = record.client_id;
+           subject = 'Job Accepted! ✅';
+           html = `<p>Your worker has accepted your job. You can now chat with them to discuss further details.</p>`;
+       } else if (record.worker_reply && record.worker_reply !== oldRecord.worker_reply) {
+           userIdToNotify = 'admin_role';
+           subject = '💬 Artisan Reply Submitted for Vetting';
+           html = `
+             <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; background-color: #fff; color: #1f2937;">
+               <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                 <span style="font-size: 32px; margin-right: 12px;">💬</span>
+                 <h2 style="color: #4f46e5; margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: -0.5px;">Artisan Reply Pending</h2>
+               </div>
+               <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">An artisan has just submitted a reply to their review. It requires admin vetting before going live.</p>
+               <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+               <div style="background-color: #f9fafb; padding: 18px; border-radius: 12px; border-left: 4px solid #4f46e5; margin: 20px 0; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; font-style: italic;">"${record.worker_reply}"</div>
+               <div style="margin-top: 24px; text-align: center;">
+                 <a href="https://velgo.com.ng" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">Review in Admin Panel</a>
+               </div>
+             </div>
+           `;
+       }
     }
     // 2. New Message
     else if (table === 'messages' && type === 'INSERT') {
@@ -125,7 +145,7 @@ export default async function handler(req: any, res: any) {
        subject = 'New Message received on Velgo 💬';
        html = `<p>You received a new message. Log in to your Velgo account to view and reply.</p>`;
     }
-    // 3. ID Verification Status
+    // 3. ID Verification Status & ID Upload Alert
     else if (table === 'profiles' && type === 'UPDATE') {
        const oldRecord = payload.old_record || {};
        if (record.is_verified === true && oldRecord.is_verified === false) {
@@ -136,6 +156,22 @@ export default async function handler(req: any, res: any) {
            userIdToNotify = record.id;
            subject = 'Important: ID Verification Revoked ❌';
            html = `<p>There is an issue with your identity verification. Please contact support.</p>`;
+       } else if (record.nin_image_url && record.nin_image_url !== oldRecord.nin_image_url) {
+           userIdToNotify = 'admin_role';
+           subject = '🪪 New ID Verification Uploaded';
+           html = `
+             <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; background-color: #fff; color: #1f2937;">
+               <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                 <span style="font-size: 32px; margin-right: 12px;">🪪</span>
+                 <h2 style="color: #059669; margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: -0.5px;">New ID Submission</h2>
+               </div>
+               <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">User <strong>${record.full_name}</strong> has just uploaded an ID document for verification.</p>
+               <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+               <div style="margin-top: 24px; text-align: center;">
+                 <a href="https://velgo.com.ng" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">Review in Admin Panel</a>
+               </div>
+             </div>
+           `;
        }
     }
     // 4. Task Update
@@ -252,12 +288,45 @@ export default async function handler(req: any, res: any) {
         recipients = [profile.email];
     }
 
-    // Try sending email via Brevo first (if key exists)
+    // Try sending email via Resend first (if key exists)
     let emailSent = false;
     let lastError = null;
     let resData = null;
 
-    if (brevoApiKey) {
+    if (resendApiKey) {
+      try {
+        const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${resendApiKey}`
+            },
+            body: JSON.stringify({
+                from: 'Velgo Notifications <notifications@velgo.com.ng>',
+                to: recipients,
+                subject: subject,
+                html: html,
+                reply_to: 'velgonigeria.uni@gmail.com'
+            })
+        });
+
+        const resendData = await resendRes.json();
+
+        if (resendRes.ok) {
+            emailSent = true;
+            resData = { provider: 'resend', ...resendData };
+        } else {
+            lastError = resendData;
+            console.error("Resend failed:", resendData);
+        }
+      } catch (err: any) {
+        lastError = err.message || err;
+        console.error("Resend request error:", err);
+      }
+    }
+
+    // Fallback to Brevo if Resend failed or isn't configured
+    if (!emailSent && brevoApiKey) {
       try {
         const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -288,39 +357,6 @@ export default async function handler(req: any, res: any) {
       } catch (err: any) {
         lastError = err.message || err;
         console.error("Brevo request error:", err);
-      }
-    }
-
-    // Fallback to Resend if Brevo failed or isn't configured
-    if (!emailSent && resendApiKey) {
-      try {
-        const resendRes = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${resendApiKey}`
-            },
-            body: JSON.stringify({
-                from: 'Velgo Notifications <notifications@velgo.com.ng>',
-                to: recipients,
-                subject: subject,
-                html: html,
-                reply_to: 'velgonigeria.uni@gmail.com'
-            })
-        });
-
-        const resendData = await resendRes.json();
-
-        if (resendRes.ok) {
-            emailSent = true;
-            resData = { provider: 'resend', ...resendData };
-        } else {
-            lastError = resendData;
-            console.error("Resend failed:", resendData);
-        }
-      } catch (err: any) {
-        lastError = err.message || err;
-        console.error("Resend request error:", err);
       }
     }
 
