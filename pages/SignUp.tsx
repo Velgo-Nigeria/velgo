@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { UserRole, ClientType } from '../types';
 import { VelgoLogo } from '../components/Brand';
 import { PasswordStrengthValidator } from '../components/PasswordStrengthValidator';
+import { OTPInput } from '../components/OTPInput';
 
 interface SignUpProps {
   onToggle: () => void;
@@ -175,14 +176,14 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
                 </div>
               )}
 
-              <input 
-                required 
-                type="text" 
-                value={otpToken} 
-                onChange={(e) => setOtpToken(e.target.value.trim())}
-                className="w-full bg-slate-800 border-2 border-slate-700/50 focus:border-emerald-500 rounded-[24px] py-4 px-6 text-white text-center text-2xl tracking-[0.2em] font-black outline-none transition-all placeholder-gray-600"
-                placeholder="Token"
-              />
+              <div className="mb-6">
+                <OTPInput 
+                  length={6} 
+                  value={otpToken} 
+                  onChange={(val) => setOtpToken(val)} 
+                  disabled={loading} 
+                />
+              </div>
 
               <button 
                 type="submit" 
