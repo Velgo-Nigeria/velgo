@@ -334,13 +334,14 @@ const SafetyReportRelationsCard: React.FC<{ report: any }> = ({ report }) => {
 };
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats' | 'errors'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [pendingReplies, setPendingReplies] = useState<any[]>([]);
+  const [appErrors, setAppErrors] = useState<any[]>([]);
   const [stats, setStats] = useState<{
       totalUsers: number;
       weeklyActiveCount: number;
@@ -639,6 +640,11 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 .from('support_messages')
                 .select('*, profiles(full_name, email, avatar_url, id)')
                 .order('created_at', { ascending: true }));
+        } else if (activeTab === 'errors') {
+            result = await safeFetch(() => supabase
+                .from('app_errors')
+                .select('*')
+                .order('timestamp', { ascending: false }));
         } else {
             result = { data: [], error: null };
         }
@@ -646,6 +652,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (result.error) {
             if (result.error.message?.includes('admin_reply') || result.error.message?.includes('support_messages')) {
                 setErrorMsg("Database Schema Realignment Required: Please run the SQL migration script located in `/supabase/fix_support_messages_schema.sql` inside your Supabase SQL Editor to provision the Support Desk columns and resolve the connection crash.");
+            } else if (result.error.message?.includes('app_errors')) {
+                setErrorMsg("Database Schema Required: The 'app_errors' table does not exist. Please run the SQL migration script to create it.");
             } else {
                 setErrorMsg(`Data Error: ${result.error.message}`);
             }
@@ -657,6 +665,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
         else if (activeTab === 'reviews') setPendingReplies(result.data || []);
         else if (activeTab === 'support') setSupportMessages(result.data || []);
+        else if (activeTab === 'errors') setAppErrors(result.data || []);
 
     } catch (err: any) {
         setErrorMsg(err.message || "Unknown system error occurred.");
@@ -1411,7 +1420,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats', 'errors'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -1419,7 +1428,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab}</span>
+                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -2375,6 +2384,76 @@ GRANT ALL ON public.broadcasts TO service_role;`}
               <div className="text-center py-20 text-gray-400 animate-pulse font-sans">
                   <i className="fa-solid fa-cloud-arrow-down text-4xl mb-3 text-indigo-500 animate-bounce"></i>
                   <p className="font-black uppercase tracking-wider text-xs">Fetching & Compiling Analytics...</p>
+              </div>
+          ) : activeTab === 'errors' ? (
+              <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30">
+                      <div>
+                          <h3 className="font-black text-slate-900 dark:text-white uppercase text-xs tracking-wider">System Error Logs</h3>
+                          <p className="text-[10px] text-slate-500 mt-1">Real-time captured crashes and unhandled exceptions.</p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-black text-xs px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/50">
+                          {appErrors.length} Logs Found
+                      </div>
+                  </div>
+
+                  {appErrors.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-800 p-12 text-center rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                          <i className="fa-solid fa-check-circle text-4xl text-emerald-500 mb-4 opacity-50"></i>
+                          <p className="font-bold text-gray-400 uppercase text-xs tracking-widest">No Errors Recorded</p>
+                          <p className="text-[10px] text-gray-500 mt-2">The system is running smoothly.</p>
+                      </div>
+                  ) : (
+                      <div className="grid gap-3">
+                          {appErrors.map((err) => (
+                              <div key={err.id} className="bg-white dark:bg-slate-800 border border-red-100 dark:border-red-900/30 p-4 rounded-xl shadow-sm relative overflow-hidden group">
+                                  <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                                  <div className="flex justify-between items-start mb-2 pl-2">
+                                      <div className="pr-4">
+                                          <span className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest border border-red-200 dark:border-red-800">
+                                              Exception
+                                          </span>
+                                          <h4 className="font-bold text-slate-900 dark:text-white mt-2 font-mono text-sm break-all">
+                                              {err.error_message}
+                                          </h4>
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap shrink-0">
+                                          {new Date(err.timestamp).toLocaleString()}
+                                      </span>
+                                  </div>
+                                  
+                                  <div className="pl-2 mt-3 space-y-2">
+                                      {err.source && (
+                                          <div className="flex items-start gap-2 text-xs">
+                                              <i className="fa-solid fa-link text-slate-400 mt-0.5"></i>
+                                              <span className="text-slate-600 dark:text-slate-300 break-all">{err.source} {err.line_number ? `(Line ${err.line_number})` : ''}</span>
+                                          </div>
+                                      )}
+                                      
+                                      {err.user_agent && (
+                                          <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                                              <i className="fa-solid fa-desktop mt-0.5"></i>
+                                              <span className="break-words">{err.user_agent}</span>
+                                          </div>
+                                      )}
+
+                                      {err.error_stack && (
+                                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                              <details className="text-xs group-details">
+                                                  <summary className="font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer select-none outline-none">
+                                                      View Stack Trace
+                                                  </summary>
+                                                  <pre className="mt-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg overflow-x-auto text-[9px] font-mono text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
+                                                      {err.error_stack}
+                                                  </pre>
+                                              </details>
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
               </div>
           ) : null
         }

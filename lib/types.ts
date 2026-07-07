@@ -13,6 +13,18 @@ export interface NotificationPreferences {
   promotions: boolean;
 }
 
+export interface AppError {
+  id: string;
+  error_message: string;
+  source: string;
+  line_number?: number;
+  column_number?: number;
+  error_stack?: string;
+  user_agent?: string;
+  timestamp: string;
+  resolved: boolean;
+}
+
 export interface Broadcast {
   id: string;
   admin_id: string;
