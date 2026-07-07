@@ -29,9 +29,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="h-screen w-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 p-6 text-center">
           <ShieldIcon className="h-16 w-auto mb-6 opacity-20 dark:opacity-10" />
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Something went wrong.</h1>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Connection Interrupted.</h1>
           <p className="text-gray-500 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
-            We encountered an unexpected error. Please try reloading the app.
+            We're having trouble connecting. Please check your network connection and try again.
           </p>
           <button 
             onClick={() => window.location.reload()} 
@@ -39,10 +39,6 @@ export class ErrorBoundary extends Component<Props, State> {
           >
             Reload Velgo
           </button>
-          
-          <div className="mt-8 text-[10px] text-gray-400 font-mono">
-             Error Code: {this.state.error?.message?.slice(0, 30) || 'Unknown'}
-          </div>
         </div>
       );
     }
