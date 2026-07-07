@@ -28,6 +28,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [referralCode, setReferralCode] = useState('');
+  const [consent, setConsent] = useState(false);
 
   useEffect(() => {
     const savedCode = localStorage.getItem('velgo_referrer_code') || '';
@@ -277,15 +278,28 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
             </div>
           </div>
 
-          <button type="submit" disabled={loading || password.length < 6} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-[2px] shadow-2xl shadow-emerald-900/40 transition-all active:scale-95 mt-6">
+          <div className="flex items-start gap-3 mt-4 mb-2 px-2">
+            <div className="flex items-center h-5">
+              <input
+                id="consent"
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="w-4 h-4 bg-slate-800 border-gray-600 rounded text-emerald-500 focus:ring-emerald-500 focus:ring-2"
+                required
+              />
+            </div>
+            <label htmlFor="consent" className="text-[10px] text-slate-400 font-bold leading-relaxed">
+              I consent to receive system-generated transactional emails (job updates, verifications, safety alerts) required for this service. I have also read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">Terms of Service</a>{' '}
+              and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">Privacy Policy</a>.
+            </label>
+          </div>
+
+          <button type="submit" disabled={loading || password.length < 6 || !consent} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-[2px] shadow-2xl shadow-emerald-900/40 transition-all active:scale-95 mt-2">
             {loading ? 'Processing...' : 'Get Started'}
           </button>
-          <p className="text-[9px] text-center text-slate-400 font-bold tracking-wide leading-relaxed mt-4 px-2">
-            By signing up, you agree to the{' '}
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">Terms of Service</a>{' '}
-            and{' '}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">Privacy Policy</a>.
-          </p>
         </form>
 
         <div className="space-y-4 pt-1">

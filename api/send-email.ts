@@ -106,6 +106,7 @@ export default async function handler(req: any, res: any) {
              <!-- Footer Section -->
              <div style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
                <p style="margin: 0 0 8px 0;">This is an automated notification. Please do not reply directly to this email.</p>
+               <p style="margin: 0 0 16px 0;"><a href="https://velgo.com.ng" style="color: #059669; text-decoration: underline;">Manage your notification preferences or unsubscribe</a></p>
                <p style="margin: 0;">© 2026 Velgo Nigeria. All rights reserved.</p>
              </div>
              
