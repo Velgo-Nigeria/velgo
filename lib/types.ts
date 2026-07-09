@@ -154,3 +154,13 @@ export interface Dispute {
   status: DisputeStatus;
   created_at: string;
 }
+
+export interface AdminAuditLog {
+  id: string;
+  admin_id: string;
+  action_type: string;
+  target_id?: string;
+  details?: Record<string, any>;
+  created_at: string;
+  admin_profile?: Profile;
+}

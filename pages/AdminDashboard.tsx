@@ -334,7 +334,7 @@ const SafetyReportRelationsCard: React.FC<{ report: any }> = ({ report }) => {
 };
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats' | 'errors'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats' | 'errors' | 'audit'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -342,6 +342,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [pendingReplies, setPendingReplies] = useState<any[]>([]);
   const [appErrors, setAppErrors] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [stats, setStats] = useState<{
       totalUsers: number;
       weeklyActiveCount: number;
@@ -645,6 +646,11 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 .from('app_errors')
                 .select('*')
                 .order('timestamp', { ascending: false }));
+        } else if (activeTab === 'audit') {
+            result = await safeFetch(() => supabase
+                .from('admin_audit_logs')
+                .select('*, admin_profile:admin_id(full_name, email, avatar_url, role)')
+                .order('created_at', { ascending: false }));
         } else {
             result = { data: [], error: null };
         }
@@ -666,6 +672,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else if (activeTab === 'reviews') setPendingReplies(result.data || []);
         else if (activeTab === 'support') setSupportMessages(result.data || []);
         else if (activeTab === 'errors') setAppErrors(result.data || []);
+        else if (activeTab === 'audit') setAuditLogs(result.data || []);
 
     } catch (err: any) {
         setErrorMsg(err.message || "Unknown system error occurred.");
@@ -750,6 +757,20 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     } catch (e) {
         console.error("Error fetching admin counts:", e);
     }
+  };
+
+  const logAdminAction = async (actionType: string, targetId: string | null, details: any = {}) => {
+      if (!currentUserProfile) return;
+      try {
+          await supabase.from('admin_audit_logs').insert({
+              admin_id: currentUserProfile.id,
+              action_type: actionType,
+              target_id: targetId,
+              details: details
+          });
+      } catch (err) {
+          console.error("Failed to log admin action:", err);
+      }
   };
 
   const handleDownloadPdf = () => {
@@ -890,6 +911,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           });
           
           if (error) throw error;
+          
+          await logAdminAction('SEND_BROADCAST', null, { title: bTitle, target: bTarget });
 
           alert("Broadcast sent successfully to " + bTarget + " users!");
           setBTitle('');
@@ -906,7 +929,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       if (!window.confirm("Delete this broadcast?")) return;
       const { error } = await supabase.from('broadcasts').delete().eq('id', id);
       if (error) alert("Could not delete: " + error.message);
-      else setBroadcasts(prev => prev.filter(b => b.id !== id));
+      else {
+          await logAdminAction('DELETE_BROADCAST', id);
+          setBroadcasts(prev => prev.filter(b => b.id !== id));
+      }
   };
 
   // Process Verification from Verify Tab
@@ -932,6 +958,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               delete copy[userId];
               return copy;
           });
+          
+          await logAdminAction('VERIFICATION_' + decision.toUpperCase(), userId, { reason });
+          
           alert(`User ${decision}d successfully.`);
           fetchCounts();
       } catch (err: any) {
@@ -955,6 +984,9 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             subscription_end_date: endDate.toISOString()
         }).eq('id', userId);
         if (error) throw error;
+        
+        await logAdminAction('UPDATE_TIER', userId, { new_tier: newTier, added_tokens: addedTokens });
+        
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription_tier: newTier } : u));
       } catch (error: any) {
           alert("Failed to update tier: " + error?.message);
@@ -976,6 +1008,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               block_reason: reason
           }).eq('id', userId);
           if (error) throw error;
+          
+          await logAdminAction('BLOCK_USER', userId, { reason });
 
           setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: true, block_reason: reason } : u));
           setBlockingUserId(null);
@@ -997,6 +1031,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           }).eq('id', userId);
           if (error) throw error;
 
+          await logAdminAction('UNBLOCK_USER', userId);
+
           setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: false, block_reason: null } : u));
           setUnblockConfirmId(null);
           alert("User unblocked successfully!");
@@ -1015,6 +1051,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               .update({ worker_reply_approved: true })
               .eq('id', bookingId);
           if (error) throw error;
+          
+          await logAdminAction('APPROVE_REVIEW_REPLY', bookingId);
           
           setPendingReplies(prev => prev.map(item => item.id === bookingId ? { ...item, worker_reply_approved: true } : item));
           alert("Artisan reply approved! It is now live on their profile.");
@@ -1039,6 +1077,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               })
               .eq('id', bookingId);
           if (error) throw error;
+          
+          await logAdminAction('REJECT_REVIEW_REPLY', bookingId);
           
           setPendingReplies(prev => prev.filter(item => item.id !== bookingId));
           alert("Artisan reply rejected & deleted.");
@@ -1074,6 +1114,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   console.error("Warning: Notification sync failed", notifErr.message);
               }
           }
+          await logAdminAction('SAFETY_REPORT_ACTION', reportId, { action });
           fetchData();
       }
   };
@@ -1087,6 +1128,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           status: 'open'
       });
       if (!error) {
+          await logAdminAction('SEND_SUPPORT_REPLY', selectedTicketUser.id, { reply: adminReply });
           // Send automatic in-app notification to the customer's PWA notification tray
           try {
               await supabase.from('notifications').insert({
@@ -1420,7 +1462,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats', 'errors'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats', 'errors', 'audit'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -1428,7 +1470,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab}</span>
+                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -2449,6 +2491,64 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                               </details>
                                           </div>
                                       )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          ) : activeTab === 'audit' ? (
+              <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                      <div>
+                          <h3 className="font-black text-slate-900 dark:text-white uppercase text-xs tracking-wider">Admin Audit Logs</h3>
+                          <p className="text-[10px] text-slate-500 mt-1">Immutable record of all administrative actions for transparency.</p>
+                      </div>
+                      <div className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-black text-xs px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800">
+                          {auditLogs.length} Records
+                      </div>
+                  </div>
+                  {auditLogs.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-800 p-12 text-center rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                          <i className="fa-solid fa-clipboard-list text-4xl text-slate-300 dark:text-slate-600 mb-4"></i>
+                          <p className="font-bold text-gray-400 uppercase text-xs tracking-widest">No Logs Recorded</p>
+                          <p className="text-[10px] text-gray-500 mt-2">No administrative actions have been captured yet.</p>
+                      </div>
+                  ) : (
+                      <div className="grid gap-3">
+                          {auditLogs.map((log) => (
+                              <div key={log.id} className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                  <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center shrink-0">
+                                          {log.admin_profile?.avatar_url ? (
+                                              <img src={log.admin_profile.avatar_url} alt="Admin" className="w-full h-full object-cover rounded-full" />
+                                          ) : (
+                                              <i className="fa-solid fa-user-shield text-slate-400 text-[10px]"></i>
+                                          )}
+                                      </div>
+                                      <div>
+                                          <div className="flex items-center gap-2">
+                                              <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                                  {log.admin_profile?.full_name || 'Unknown Admin'}
+                                              </span>
+                                              <span className="bg-brand/10 text-brand text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full">
+                                                  {log.action_type.replace(/_/g, ' ')}
+                                              </span>
+                                          </div>
+                                          <p className="text-[10px] text-slate-500 mt-1">
+                                              Target ID: <span className="font-mono">{log.target_id || 'System'}</span>
+                                          </p>
+                                          {log.details && Object.keys(log.details).length > 0 && (
+                                              <div className="mt-2 text-[9px] font-mono text-slate-400 break-all bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                                                  {JSON.stringify(log.details)}
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                      <p className="text-[10px] text-slate-400 font-bold whitespace-nowrap">
+                                          {new Date(log.created_at).toLocaleString()}
+                                      </p>
                                   </div>
                               </div>
                           ))}
