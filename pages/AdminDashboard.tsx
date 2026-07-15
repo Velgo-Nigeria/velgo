@@ -2564,7 +2564,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
         <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col md:flex-row items-stretch select-none overflow-hidden animate-fadeIn">
           
           {/* Left Panel: Clinical ID Visual Workspace */}
-          <div className="flex-1 bg-slate-900 border-r border-slate-800 flex flex-col p-6 min-h-0 relative">
+          <div className="h-[50vh] md:h-auto md:flex-1 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col p-4 md:p-6 min-h-0 shrink-0 relative">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[3px] block">Security Verification Suite</span>
@@ -2617,34 +2617,34 @@ GRANT ALL ON public.broadcasts TO service_role;`}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-4 bg-slate-950 p-3 rounded-2xl border border-slate-800 shadow">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-3 md:mt-4 bg-slate-950 p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-800 shadow shrink-0">
               <button 
                 onClick={() => setZoom(prev => Math.min(prev + 0.25, 4))}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <i className="fa-solid fa-magnifying-glass-plus text-emerald-500"></i> Zoom In
               </button>
               <button 
                 onClick={() => setZoom(prev => Math.max(prev - 0.25, 0.5))}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <i className="fa-solid fa-magnifying-glass-minus text-amber-500"></i> Zoom Out
               </button>
               <button 
                 onClick={() => setRotate(prev => prev - 90)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <i className="fa-solid fa-rotate-left text-indigo-400"></i> Spin Left
               </button>
               <button 
                 onClick={() => setRotate(prev => prev + 90)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase text-white flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <i className="fa-solid fa-rotate-right text-indigo-400"></i> Spin Right
               </button>
               <button 
                 onClick={() => { setZoom(1); setRotate(0); setPanX(0); setPanY(0); }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase text-slate-400 hover:text-white flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <i className="fa-solid fa-arrows-to-dot text-amber-500"></i> Reset
               </button>
@@ -2652,7 +2652,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
           </div>
 
           {/* Right Panel: Decision & Profile Audit comparison deck */}
-          <div className="w-full md:w-[420px] bg-slate-950 p-6 overflow-y-auto flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-800">
+          <div className="flex-1 md:flex-none w-full md:w-[420px] bg-slate-950 p-4 md:p-6 overflow-y-auto flex flex-col border-l-0 md:border-l border-slate-800">
             <div className="space-y-6">
               <div>
                 <span className="text-[10px] font-black uppercase text-indigo-400 tracking-[3px] block">Database Comparison Index</span>
