@@ -43,7 +43,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
       })));
     } else {
       setReviews([
-        { id: 1, user_name: "Ose Architecture", comment: "Velgo has changed how I hire artisans. The zero-commission model means my money goes straight to the worker's family.", rating: 5, is_worker: true },
+        { id: 1, user_name: "Ose Architecture", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5, is_worker: true },
         { id: 2, user_name: "Moriah Indo", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5, is_worker: true },
         { id: 3, user_name: "Tega Design", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5, is_worker: true }
       ]);
@@ -239,7 +239,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                     <div className="flex-1 space-y-5">
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
-                            <p className="text-base font-bold text-gray-200 leading-snug">Zero middleman markup on artisan labor.</p>
+                            <p className="text-base font-bold text-gray-200 leading-snug">Zero middleman markup on professional labor.</p>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5"><i className="fa-solid fa-check text-[11px] text-brand"></i></div>
@@ -274,7 +274,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
               </div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight">Our Mission</h2>
               <p className="text-lg text-gray-600 leading-relaxed font-medium">
-                 Born in Edo State, Velgo is Nigeria's premier zero-commission gig marketplace. We empower artisans and professionals by connecting them directly with clients—no hidden fees, no deductions.
+                 Born in Edo State, Velgo is Nigeria's premier zero-commission gig marketplace. We empower workers and professionals by connecting them directly with clients—no hidden fees, no deductions.
               </p>
               <button 
                   onClick={onViewAbout} 

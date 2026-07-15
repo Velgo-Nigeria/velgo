@@ -52,7 +52,7 @@ const IndividualToast: React.FC<{
     const msg = message.toLowerCase();
     if (msg.includes('verification') || msg.includes('nin') || msg.includes('id card') || msg.includes('verify')) return 'Verification Station';
     if (msg.includes('safety') || msg.includes('scam') || msg.includes('prohibited') || msg.includes('forbidden') || msg.includes('standard') || msg.includes('restricted')) return 'Safety Shield';
-    if (msg.includes('booking') || msg.includes('book') || msg.includes('artisan')) return 'Booking Engine';
+    if (msg.includes('booking') || msg.includes('book') || msg.includes('artisan') || msg.includes('professional')) return 'Booking Engine';
     if (msg.includes('payment') || msg.includes('bank') || msg.includes('transfer') || msg.includes('paystack')) return 'Secure Paystack';
     if (msg.includes('apply') || msg.includes('task') || msg.includes('job') || msg.includes('posted')) return 'Job Hub';
     if (msg.includes('success') || msg.includes('completed') || msg.includes('great') || msg.includes('saved') || msg.includes('updated')) return 'Success Confirmed';

@@ -49,7 +49,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
     e.preventDefault();
     if (!profile || !worker) return;
     if (!reportDetails.trim()) {
-      alert("Please provide specific feedback/evidence regarding this artisan.");
+      alert("Please provide specific feedback/evidence regarding this professional.");
       return;
     }
 
@@ -260,7 +260,7 @@ UID: ${profile.id}
           </div>
           <div className="space-y-2">
               <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wide">Artisan Offline</h2>
-              <p className="text-xs text-gray-500 max-w-xs mx-auto">This artisan public profile might have been suspended, deleted, or is temporarily unavailable.</p>
+              <p className="text-xs text-gray-500 max-w-xs mx-auto">This professional public profile might have been suspended, deleted, or is temporarily unavailable.</p>
           </div>
           <button onClick={onBack} className="px-6 py-3 bg-brand text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-transform">
               Go to Marketplace

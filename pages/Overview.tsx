@@ -407,11 +407,11 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
 1. Tap your 'Profile' icon in the bottom menu, then click on 'Subscription / Credits'.
 2. You can select standard refill packs starting from extremely affordable rates.
 3. Pay securely via card, bank transfer, or USSD using our native Paystack gateway.
-4. Spent tokens let artisans instantly apply for high-budget marketplace jobs before others!`;
+4. Spent tokens let professionals instantly apply for high-budget marketplace jobs before others!`;
     }
     
     if (q.includes('verify') || q.includes('verification') || q.includes('nin') || q.includes('identity') || q.includes('badge')) {
-      return `A verified badge raises your Artisan conversion rate by over 200%!
+      return `A verified badge raises your Professional conversion rate by over 200%!
 To get verified:
 1. Go to your 'Profile' tab in the bottom menu and tap 'Verify Identity'.
 2. Ensure you have input your legal full name exactly as it appears on your document.
@@ -421,7 +421,7 @@ To get verified:
 
     if (q.includes('pay') || q.includes('payment') || q.includes('escrow') || q.includes('milestone') || q.includes('fund') || q.includes('price') || q.includes('pricing') || q.includes('deal')) {
       return `Velgo supports direct milestone agreements and secure negotiations:
-1. Clients and artisans communicate directly via secure WhatsApp redirects to negotiate scope & pricing.
+1. Clients and professionals communicate directly via secure WhatsApp redirects to negotiate scope & pricing.
 2. We recommend working in structured milestones (e.g. fractional deposit or step-by-step progress payments).
 3. Do not pay full upfront contract budgets before previewing or receiving finished services.
 4. In case of issues or suspicious behavior, please file a priority alert in the Safety Center form below immediately!`;
@@ -436,7 +436,7 @@ If you experience any challenge during a transaction:
     }
 
     if (q.includes('earn') || q.includes('get job') || q.includes('client') || q.includes('worker') || q.includes('artisan') || q.includes('apply')) {
-      return `To maximize your earnings as a professional Velgo Artisan:
+      return `To maximize your earnings as a certified Velgo Professional:
 1. Keep your Location State & LGA, starting prices, and services description updated on your Profile page.
 2. Include clear, real visual photos of your previous portfolio works.
 3. Check the Marketplace tab regularly for open tasks, and apply immediately before other competitive quotes are locked in!`;
@@ -486,7 +486,7 @@ If you experience any challenge during a transaction:
           contents: textToSend,
           config: {
             systemInstruction: `You are Velgo AI, the official intelligent assistant of the Velgo Nigeria marketplace (velgo.com.ng).
-Your goal is to assist Nigerian artisans and clients. Speak with cultural context when suitable (keeping it professional but highly approachable).
+Your goal is to assist Nigerian professionals and clients. Speak with cultural context when suitable (keeping it professional but highly approachable).
 Focus on helping them hire or earn safely. Keep answers concise, direct, and under 110 words. 
 If the user asks about buying tokens, NIN verification, safety reports, or completed counts, kindly explain that they can see and manage these features directly inside this Hub page.`
           }
@@ -672,7 +672,7 @@ UID: ${profile.id}
               My Hub
             </h1>
             <p className="text-xs text-gray-300 font-medium max-w-lg">
-              Manage your safety accounts, artisan metrics, interactive platform guides, and direct AI conversational concierge all in a single workspace.
+              Manage your safety accounts, professional metrics, interactive platform guides, and direct AI conversational concierge all in a single workspace.
             </p>
           </div>
 
@@ -773,7 +773,7 @@ UID: ${profile.id}
       {hubTab === 'dashboard' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-1">
         
-        {/* LEFT COLUMN: Artisan Stats & AI Chat Concierge  (7/12 cols) */}
+        {/* LEFT COLUMN: Professional Stats & AI Chat Concierge  (7/12 cols) */}
         <div className="lg:col-span-7 space-y-8">
 
           {/* PROFILE TRUST SCORE & COMPLETION TRACKER */}
@@ -1365,15 +1365,15 @@ UID: ${profile.id}
                 <>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-500 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0">1</span>
-                    <p><b>Filter by Verification:</b> Browse artisan listings using our certified verified metrics badge filter for security and NIN matched guarantee.</p>
+                    <p><b>Filter by Verification:</b> Browse professional listings using our certified verified metrics badge filter for security and NIN matched guarantee.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-500 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0">2</span>
-                    <p><b>Clear Payment Milestones:</b> Never pay an artisan a 100% upfront deposit. Always establish fractional progress steps and pay only upon proof of performance.</p>
+                    <p><b>Clear Payment Milestones:</b> Never pay a professional a 100% upfront deposit. Always establish fractional progress steps and pay only upon proof of performance.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-500 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0">3</span>
-                    <p><b>WhatsApp Redirection:</b> Communicate with the artisan over the prefilled WhatsApp invitation to finalize scope, pricing agreements, and visual specs easily.</p>
+                    <p><b>WhatsApp Redirection:</b> Communicate with the professional over the prefilled WhatsApp invitation to finalize scope, pricing agreements, and visual specs easily.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-500 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0">4</span>

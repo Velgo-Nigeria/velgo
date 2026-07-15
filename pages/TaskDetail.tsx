@@ -244,7 +244,7 @@ UID: ${profile.id}
 
       // Robust database protection: If the remote Supabase database columns have not been run/synced,
       // it returns code '42703' (undefined_column). In that case, we fall back to a simple application insert
-      // so there is ZERO downtime or friction for the artisan.
+      // so there is ZERO downtime or friction for the professional.
       if (error && error.code === '42703') {
           console.warn("Custom quote columns are missing in database, falling back to clean simple booking insert.", error);
           const fallbackQuery = await supabase.from('bookings').insert({
@@ -402,7 +402,7 @@ UID: ${profile.id}
         </div>
         <div className="space-y-2">
             <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wide">Job Post Offline</h2>
-            <p className="text-xs text-gray-500 max-w-xs mx-auto">This job posting might have been completed, filled by another artisan, or deleted by the client.</p>
+            <p className="text-xs text-gray-500 max-w-xs mx-auto">This job posting might have been completed, filled by another professional, or deleted by the client.</p>
         </div>
         <button onClick={onBack} className="px-6 py-3 bg-brand text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-transform">
             Go to Marketplace

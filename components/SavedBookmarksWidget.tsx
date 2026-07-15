@@ -166,7 +166,7 @@ export const SavedBookmarksWidget: React.FC<SavedBookmarksWidgetProps> = ({ user
                     <h4 className="font-bold text-xs text-gray-950 dark:text-white truncate">{w.full_name}</h4>
                     {w.is_verified && <VerificationBadge className="text-blue-500 text-[10px]" />}
                   </div>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase truncate">{w.category || 'Professional Artisan'}</p>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase truncate">{w.category || 'Verified Professional'}</p>
                   <p className="text-[9px] font-medium text-gray-400 mt-0.5">
                     Starting: ₦{w.starting_price} • Rating: {w.worker_avg_rating ? `${w.worker_avg_rating}★` : 'N/A'}
                   </p>

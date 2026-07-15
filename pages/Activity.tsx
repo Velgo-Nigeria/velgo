@@ -40,6 +40,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
   const [declineBookingItem, setDeclineBookingItem] = useState<any>(null);
   const [declineActionType, setDeclineActionType] = useState<'declined' | 'cancelled'>('declined');
   const [declineReason, setDeclineReason] = useState("");
+  const [customDeclineReason, setCustomDeclineReason] = useState("");
 
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [redirectingPartnerName, setRedirectingPartnerName] = useState('');
@@ -151,6 +152,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         setDeclineBookingItem(booking);
         setDeclineActionType(newStatus);
         setDeclineReason("");
+        setCustomDeclineReason("");
         setShowDeclineModal(true);
         return;
     }
@@ -167,7 +169,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     await supabase.from('notifications').insert({
                         user_id: booking.client_id,
                         title: '⚠️ Urgent: Token Refuel Needed',
-                        message: `An artisan is ready to start your job "${booking.posted_tasks?.title || 'your request'}"! Please purchase a hiring token to unlock instant coordination.`,
+                        message: `An professional is ready to start your job "${booking.posted_tasks?.title || 'your request'}"! Please purchase a hiring token to unlock instant coordination.`,
                         type: 'alert'
                     });
 
@@ -178,7 +180,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                             const adminNotifications = admins.map(admin => ({
                                 user_id: admin.id,
                                 title: '⚠️ Match Impediment: Client Out of Tokens',
-                                message: `Artisan tried to accept booking for task "${booking.posted_tasks?.title || 'a job'}", but Client has 0 tokens remaining. Match is on hold.`,
+                                message: `Professional tried to accept booking for task "${booking.posted_tasks?.title || 'a job'}", but Client has 0 tokens remaining. Match is on hold.`,
                                 type: 'alert'
                             }));
                             await supabase.from('notifications').insert(adminNotifications);
@@ -200,14 +202,14 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
         } else {
             let updatePayload: any = { status: newStatus };
             if ((newStatus === 'declined' || newStatus === 'cancelled') && declineReason && declineBookingItem?.id === booking.id) {
-                updatePayload.decline_reason = declineReason;
+                updatePayload.decline_reason = declineReason === "Other" ? ("Other: " + customDeclineReason) : declineReason;
             }
             let { error } = await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
             
             // Fallback if decline_reason column doesn't exist yet
             if (error && error.message && error.message.includes('decline_reason')) {
                 delete updatePayload.decline_reason;
-                updatePayload.quote_notes = declineReason;
+                updatePayload.quote_notes = declineReason === "Other" ? ("Other: " + customDeclineReason) : declineReason;
                 const fallbackRes = await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
                 error = fallbackRes.error;
             }
@@ -231,7 +233,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                 .from('bookings')
                 .update({ 
                     status: 'declined',
-                    decline_reason: 'The client has accepted another artisan for this job.'
+                    decline_reason: 'The client has accepted another professional for this job.'
                 })
                 .eq('task_id', booking.task_id)
                 .eq('status', 'pending');
@@ -241,7 +243,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                     .from('bookings')
                     .update({ 
                         status: 'declined',
-                        quote_notes: 'The client has accepted another artisan for this job.'
+                        quote_notes: 'The client has accepted another professional for this job.'
                     })
                     .eq('task_id', booking.task_id)
                     .eq('status', 'pending');
@@ -268,7 +270,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     if (!profile || !booking) return;
 
     const confirmDismiss = window.confirm(
-      "Are you sure you want to dismiss this artisan and re-open the task for applications? Other pending applicants will instantly become available again, and the hired worker will be removed from this task. Note: Your safety deposit token is not refundable."
+      "Are you sure you want to dismiss this professional and re-open the task for applications? Other pending applicants will instantly become available again, and the hired worker will be removed from this task. Note: Your safety deposit token is not refundable."
     );
     if (!confirmDismiss) return;
 
@@ -321,7 +323,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     }
 
     const confirmMsg = action === 'reopen'
-      ? "Are you sure you want to dismiss this artisan and re-open this task? This will cancel the booking and mark the task as open again for other candidates. Safety deposit tokens are not refundable."
+      ? "Are you sure you want to dismiss this professional and re-open this task? This will cancel the booking and mark the task as open again for other candidates. Safety deposit tokens are not refundable."
       : booking.task_id
         ? "Are you sure you want to mark this task as FAILED? This will cancel the active booking and mark the job post as officially cancelled on Velgo."
         : "Are you sure you want to cancel this direct hire? This will cancel the active booking.";
@@ -648,7 +650,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     doc.text(`Total Records Present: ${totalJobs} historical items`, margin + 5, y + 10);
     doc.text(`Completed Jobs: ${completedCount} | Cancelled/Declined: ${cancelledCount}`, margin + 5, y + 15);
     doc.text(`${amountLabel}: NGN ${totalSpentEarned.toLocaleString()}`, margin + 120, y + 10);
-    doc.text("Velgo Nigeria Audit Protocol • All transactions are client-to-artisan direct-tier remittance. Privacy protection enforced.", margin + 120, y + 15);
+    doc.text("Velgo Nigeria Audit Protocol • All transactions are client-to-professional direct-tier remittance. Privacy protection enforced.", margin + 120, y + 15);
 
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
@@ -879,7 +881,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     doc.setFontSize(6.5);
     doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
     const finePrint = [
-      "• DIRECT PAYMENT REMITTANCE: Clients send funds directly to the verified artisan. Velgo does NOT collect commission/escrow escrow holding fees.",
+      "• DIRECT PAYMENT REMITTANCE: Clients send funds directly to the verified professional. Velgo does NOT collect commission/escrow escrow holding fees.",
       "• SPAM / PIRACY CONTROLS: According to NDPR privacy laws, phone details are starred (hashed) on receipt prints to prevent indexing spam bots.",
       "• COMPLETION GUARANTEE: Mark accomplishments as Completed inside Velgo to build transparency weight on the network."
     ];
@@ -921,7 +923,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                   .from('bookings')
                   .update({ 
                       status: 'declined',
-                      quote_notes: 'Job successfully completed by another artisan.'
+                      quote_notes: 'Job successfully completed by another professional.'
                   })
                   .eq('task_id', completingBooking.task_id)
                   .eq('status', 'pending');
@@ -946,6 +948,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
     if (declineBookingItem && declineActionType) {
         updateBookingStatus(declineBookingItem, declineActionType, true);
         setShowDeclineModal(false);
+        setCustomDeclineReason("");
     }
   };
 
@@ -1097,7 +1100,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
       {showDeclineModal && declineBookingItem && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-md animate-fadeIn">
             <div className="bg-white dark:bg-gray-800 rounded-t-[40px] sm:rounded-[40px] p-8 w-full max-w-sm relative shadow-2xl space-y-6 max-h-[90vh] overflow-hidden flex flex-col font-sans">
-                <button onClick={() => setShowDeclineModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <button onClick={() => { setShowDeclineModal(false); setCustomDeclineReason(""); }} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                     <i className="fa-solid fa-xmark text-lg"></i>
                 </button>
                 <div className="text-center">
@@ -1123,34 +1126,34 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         {profile?.id === declineBookingItem.client_id ? (
                             declineActionType === 'declined' ? (
                                 <>
-                                    <option value="Found someone else">Found someone else</option>
-                                    <option value="Price is too high">Price is too high</option>
-                                    <option value="Timing doesn't work for me">Timing doesn't work for me</option>
-                                    <option value="Worker profile doesn't match my needs">Worker profile doesn't match my needs</option>
+                                    <option value="1. I have hired someone else for this job.">1. I have hired someone else.</option>
+                                    <option value="2. Your price is higher than my budget.">2. Your price is higher than my budget.</option>
+                                    <option value="3. Our timing or schedules do not match.">3. Our timing or schedules do not match.</option>
+                                    <option value="4. Your skills don't perfectly match what I need right now.">4. Skills don't perfectly match.</option>
                                 </>
                             ) : (
                                 <>
-                                    <option value="No longer need this service">No longer need this service</option>
-                                    <option value="Created request by mistake">Created request by mistake</option>
-                                    <option value="Found someone outside Velgo">Found someone outside Velgo</option>
+                                    <option value="1. I don't need this service anymore.">1. I don't need this service anymore.</option>
+                                    <option value="2. I made a mistake while creating this request.">2. Made a mistake creating request.</option>
+                                    <option value="3. I found a worker outside this app.">3. Found a worker outside this app.</option>
                                 </>
                             )
                         ) : (
                             declineActionType === 'declined' ? (
                                 <>
-                                    <option value="Fully booked at the moment">Fully booked at the moment</option>
-                                    <option value="Job scope is outside my expertise">Job scope is outside my expertise</option>
-                                    <option value="Location is too far">Location is too far</option>
-                                    <option value="Price offered is too low">Price offered is too low</option>
+                                    <option value="1. I am fully booked and too busy right now.">1. I am fully booked and busy.</option>
+                                    <option value="2. This job is outside what I normally do.">2. Job is outside what I normally do.</option>
+                                    <option value="3. The job location is too far for me.">3. The job location is too far.</option>
+                                    <option value="4. The pay offered is too small for this work.">4. The pay offered is too small.</option>
                                 </>
                             ) : (
                                 <>
-                                    <option value="Fully booked now">Fully booked now</option>
-                                    <option value="Applied by mistake">Applied by mistake</option>
+                                    <option value="1. I am no longer free to do this job.">1. I am no longer free to do this job.</option>
+                                    <option value="2. I applied for this job by mistake.">2. I applied for this job by mistake.</option>
                                 </>
                             )
                         )}
-                        <option value="Other">Other</option>
+                        <option value="Other">Custom Reason (Please specify)</option>
                     </select>
                 </div>
 
@@ -1159,14 +1162,15 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                         <textarea
                             placeholder="Please specify (optional)"
                             className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl py-3 px-4 text-sm font-medium text-gray-900 dark:text-white outline-none resize-none h-20 focus:ring-2 focus:ring-brand focus:border-brand"
-                            onChange={(e) => setDeclineReason("Other: " + e.target.value)}
+                            value={customDeclineReason}
+                            onChange={(e) => setCustomDeclineReason(e.target.value)}
                         ></textarea>
                     </div>
                 )}
 
                 <button 
                     onClick={confirmUpdateBookingStatus}
-                    disabled={!declineReason}
+                    disabled={!declineReason || (declineReason === "Other" && !customDeclineReason.trim())}
                     className="w-full bg-red-600 hover:bg-red-500 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
                     Confirm {declineActionType === 'declined' ? 'Decline' : 'Cancel'}
@@ -1871,7 +1875,7 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 </div>
                             )}
 
-                            {/* Display existing artisan replies, or reply submission details */}
+                            {/* Display existing worker replies, or reply submission details */}
                             {profile?.id === item.worker_id && item.review && (
                                 <div className="mt-1">
                                     {item.worker_reply ? (
@@ -1899,11 +1903,11 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
                                 </div>
                             )}
 
-                            {/* Client sees the approved responses from the artisan */}
+                            {/* Client sees the approved responses from the professional */}
                             {profile?.id === item.client_id && item.worker_reply && item.worker_reply_approved && (
                                 <div className="mt-3 ml-4 pl-4 border-l-2 border-emerald-500 dark:border-emerald-600 space-y-1 font-sans bg-emerald-50/20 dark:bg-emerald-950/10 p-2.5 rounded-xl">
                                     <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-450 flex items-center gap-1">
-                                        <i className="fa-solid fa-reply"></i> Response from Artisan
+                                        <i className="fa-solid fa-reply"></i> Response from Professional
                                     </p>
                                     <p className="text-xs text-gray-800 dark:text-gray-200">"{item.worker_reply}"</p>
                                 </div>

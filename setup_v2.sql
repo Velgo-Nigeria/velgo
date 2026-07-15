@@ -387,3 +387,5 @@ CREATE POLICY "Verified users can insert app reviews" ON app_reviews FOR INSERT 
     auth.uid() = user_id 
     AND EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_verified = true)
 );
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS id_rejection_reason TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS decline_reason TEXT;

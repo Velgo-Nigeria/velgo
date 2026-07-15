@@ -19,13 +19,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
 
   // Set up the shareable URL and text descriptions
   let shareUrl = baseUrl;
-  let textDesc = "Connect with verified local artisans on Velgo Nigeria!";
+  let textDesc = "Connect with verified local professionals on Velgo Nigeria!";
   let title = "Velgo Nigeria";
 
   if (type === 'worker' && data) {
     shareUrl = `${baseUrl}/?workerId=${data.id}`;
-    textDesc = `Hire ${data.full_name} (${data.category || 'Professional Artisan'}) on Velgo Nigeria. Verified local expertise.`;
-    title = `Artisan: ${data.full_name}`;
+    textDesc = `Hire ${data.full_name} (${data.category || 'Verified Professional'}) on Velgo Nigeria. Verified local expertise.`;
+    title = `Professional: ${data.full_name}`;
   } else if (type === 'task' && data) {
     shareUrl = `${baseUrl}/?jobId=${data.id}`;
     textDesc = `New Job on Velgo Nigeria: "${data.title}" - Category: ${data.category || 'Artisan'}. Check details and apply.`;
@@ -35,7 +35,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
     shareUrl = referralCode 
       ? `${baseUrl}/?code=${referralCode}` 
       : (data?.id ? `${baseUrl}/?ref=${data.id}` : baseUrl);
-    textDesc = `Join Velgo Nigeria to find and book verified local artisans near you! Use my referral link.`;
+    textDesc = `Join Velgo Nigeria to find and book verified local professionals near you! Use my referral link.`;
     title = "Join Velgo Nigeria";
   }
 
@@ -161,7 +161,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
                     <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full border border-emerald-100 flex items-center gap-2 shadow-sm">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                       <span className="text-sm font-black uppercase tracking-widest">
-                        {type === 'worker' ? 'Verified Artisan' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
+                        {type === 'worker' ? 'Verified Professional' : type === 'task' ? 'Verified Job' : 'Platform Hub'}
                       </span>
                     </div>
                   </div>
@@ -221,7 +221,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, type, d
 
                     {type === 'app' && (
                       <div className="flex-1 pr-10">
-                        <h2 className="text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Nigeria's Trusted Artisan Hub</h2>
+                        <h2 className="text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Nigeria's Trusted Professional Hub</h2>
                         <p className="text-xl font-medium text-slate-600 leading-relaxed mb-6">
                           Connect directly on WhatsApp with vetted, identity-verified local plumbers, electricians, painters & technicians.
                         </p>

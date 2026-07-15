@@ -29,7 +29,7 @@ export const CATEGORY_MAP: Record<string, string[]> = {
     "Chartered Accountant", "Financial Analyst", "Tax Consultant", "Auditor", "Investment Banker", "Corporate Lawyer", "Property Lawyer", "Legal Drafter", "Compliance Officer", "Management Consultant", "Business Plan Writer", "HR Manager / Recruiter", "Public Relations (PR) Manager",
     "Office Manager", "Secretary / Receptionist", "Bookkeeper", "Payroll Clerk", "Sales Representative", "Business Development Executive", "Telesales Agent"
   ],
-  "Artisan Services, Repairs & Maintenance": [
+  "Professional Services, Repairs & Maintenance": [
     "Car Mechanic", "Auto-Electrician (Rewire)", "Vulcanizer", "Panel Beater", "Car Painter / Sprayer", "Truck Mechanic", "Generator Mechanic",
     "Phone Repair Technician", "Laptop Repair Technician", "TV / Radio Repair", "Washing Machine / Microwave Repair",
     "Tailor / Fashion Designer", "Seamstress", "Shoe Maker / Cobbler", "Makeup Artist (MUA)", "Hairdresser / Stylist", "Barber", "Nail Technician", "Spa Therapist / Masseuse"

@@ -17,7 +17,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
   const PHYSICAL_CATEGORIES = [
     "Construction, Engineering & Real Estate",
-    "Artisan Services, Repairs & Maintenance",
+    "Professional Services, Repairs & Maintenance",
     "Domestic, Personal & Errands",
     "Events, Hospitality & Entertainment",
     "Agriculture & Farming",
@@ -589,7 +589,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
             <span className="text-brand text-base mt-0.5"><i className="fa-solid fa-earth-africa"></i></span>
             <div className="space-y-0.5 text-left">
               <p className="text-[10px] font-black uppercase text-brand tracking-widest">Virtual Location Activated</p>
-              <p className="text-[11px] text-gray-500 font-bold leading-relaxed">This task will be marked as remote and open for any artisan or digital freelancer across Nigeria. Location fields are disabled.</p>
+              <p className="text-[11px] text-gray-500 font-bold leading-relaxed">This task will be marked as remote and open for any professional or digital freelancer across Nigeria. Location fields are disabled.</p>
             </div>
           </div>
         )}

@@ -89,17 +89,17 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
   const clientSlides = [
     {
       title: "1. Choose How to Hire",
-      text: "Open the Velgo app and browse high-rated local artisans inside the 'Market', or post your job requirement for free. Top verified workers in your neighborhood will respond immediately.",
+      text: "Open the Velgo app and browse high-rated local professionals inside the 'Market', or post your job requirement for free. Top verified workers in your neighborhood will respond immediately.",
       subtitle: "Click the toggle in the simulator on the right to see or test how easy it is to search for talent or post a new request!"
     },
     {
       title: "2. Connect Directly on WhatsApp",
-      text: "Velgo utilizes secure direct-connect WhatsApp redirects to let you chat with the artisan instantly. Discuss custom requirements, agree on the final labor cost, expected timeline, and transport fees pre-transit.",
+      text: "Velgo utilizes secure direct-connect WhatsApp redirects to let you chat with the professional instantly. Discuss custom requirements, agree on the final labor cost, expected timeline, and transport fees pre-transit.",
       subtitle: "Tap the WhatsApp action in the simulator to see how our prefilled message redirects you instantly and securely."
     },
     {
       title: "3. Materials Protocol",
-      text: "To avoid financial risks, buy materials yourself at your local market or accompany the artisan. Never send cash upfront for supplies to workers with low ratings.",
+      text: "To avoid financial risks, buy materials yourself at your local market or accompany the worker. Never send cash upfront for supplies to workers with low ratings.",
       subtitle: "Toggle between the Risky Way and the Velgo Safe Way on the right to grasp our core financial safety habits."
     },
     {
@@ -114,7 +114,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
     },
     {
       title: "6. Trust the Verification Badge",
-      text: "Prioritize workers carrying the blue checkmark. These artisans have submitted government-authenticated NIN identity documents verified by our secure security network.",
+      text: "Prioritize workers carrying the blue checkmark. These professionals have submitted government-authenticated NIN identity documents verified by our secure security network.",
       subtitle: "Hover or tap on Suleiman's blue verification checkmark in the simulator to inspect his security details."
     }
   ];
@@ -122,7 +122,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
   const workerSlides = [
     {
       title: "1. Clean High-Grade Profile",
-      text: "Artisans with bright, professional photos of their work and detailed services receive up to 4x more direct hires. Make your biography informative and clear.",
+      text: "Professionals with bright, professional photos of their work and detailed services receive up to 4x more direct hires. Make your biography informative and clear.",
       subtitle: "Tap the toggle in the simulator to see how professional photos and honest tags transform your hire rates."
     },
     {
@@ -276,7 +276,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                   <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 p-2.5 rounded-xl text-left">
                     <p className="text-[9px] font-black text-emerald-850 dark:text-emerald-300 uppercase tracking-widest"><i className="fa-brands fa-whatsapp mr-1 text-[11px]"></i> Direct Connection</p>
                     <p className="text-[8.5px] text-gray-500 dark:text-gray-400 font-semibold leading-relaxed mt-1">
-                      To eliminate middlemen and maintain 100% zero commissions, Velgo redirects you directly to the artisan's WhatsApp line.
+                      To eliminate middlemen and maintain 100% zero commissions, Velgo redirects you directly to the professional's WhatsApp line.
                     </p>
                   </div>
                 </div>
@@ -476,7 +476,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                     <div>
                       <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 text-center">Velgo Co-Buying Strategy</p>
                       <p className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold leading-normal mt-1">
-                        Meet the verified artisan near local markets (e.g., Alaba, Oshodi, or local market structures). Standardize buying by paying dealers yourself and keeping original receipts!
+                        Meet the verified professional near local markets (e.g., Alaba, Oshodi, or local market structures). Standardize buying by paying dealers yourself and keeping original receipts!
                       </p>
                     </div>
                   </div>
@@ -588,7 +588,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                 <div className="space-y-2">
                   <div>
                     <h4 className="text-[11px] font-black dark:text-white">DB Box Cable Setup</h4>
-                    <p className="text-[9px] text-gray-400 font-medium leading-none mt-0.5">Artisan: Tunde Alao</p>
+                    <p className="text-[9px] text-gray-400 font-medium leading-none mt-0.5">Professional: Tunde Alao</p>
                   </div>
                   <div className="flex justify-between bg-slate-50 dark:bg-gray-900 p-2 border border-gray-100 dark:border-gray-750 rounded-lg text-[9px] font-bold text-gray-500">
                     <span>Labor Budget</span>
@@ -634,7 +634,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ onClose }) => {
                       <div className="bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-100 dark:border-emerald-900 p-3 rounded-xl text-center space-y-1 animate-fadeIn">
                         <p className="text-[10px] font-black text-emerald-800 dark:text-emerald-300">Rating cast: {selectedRating}/5 Stars! ✓</p>
                         <p className="text-[8px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold leading-normal">
-                          Feedback securely registered to build Nigeran artisan history!
+                          Feedback securely registered to build Nigerian professional history!
                         </p>
                         <button
                           onClick={() => {

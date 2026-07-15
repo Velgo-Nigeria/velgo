@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
+import fs from 'fs';
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
+const env = fs.readFileSync('.env', 'utf8').split('\n').reduce((acc, line) => {
+  const [key, ...val] = line.split('=');
+  if (key) acc[key] = val.join('=').trim();
+  return acc;
+}, {});
+
+const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
 async function check() {
   const { data, error } = await supabase.from('profiles').select('id_rejection_reason').limit(1);

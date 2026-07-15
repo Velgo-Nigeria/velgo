@@ -213,14 +213,14 @@ export const Pricing: React.FC<PricingProps> = ({ onBack, onGetStarted, onLogin 
       <section className="max-w-3xl mx-auto px-6 space-y-8 mb-12">
         <div className="text-center">
           <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-wider">Frequently Asked Questions</h3>
-          <p className="text-xs font-bold uppercase text-slate-400 tracking-widest mt-1">Clear Answers for Smart Artisans & Clients</p>
+          <p className="text-xs font-bold uppercase text-slate-400 tracking-widest mt-1">Clear Answers for Smart Professionals & Clients</p>
         </div>
 
         <div className="space-y-4">
           <div className="p-6 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 space-y-2">
             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">What are Velgo Tokens used for?</h4>
             <p className="text-xs text-gray-500 leading-relaxed dark:text-gray-400">
-              Tokens are the marketplace credit for artisans. While registration, listing services, browsing jobs, and talking with potential clients are 100% free, an artisan uses 1 single Token to finalize and accept an official booking.
+              Tokens are the marketplace credit for professionals. While registration, listing services, browsing jobs, and talking with potential clients are 100% free, a professional uses 1 single Token to finalize and accept an official booking.
             </p>
           </div>
 
@@ -245,7 +245,7 @@ export const Pricing: React.FC<PricingProps> = ({ onBack, onGetStarted, onLogin 
         <div>
           <a href="/" onClick={(e) => { e.preventDefault(); if (onBack) onBack(); }} className="hover:text-slate-900 dark:hover:text-white transition-colors">Back To Landing Page</a>
         </div>
-        <p className="font-medium text-gray-300 dark:text-gray-600">© 2025 Velgo Nigeria. Edo State Professional Artisan Hub.</p>
+        <p className="font-medium text-gray-300 dark:text-gray-600">© 2025 Velgo Nigeria. Edo State Professional Service Hub.</p>
       </footer>
     </div>
   );

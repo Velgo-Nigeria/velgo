@@ -721,7 +721,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             console.error("Critical error in support ticket count check:", supportCatchErr);
         }
 
-        // 4. Artisan Replies count (where worker_reply is set but not yet approved)
+        // 4. Worker Replies count (where worker_reply is set but not yet approved)
         const { count: rCount } = await supabase
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -813,7 +813,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // User Role Distribution table
     doc.text("User Roles Breakdown:", 120, 55);
     doc.text(`- Clients (Hiring accounts): ${stats.roles.client}`, 125, 61);
-    doc.text(`- Artisans / Workers (Providing services): ${stats.roles.worker}`, 125, 67);
+    doc.text(`- Professionals / Workers (Providing services): ${stats.roles.worker}`, 125, 67);
     doc.text(`- Platform Administrators: ${stats.roles.admin}`, 125, 73);
     
     // Section 2: Finances and Token Sales
@@ -852,7 +852,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     
     doc.text(`Unified Task Flow (Total Volume): ${stats.totalTasks + (stats.totalDirectBookings || 0)}`, 15, 150);
     doc.text(`- Marketplace Job Postings: ${stats.totalTasks}`, 15, 156);
-    doc.text(`- Direct Artisan Bookings/Hires: ${stats.totalDirectBookings || 0}`, 15, 162);
+    doc.text(`- Direct Worker Bookings/Hires: ${stats.totalDirectBookings || 0}`, 15, 162);
     doc.text(`- Applications / Bidding Volume: ${stats.totalApplications || 0}`, 15, 168);
     doc.text(`- Active/Completed Matches: ${stats.totalBookings}`, 15, 174);
     
@@ -1055,7 +1055,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           await logAdminAction('APPROVE_REVIEW_REPLY', bookingId);
           
           setPendingReplies(prev => prev.map(item => item.id === bookingId ? { ...item, worker_reply_approved: true } : item));
-          alert("Artisan reply approved! It is now live on their profile.");
+          alert("Worker reply approved! It is now live on their profile.");
           fetchCounts();
       } catch (err: any) {
           alert("Action failed: " + err.message);
@@ -1065,7 +1065,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const handleReviewReplyReject = async (bookingId: string) => {
-      if (!window.confirm("Are you sure you want to delete and reset this artisan reply? The artisan will be allowed to submit a new response.")) return;
+      if (!window.confirm("Are you sure you want to delete and reset this worker reply? The worker will be allowed to submit a new response.")) return;
       setProcessingId(bookingId);
       try {
           const { error } = await supabase
@@ -1081,7 +1081,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           await logAdminAction('REJECT_REVIEW_REPLY', bookingId);
           
           setPendingReplies(prev => prev.filter(item => item.id !== bookingId));
-          alert("Artisan reply rejected & deleted.");
+          alert("Worker reply rejected & deleted.");
           fetchCounts();
       } catch (err: any) {
           alert("Action failed: " + err.message);
@@ -1470,7 +1470,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'reviews' ? 'Artisan Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
+                <span>{tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -1535,7 +1535,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                          <div>
                              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">📢 Activate Admin Broadcasts</h3>
                              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                 The <code>public.broadcasts</code> table was not found in your Supabase database schema cache. This table stores public announcements sent to students, clients, or artisans.
+                                 The <code>public.broadcasts</code> table was not found in your Supabase database schema cache. This table stores public announcements sent to students, clients, or professionals.
                              </p>
                          </div>
                      </div>
@@ -2100,7 +2100,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
               <div className="space-y-6 animate-fadeIn pb-12">
                   <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-[28px] border dark:border-slate-700">
                       <div>
-                          <h3 className="text-sm font-black text-gray-900 dark:text-white">Artisan Reply Vetting</h3>
+                          <h3 className="text-sm font-black text-gray-900 dark:text-white">Worker Reply Vetting</h3>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Reviewing professional conduct</p>
                       </div>
                       <span className="text-[11px] font-black bg-brand/10 text-brand px-3 py-1.5 rounded-xl">
@@ -2111,7 +2111,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                   {pendingReplies.length === 0 ? (
                       <div className="text-center py-20 opacity-35 bg-white dark:bg-slate-800 rounded-[28px] border dark:border-slate-700">
                           <i className="fa-solid fa-circle-check text-6xl mb-4 text-emerald-500"></i>
-                          <p className="font-black uppercase tracking-widest text-xs dark:text-white">All clear! No pending artisan replies.</p>
+                          <p className="font-black uppercase tracking-widest text-xs dark:text-white">All clear! No pending worker replies.</p>
                       </div>
                   ) : (
                       <div className="space-y-4 font-sans">
@@ -2125,7 +2125,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                           </div>
                                           <div>
                                               <p className="font-extrabold text-gray-800 dark:text-gray-200">{reply.worker?.full_name || 'Unknown Worker'}</p>
-                                              <p className="text-[8px] font-black uppercase text-brand">Artisan / Worker</p>
+                                              <p className="text-[8px] font-black uppercase text-brand">Professional / Worker</p>
                                           </div>
                                       </div>
                                       <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">
@@ -2149,7 +2149,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                   {/* The Worker's actual Reply */}
                                   <div className="bg-emerald-50/50 dark:bg-emerald-950/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/10 font-sans">
                                       <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1">
-                                          <i className="fa-solid fa-reply"></i> Proposed Artisan Reply
+                                          <i className="fa-solid fa-reply"></i> Proposed Worker Reply
                                       </p>
                                       <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">"{reply.worker_reply}"</p>
                                   </div>
@@ -2330,7 +2330,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                           <div className="space-y-3 pt-2">
                               {[
                                   { label: 'Clients', count: stats.roles.client, icon: 'fa-user', color: 'bg-indigo-500' },
-                                  { label: 'Artisans / Workers', count: stats.roles.worker, icon: 'fa-user-ninja', color: 'bg-emerald-500' },
+                                  { label: 'Professionals / Workers', count: stats.roles.worker, icon: 'fa-user-ninja', color: 'bg-emerald-500' },
                                   { label: 'Admins', count: stats.roles.admin, icon: 'fa-shield', color: 'bg-amber-500' }
                               ].map((r, idx) => {
                                   const total = stats.roles.client + stats.roles.worker + stats.roles.admin || 1;
@@ -2372,7 +2372,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                   <span className="font-bold text-indigo-600 dark:text-indigo-400">{stats.totalDirectBookings || 0} hires</span>
                               </div>
                               <div className="flex justify-between items-center py-2 border-b dark:border-slate-700/50">
-                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Artisan Applications</span>
+                                  <span className="font-bold text-gray-500 uppercase text-[9px]">Worker Applications</span>
                                   <span className="font-bold text-blue-500">{stats.totalApplications || 0} bids</span>
                               </div>
                               <div className="flex justify-between items-center py-2.5">
@@ -2736,11 +2736,14 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                     className="w-full text-xs p-3 rounded-xl bg-slate-900 text-white border border-slate-800 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
                   >
                     <option value="">-- Choose rejection preset template --</option>
-                    <option value="Photo of NIN slip is too blurry or captured in dark environment. Please upload a clear photo taken in daylight.">NIN photo too blurry/dark</option>
-                    <option value="Name on the ID document does not match the Velgo registered profile name. Ensure you upload your own personal ID.">Name mismatch with profile</option>
-                    <option value="Invalid document class. We require formal government IDs (NIN standard slip, Voter's Card, Driver's License, or Passport).">Invalid ID document class</option>
-                    <option value="Only frontpage was uploaded but details are cutoff. Please upload a full-face scan of your NIN ID.">Cut-off scan boundaries</option>
-                    <option value="The document looks like a photocopy but we require the original color plastic card or paper slip.">Photocopy instead of color slip</option>
+                    <option value="Your submitted ID photo is blurry, obscured by glare, or captured in poor lighting. Please re-upload a crisp, clear photo taken in bright daylight.">1. Blurry / Poor Lighting</option>
+                    <option value="The name on the ID document does not exactly match your Velgo registered profile name. We require your own valid personal ID to ensure platform security.">2. Name Mismatch</option>
+                    <option value="Invalid document class. For security reasons, we strictly require formal Nigerian Government IDs (Standard NIN Slip, Permanent Voter's Card, Driver's License, or International Passport).">3. Invalid ID Type</option>
+                    <option value="The ID scan is cut-off. Essential details such as your face, document number, or full name are outside the photo frame. Please upload a full-frame scan.">4. Cut-off Scan Boundaries</option>
+                    <option value="The uploaded document appears to be a black-and-white photocopy or a digital screenshot. We require a photo of the original color physical card or original colored printout.">5. Photocopy / Screenshot</option>
+                    <option value="The uploaded ID document appears to be expired. Please upload an active, unexpired government-issued identification.">6. Expired Document</option>
+                    <option value="Your face on the ID document is not clearly visible or does not seem to match your profile picture. Please upload an ID with a clear facial portrait.">7. Facial Recognition Mismatch</option>
+                    <option value="We detected signs of digital manipulation or forgery in the uploaded document. Your verification request has been rejected for security reasons.">8. Suspected Forgery / Manipulation</option>
                   </select>
                 </div>
 
