@@ -121,6 +121,8 @@ export interface Booking {
   client_id: string;
   worker_id: string;
   status: 'pending' | 'accepted' | 'completed' | 'cancelled' | 'declined';
+  decline_reason?: string;
+  quote_notes?: string;
   task_id?: string;
   created_at: string;
   quote_price?: number;
