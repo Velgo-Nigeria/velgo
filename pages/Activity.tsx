@@ -1049,7 +1049,13 @@ const Activity: React.FC<ActivityProps> = ({ profile, onOpenChat, onUpgrade, onR
 
     // 2. Is it a Booking linked to a Task?
     if (item.task_id) {
-        onViewTask(item.task_id);
+        // If client is viewing applications for their task, go to worker profile
+        if (profile?.id === item.client_id) {
+            onViewWorker(item.worker_id);
+        } else {
+            // Worker viewing their application goes to task details
+            onViewTask(item.task_id);
+        }
         return;
     }
 

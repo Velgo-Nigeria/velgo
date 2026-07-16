@@ -410,13 +410,27 @@ const Overview: React.FC<OverviewProps> = ({ profile, onRefreshProfile, onUpgrad
 4. Spent tokens let professionals instantly apply for high-budget marketplace jobs before others!`;
     }
     
-    if (q.includes('verify') || q.includes('verification') || q.includes('nin') || q.includes('identity') || q.includes('badge')) {
+    if (q.includes('verify') || q.includes('verification') || q.includes('nin') || q.includes('identity') || q.includes('badge') || q.includes('complete profile') || q.includes('profile')) {
       return `A verified badge raises your Professional conversion rate by over 200%!
 To get verified:
-1. Go to your 'Profile' tab in the bottom menu and tap 'Verify Identity'.
-2. Ensure you have input your legal full name exactly as it appears on your document.
+1. Go to your 'Profile' tab in the bottom menu.
+2. Complete your details (bio, category, pricing) and tap 'Verify Identity'.
 3. Upload your NIN (National Identification Number) or corporate government ID cards.
-4. Our manual verification team reviews most applications in under 24 hours. Your profile will then show the certified green verify badge immediately.`;
+4. Our manual verification team reviews most applications in under 24 hours.`;
+    }
+
+    if (q.includes('post') || q.includes('create job') || q.includes('new task')) {
+      return `To post a job for professionals:
+1. Look for the floating green plus (+) button at the bottom right of your screen.
+2. Fill in the job details, budget, and location.
+3. Submit it to the Marketplace and wait for professionals to apply, or directly hire a worker!`;
+    }
+
+    if (q.includes('hire')) {
+      return `To hire a professional:
+1. Browse the Marketplace and click on any professional's profile.
+2. Click "Hire Worker" to send them a direct request.
+3. If you posted a job, go to "My Activities", check your pending Requests, and click on an Applicant to hire them!`;
     }
 
     if (q.includes('pay') || q.includes('payment') || q.includes('escrow') || q.includes('milestone') || q.includes('fund') || q.includes('price') || q.includes('pricing') || q.includes('deal')) {
@@ -436,10 +450,11 @@ If you experience any challenge during a transaction:
     }
 
     if (q.includes('earn') || q.includes('get job') || q.includes('client') || q.includes('worker') || q.includes('artisan') || q.includes('apply')) {
-      return `To maximize your earnings as a certified Velgo Professional:
-1. Keep your Location State & LGA, starting prices, and services description updated on your Profile page.
-2. Include clear, real visual photos of your previous portfolio works.
-3. Check the Marketplace tab regularly for open tasks, and apply immediately before other competitive quotes are locked in!`;
+      return `To start earning and applying for jobs:
+1. Keep your Location, starting prices, and services description updated on your Profile page.
+2. Check the Marketplace tab regularly for open tasks.
+3. Tap on a job card and click Apply immediately before other competitive quotes are locked in!
+4. Clients will review your profile and accept your application to hire you!`;
     }
 
     return null; // Force fallback to Gemini AI for general questions
@@ -487,8 +502,12 @@ If you experience any challenge during a transaction:
           config: {
             systemInstruction: `You are Velgo AI, the official intelligent assistant of the Velgo Nigeria marketplace (velgo.com.ng).
 Your goal is to assist Nigerian professionals and clients. Speak with cultural context when suitable (keeping it professional but highly approachable).
-Focus on helping them hire or earn safely. Keep answers concise, direct, and under 110 words. 
-If the user asks about buying tokens, NIN verification, safety reports, or completed counts, kindly explain that they can see and manage these features directly inside this Hub page.`
+Focus on helping them hire or earn safely. Keep answers concise, direct, and under 110 words.
+If the user asks about buying tokens, NIN verification, or profile completion, guide them to go to their 'Profile' page via the bottom menu.
+For safety reports, tell them they can use the form directly below on this Hub page.
+To Post a Job, tell them to click the green plus (+) button.
+To Apply for Jobs, tell them to tap on a job card in the Marketplace and click Apply.
+To Hire, tell them to click on a professional's profile in the Marketplace or review applicants in My Activities.`
           }
         });
 

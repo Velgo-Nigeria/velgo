@@ -319,24 +319,24 @@ UID: ${profile.id}
                  {worker?.is_verified && <VerificationBadge className="text-blue-500 text-xl" />}
               </div>
               <div className="flex flex-wrap gap-2">
-                 <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">{worker?.category}</span>
+                 {worker?.category ? <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">{worker.category}</span> : <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">Professional</span>}
                  {worker?.is_verified && <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><VerificationBadge className="text-blue-600" /> ID Verified</span>}
               </div>
               {(worker?.lga || worker?.state) && (
                  <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-gray-500 dark:text-gray-400">
                     <i className="fa-solid fa-location-dot text-brand"></i>
-                    <span>{worker?.address ? `${worker.address}, ` : ''}{worker?.lga}, {worker?.state}</span>
+                    <span>{[worker?.address, worker?.lga, worker?.state].filter(Boolean).join(", ")}</span>
                  </div>
               )}
           </div>
           <div className="grid grid-cols-4 gap-1 py-8 border-y border-gray-100 dark:border-gray-800">
-            <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Starting</p><p className="font-black text-gray-900 dark:text-white text-xl">₦{worker?.starting_price}</p></div>
+            <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Starting</p><p className="font-black text-gray-900 dark:text-white text-xl">₦{worker?.starting_price || 0}</p></div>
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Trust</p><p className="font-black text-emerald-500 flex items-end justify-center gap-0.5 text-xl">{worker?.trust_score || 0}<span className="text-[10px] text-emerald-600/60 pb-1">Pts</span></p></div>
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Rating</p><p className="font-black text-gray-900 dark:text-white text-xl flex items-center justify-center gap-1">{worker?.worker_avg_rating || rating} <i className="fa-solid fa-star text-xs text-yellow-400"></i></p></div>
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Jobs</p><p className="font-black text-green-500 text-xl">{worker?.worker_rating_count || reviewCount} Done</p></div>
           </div>
 
-          <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory} available in ${worker?.address}.`}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory || "Service Provider"} available${worker?.address ? " in " + worker.address : ""}.`}</p>
           
           {/* Detailed Performance Metrics */}
           {(worker?.worker_rating_count || reviewCount) > 0 && (
