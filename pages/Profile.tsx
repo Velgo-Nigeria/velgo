@@ -2,7 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
-import { CATEGORY_MAP } from '../lib/constants';
+import { CATEGORY_MAP, getWorkerTier } from '../lib/constants';
+import { TierBadge } from '../components/TierBadge';
+import { GamifiedTierUI } from '../components/GamifiedTierUI';
+import { VisualPortfolioGallery } from '../components/VisualPortfolioGallery';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 
 interface ProfilePageProps {
@@ -268,8 +271,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                     </span>
                 </p>
                 {profile?.is_verified && (
-                    <div className="mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        <i className="fa-solid fa-circle-check"></i> Verified ID
+                    <div className="mt-2">
+                        <TierBadge tier={getWorkerTier(profile)} showLabel={true} />
                     </div>
                 )}
             </div>
@@ -305,27 +308,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                 </p>
 
                 <div className="space-y-3 pt-2">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">How to Boost Your Rank:</h4>
-                    <ul className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-                        <li className="flex items-center gap-2">
-                            <i className={`fa-solid ${profile?.is_verified ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
-                            <span className={profile?.is_verified ? 'line-through opacity-60' : ''}>Verify your ID (+20 Pts)</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <i className={`fa-solid ${(profile?.bank_name && profile?.account_number) ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
-                            <span className={(profile?.bank_name && profile?.account_number) ? 'line-through opacity-60' : ''}>Add bank details (+10 Pts)</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <i className={`fa-solid ${(profile?.avatar_url && profile?.bio) ? 'fa-check text-green-500' : 'fa-circle-exclamation text-brand'} w-4 text-center`}></i>
-                            <span className={(profile?.avatar_url && profile?.bio) ? 'line-through opacity-60' : ''}>Complete Bio & Avatar (+10 Pts)</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <i className="fa-solid fa-star text-yellow-400 w-4 text-center"></i>
-                            <span>Maintain 5-Star Ratings & Badges (Up to +50 Pts)</span>
-                        </li>
-                    </ul>
-                </div>
+                    <GamifiedTierUI profile={profile} />
+<VisualPortfolioGallery profile={profile} onRefreshProfile={onRefreshProfile} isOwner={true} />
             </div>
+</div>
         )}
 
         {/* User Reputation & Metrics */}

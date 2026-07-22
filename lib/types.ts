@@ -57,6 +57,7 @@ export interface Profile {
   id_rejection_reason?: string;
   instagram_handle?: string;
   portfolio_url?: string;
+  portfolio_images?: string[];
   is_verified: boolean;
   category?: string;
   subcategory?: string;
@@ -166,3 +167,5 @@ export interface AdminAuditLog {
   created_at: string;
   admin_profile?: Profile;
 }
+
+export type VerificationTier = 'none' | 'blue' | 'silver' | 'gold';

@@ -1,5 +1,5 @@
 
-import { SubscriptionTier } from './types';
+import { SubscriptionTier, Profile, VerificationTier } from './types';
 
 export const TIERS: { id: SubscriptionTier; name: string; price: number; limit: number; features: string[] }[] = [
   { id: 'basic', name: 'Starter Pack', price: 900, limit: 1, features: ['1 Token', '1 Confirmed Job', 'Instant Access'] },
@@ -52,4 +52,22 @@ export const CATEGORY_MAP: Record<string, string[]> = {
   "Manufacturing & Industrial": [
     "Machine Operator", "Assembly Line Worker", "Quality Control Inspector", "Industrial Sewer", "Pattern Maker"
   ]
+};
+
+export const getWorkerTier = (profile?: Profile): VerificationTier => {
+    if (!profile || !profile.is_verified) return 'none';
+    
+    const imageCount = profile.portfolio_images?.length || 0;
+    const ratingCount = profile.worker_rating_count || 0;
+    const avgRating = profile.worker_avg_rating || 0;
+
+    if (ratingCount >= 10 && avgRating >= 4.5 && imageCount >= 3) {
+        return 'gold';
+    }
+    
+    if (imageCount >= 3 && ratingCount >= 2 && avgRating >= 4.0) {
+        return 'silver';
+    }
+
+    return 'blue';
 };

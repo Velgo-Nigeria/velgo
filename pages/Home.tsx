@@ -5,7 +5,8 @@ import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile, PostedTask, Broadcast } from '../lib/types';
 import { GoogleGenAI } from "@google/genai";
 import { VelgoLogo } from '../components/Brand';
-import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
+import { CATEGORY_MAP, getTierLimit, getWorkerTier } from '../lib/constants';
+import { TierBadge } from '../components/TierBadge';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
 import { VerificationBadge } from '../components/VerificationBadge';
 
@@ -467,7 +468,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                                   )}
                               </div>
                           )}
-                          {item.is_verified && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 border-white dark:border-gray-800"><i className="fa-solid fa-check"></i></div>}
+                          {viewMode === 'market' && item.is_verified && <div className="absolute -bottom-1 -right-1 z-10 bg-white dark:bg-gray-800 rounded-full"><TierBadge tier={getWorkerTier(item)} className="border-2 border-white dark:border-gray-800 rounded-full" /></div>}
                       </div>
                       
                       <div className="flex-1 min-w-0">

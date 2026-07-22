@@ -18,8 +18,8 @@ const getEnv = (key: string): string | undefined => {
 };
 
 // Default strings serve as a fallback, but Env Vars should be set in Vercel
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://mrnypajnlltkuitfzgkh.supabase.co';
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybnlwYWpubGx0a3VpdGZ6Z2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNzk2NDcsImV4cCI6MjA4MTk1NTY0N30.4kuCn5DIuZ_WHDnP66K7MxOkGunkMn_WXmuRf8g9yr8';
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') as string;
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') as string;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error("Supabase URL or Key is missing. Please check your Environment Variables.");

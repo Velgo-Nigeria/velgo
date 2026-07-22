@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase, safeFetch } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { getTierLimit } from '../lib/constants';
-import { VerificationBadge } from '../components/VerificationBadge';
+import { TierBadge } from '../components/TierBadge';
+import { VisualPortfolioGallery } from '../components/VisualPortfolioGallery';
+import { getWorkerTier } from '../lib/constants';
 import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 import { openWhatsAppHelper } from '../lib/whatsapp';
 import { ShareModal } from '../components/ShareModal';
@@ -316,11 +318,11 @@ UID: ${profile.id}
           <div>
               <div className="flex items-center gap-2 mb-1">
                  <h1 className="text-3xl font-black text-gray-900 dark:text-white">{worker?.full_name}</h1>
-                 {worker?.is_verified && <VerificationBadge className="text-blue-500 text-xl" />}
+                 {worker && <TierBadge tier={getWorkerTier(worker)} className="text-xl" />}
               </div>
               <div className="flex flex-wrap gap-2">
                  {worker?.category ? <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">{worker.category}</span> : <span className="bg-brand-light text-brand px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">Professional</span>}
-                 {worker?.is_verified && <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><VerificationBadge className="text-blue-600" /> ID Verified</span>}
+                 {worker && <TierBadge tier={getWorkerTier(worker)} showLabel={true} />}
               </div>
               {(worker?.lga || worker?.state) && (
                  <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-gray-500 dark:text-gray-400">
@@ -336,7 +338,8 @@ UID: ${profile.id}
             <div className="text-center"><p className="text-[9px] text-gray-400 font-black uppercase">Jobs</p><p className="font-black text-green-500 text-xl">{worker?.worker_rating_count || reviewCount} Done</p></div>
           </div>
 
-          <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed font-medium">{worker?.bio || `Professional ${worker?.subcategory || "Service Provider"} available${worker?.address ? " in " + worker.address : ""}.`}</p>
+          <VisualPortfolioGallery profile={worker as any} onRefreshProfile={() => {}} isOwner={false} />
+          <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed font-medium mt-4">{worker?.bio || `Professional ${worker?.subcategory || "Service Provider"} available${worker?.address ? " in " + worker.address : ""}.`}</p>
           
           {/* Detailed Performance Metrics */}
           {(worker?.worker_rating_count || reviewCount) > 0 && (

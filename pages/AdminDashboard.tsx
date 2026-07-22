@@ -1888,6 +1888,18 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                         </button>
                                     </div>
                                 </div>
+                                {user.portfolio_images && user.portfolio_images.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Portfolio Images ({user.portfolio_images.length})</p>
+                                        <div className="flex gap-2 overflow-x-auto pb-2">
+                                            {user.portfolio_images.map((img: string, idx: number) => (
+                                                <a key={idx} href={img} target="_blank" rel="noreferrer" className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                                                    <img src={img} className="w-full h-full object-cover" />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             
                             {/* Emergency Blocking System (NDPR compliant) */}
