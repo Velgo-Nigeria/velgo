@@ -169,3 +169,4 @@ export interface AdminAuditLog {
 }
 
 export type VerificationTier = 'none' | 'blue' | 'silver' | 'gold';
+export type ClientType = 'personal' | 'business' | 'corporate' | 'enterprise';

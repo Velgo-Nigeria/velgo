@@ -34,15 +34,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export async function safeFetch<T>(
-  fetchFn: () => Promise<{ data: T | null; error: any }>,
+  fetchFn: (() => Promise<{ data: T | null; error: any }>) | Promise<{ data: T | null; error: any }> | any,
   retries = 3,
   delay = 500
 ): Promise<{ data: T | null; error: any }> {
   try {
-    const result = await fetchFn();
+    const result = typeof fetchFn === 'function' ? await fetchFn() : await fetchFn;
     
     // Check if the error returned by Supabase implies a network issue
-    const isNetworkLikeError = result.error && (
+    const isNetworkLikeError = result?.error && (
       (result.error.message && result.error.message.toLowerCase().includes('fetch')) ||
       (result.error.message && result.error.message.toLowerCase().includes('network')) ||
       (result.error.message && result.error.message.toLowerCase().includes('connection')) ||
@@ -56,13 +56,13 @@ export async function safeFetch<T>(
       return safeFetch(fetchFn, retries - 1, delay * 2);
     }
     
-    return result;
+    return result || { data: null, error: null };
   } catch (err: any) {
     // Catch fetch exceptions (e.g., completely offline)
     const isFetchException = 
       (err.message && err.message.toLowerCase().includes('fetch')) ||
       (err.message && err.message.toLowerCase().includes('network')) ||
-      !navigator.onLine;
+      (typeof navigator !== 'undefined' && !navigator.onLine);
 
     if (retries > 0 && isFetchException) {
       console.warn(`Fetch exception caught, retrying... (${retries} attempts left)`);
