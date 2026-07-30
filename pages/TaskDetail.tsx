@@ -216,7 +216,15 @@ UID: ${profile.id}
   }, [taskId, profile]);
 
   const handleApply = async () => {
-      if (!profile || !task) return;
+      if (!profile) {
+        if ((window as any).triggerAuthGate) {
+          (window as any).triggerAuthGate("Sign in to Apply", "Create an account or sign in to submit proposals for jobs on Velgo.");
+        } else {
+          alert("Please sign in or create an account to apply for jobs.");
+        }
+        return;
+      }
+      if (!task) return;
       
       if (!profile.is_verified) {
           alert("Verification Required: To secure our marketplace and eliminate fake applicants, Velgo requires you to verify your identity before applying. Please go to your Profile and upload your NIN.");
@@ -319,7 +327,11 @@ UID: ${profile.id}
 
   const handleToggleBookmark = async () => {
     if (!profile) {
-      alert("Please log in to save to your bookmarks!");
+      if ((window as any).triggerAuthGate) {
+        (window as any).triggerAuthGate("Sign in to Save", "Create an account or sign in to bookmark jobs.");
+      } else {
+        alert("Please log in to save to your bookmarks!");
+      }
       return;
     }
     const result = await toggleBookmark(profile.id, taskId, 'job');

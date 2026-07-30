@@ -38,11 +38,11 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const isAdmin = profile?.role === 'admin';
 
   const fetchBroadcast = useCallback(async () => {
-    if (!profile) return;
     try {
+        const roleFilter = profile ? `target_role.eq.all,target_role.eq.${profile.role}` : `target_role.eq.all`;
         const { data, error } = await supabase.from('broadcasts')
             .select('*')
-            .or(`target_role.eq.all,target_role.eq.${profile.role}`)
+            .or(roleFilter)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -84,7 +84,6 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   };
 
   const fetchData = useCallback(async () => {
-    if (!profile) return;
     setLoading(true);
     const isFetchingWorkers = viewMode === 'market';
     
@@ -269,7 +268,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
       {/* Dashboard / Status Card */}
       <div className="px-6 mt-6">
-          <div onClick={onUpgrade} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
+          <div onClick={profile ? onUpgrade : undefined} className={`bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 relative overflow-hidden group transition-all ${profile ? 'cursor-pointer active:scale-[0.98]' : ''}`}>
               
               {/* Background Pattern */}
               <div className="absolute right-0 top-0 opacity-5 pointer-events-none">
@@ -278,13 +277,20 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
               <div className="relative z-10 space-y-4">
                   <div>
-                      <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Hello, {firstName}</h2>
+                      <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                        {profile ? `Hello, ${firstName}` : "Welcome, Guest Explorer! 👋"}
+                      </h2>
                       <div className="flex flex-col gap-2 mt-1">
                           <span className="inline-flex w-fit items-center gap-1.5 bg-brand/10 text-brand px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                               <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse"></div>
-                              Nigeria Hub Active
+                              {profile ? "Nigeria Hub Active" : "Browsing Open Marketplace"}
                           </span>
                       </div>
+                      {!profile && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed mt-3">
+                          You are exploring active tasks and verified professionals as a guest. Sign up or log in to post tasks, submit proposals, or hire artisans.
+                        </p>
+                      )}
                   </div>
               </div>
           </div>

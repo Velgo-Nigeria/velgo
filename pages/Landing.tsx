@@ -10,9 +10,10 @@ interface LandingProps {
   onViewLegal: (tab: string) => void;
   onViewAbout: () => void;
   onNavigate?: (view: string, data?: any) => void;
+  onExploreGuest?: () => void;
 }
 
-const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout, onNavigate }) => {
+const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout, onNavigate, onExploreGuest }) => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -151,13 +152,21 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
             For Naija.
           </h1>
           
-          <div className="flex gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button 
               onClick={() => onGetStarted('user')}
-              className="flex-1 bg-brand text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-brand/30 active:scale-95 transition-transform border border-white/10"
+              className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-brand/30 active:scale-95 transition-transform border border-white/10"
             >
               Get Started
             </button>
+            {onExploreGuest && (
+              <button 
+                onClick={onExploreGuest}
+                className="flex-1 velgo-glass text-white py-4 rounded-2xl font-black text-xs uppercase hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20"
+              >
+                <i className="fa-solid fa-eye text-sm text-brand"></i> Explore as Guest
+              </button>
+            )}
           </div>
         </div>
       </div>

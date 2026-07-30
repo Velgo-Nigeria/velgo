@@ -209,7 +209,14 @@ UID: ${profile.id}
   };
 
   const handleBooking = async () => {
-    if (!profile) return;
+    if (!profile) {
+      if ((window as any).triggerAuthGate) {
+        (window as any).triggerAuthGate("Sign in to Hire", "Create an account or sign in to contact or book professionals on Velgo.");
+      } else {
+        alert("Please sign in or create an account to hire professionals.");
+      }
+      return;
+    }
     if (hasRequested) return;
 
     if (!profile.is_verified) {
@@ -238,7 +245,11 @@ UID: ${profile.id}
 
   const handleToggleBookmark = async () => {
     if (!profile) {
-      alert("Please log in to save to your bookmarks!");
+      if ((window as any).triggerAuthGate) {
+        (window as any).triggerAuthGate("Sign in to Save", "Create an account or sign in to bookmark your favorite artisans.");
+      } else {
+        alert("Please log in to save to your bookmarks!");
+      }
       return;
     }
     const result = await toggleBookmark(profile.id, workerId, 'worker');
@@ -486,19 +497,25 @@ UID: ${profile.id}
               </div>
           )}
 
-          {profile && profile.id !== workerId && (
+          {(!profile || profile.id !== workerId) && (
             <button 
-                onClick={handleBooking} 
+                onClick={() => {
+                  if (!profile) {
+                    onBook(workerId);
+                  } else {
+                    handleBooking();
+                  }
+                }} 
                 disabled={hasRequested || requesting}
                 className={`w-full py-5 rounded-[28px] font-black shadow-xl uppercase tracking-widest transition-all ${
                     hasRequested 
                         ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
-                        : !profile.is_verified
+                        : (profile && !profile.is_verified)
                         ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                         : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
                 }`}
             >
-                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : !profile.is_verified ? '🔒 Verify ID to Book' : 'HIRE WORKER NOW'}
+                {requesting ? 'SENDING...' : hasRequested ? 'REQUEST SENT' : (profile && !profile.is_verified) ? '🔒 Verify ID to Book' : 'HIRE WORKER NOW'}
             </button>
           )}
         </div>

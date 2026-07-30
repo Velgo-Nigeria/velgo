@@ -34,6 +34,7 @@ import { SidebarItem } from "./components/SidebarItem";
 import { UserGuide } from './components/UserGuide';
 import { SuspendedScreen } from './components/SuspendedScreen';
 import { NotificationPanel } from './components/NotificationPanel';
+import { AuthGateModal } from './components/AuthGateModal';
 
 // Extracted Skeleton for reuse in Suspense fallback
 const PageSkeleton = () => (
@@ -79,15 +80,28 @@ const App: React.FC = () => {
       if (pathname === '/pricing') {
         return 'pricing';
       }
+      if (pathname === '/about') {
+        return 'about';
+      }
 
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('view') === 'legal') {
         return 'legal';
       }
+      if (urlParams.get('view') === 'landing') {
+        return 'landing';
+      }
+      if (urlParams.get('view') === 'login') {
+        return 'login';
+      }
+      if (urlParams.get('view') === 'signup') {
+        return 'signup';
+      }
     } catch (e) {
       console.warn('Error parsing initial view query param/pathname:', e);
     }
-    return 'landing';
+    // Direct Marketplace Access: Unauthenticated users land directly on the full marketplace view
+    return 'home';
   });
   const [viewData, setViewData] = useState<any>(() => {
     try {
@@ -114,6 +128,36 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [hasActivityBadge, setHasActivityBadge] = useState(false);
+
+  // Guest Mode & Auth Gate Modal State (Default to true for unauthenticated marketplace exploration)
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(() => localStorage.getItem('velgo_guest_mode') !== 'false');
+  const [authGate, setAuthGate] = useState<{ isOpen: boolean; title?: string; message?: string }>({ isOpen: false });
+
+  const triggerAuthGate = useCallback((title?: string, message?: string) => {
+    setAuthGate({
+      isOpen: true,
+      title: title || "Account Required",
+      message: message || "Create a free account or sign in to contact professionals, submit proposals, post tasks, and unlock full access."
+    });
+  }, []);
+
+  useEffect(() => {
+    (window as any).triggerAuthGate = triggerAuthGate;
+  }, [triggerAuthGate]);
+
+  const handleStartGuestMode = () => {
+    setIsGuestMode(true);
+    localStorage.setItem('velgo_guest_mode', 'true');
+    setView('home');
+    window.history.pushState({ view: 'home', data: null }, '', '');
+  };
+
+  const handleExitGuestMode = () => {
+    setIsGuestMode(false);
+    localStorage.removeItem('velgo_guest_mode');
+    setView('landing');
+    window.history.pushState({ view: 'landing', data: null }, '', '/');
+  };
 
   const fetchActivityBadgeStatus = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -442,6 +486,8 @@ const App: React.FC = () => {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           setSession(data.session);
+          setIsGuestMode(false);
+          localStorage.removeItem('velgo_guest_mode');
           fetchProfile(data.session.user.id);
           if (['landing', 'login', 'signup'].includes(viewRef.current)) {
               setView('home');
@@ -455,6 +501,8 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       if (currentSession) {
+        setIsGuestMode(false);
+        localStorage.removeItem('velgo_guest_mode');
         if (event === 'PASSWORD_RECOVERY') {
             setView('reset-password');
             window.history.replaceState({ view: 'reset-password', data: null }, '', '/reset-password');
@@ -468,7 +516,7 @@ const App: React.FC = () => {
       } else {
         setProfile(null);
         hasLoadedProfileRef.current = false;
-        if (viewRef.current !== 'reset-password' && viewRef.current !== 'change-password') {
+        if (viewRef.current !== 'reset-password' && viewRef.current !== 'change-password' && !localStorage.getItem('velgo_guest_mode')) {
             setView('landing');
             window.history.replaceState({ view: 'landing', data: null }, '', '');
         }
@@ -651,6 +699,64 @@ const App: React.FC = () => {
   const renderContent = () => {
     // 1. Not Logged In
     if (!session) {
+      if (isGuestMode) {
+        switch (view) {
+          case 'home':
+            return (
+              <Home 
+                profile={null} 
+                onViewWorker={(id) => navigate('worker-detail', id)} 
+                onViewTask={(id) => navigate('task-detail', id)} 
+                onRefreshProfile={() => {}} 
+                onUpgrade={() => triggerAuthGate("Sign in for Pro Features", "Create an account or log in to unlock Velgo Pro features.")} 
+                onPostTask={() => triggerAuthGate("Sign in to Post Tasks", "Create a free account or log in to post jobs on Velgo.")} 
+                onShowGuide={() => setShowGuide(true)} 
+              />
+            );
+          case 'worker-detail':
+            return (
+              <WorkerDetail 
+                profile={null} 
+                workerId={viewData} 
+                onBack={() => handleBackNavigation('home')} 
+                onBook={(id) => triggerAuthGate("Sign in to Hire", "Please log in or create an account to hire professionals.")} 
+                onUpgrade={() => triggerAuthGate("Sign in for Pro Features")} 
+              />
+            );
+          case 'task-detail':
+            return (
+              <TaskDetail 
+                profile={null} 
+                taskId={viewData} 
+                onBack={() => handleBackNavigation('home')} 
+                onUpgrade={() => triggerAuthGate("Sign in for Pro Features")} 
+              />
+            );
+          case 'legal': 
+            return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('home')} /></Suspense>;
+          case 'about': 
+            return <Suspense fallback={<PageSkeleton />}><About profile={null} onBack={() => handleBackNavigation('home')} /></Suspense>;
+          case 'pricing': 
+            return <Suspense fallback={<PageSkeleton />}><Pricing onBack={() => handleBackNavigation('home')} onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} /></Suspense>;
+          case 'login': 
+            return <Login onToggle={() => navigate('signup')} />;
+          case 'signup': 
+            return <SignUp onToggle={() => navigate('login')} />;
+          default:
+            return (
+              <Home 
+                profile={null} 
+                onViewWorker={(id) => navigate('worker-detail', id)} 
+                onViewTask={(id) => navigate('task-detail', id)} 
+                onRefreshProfile={() => {}} 
+                onUpgrade={() => triggerAuthGate()} 
+                onPostTask={() => triggerAuthGate()} 
+                onShowGuide={() => setShowGuide(true)} 
+              />
+            );
+        }
+      }
+
       switch (view) {
         case 'login': return <Login onToggle={() => navigate('signup')} />;
         case 'signup': return <SignUp onToggle={() => navigate('login')} />;
@@ -659,7 +765,7 @@ const App: React.FC = () => {
         case 'legal': return <Suspense fallback={<PageSkeleton />}><Legal initialTab={viewData} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         case 'about': return <Suspense fallback={<PageSkeleton />}><About profile={null} onBack={() => handleBackNavigation('landing')} /></Suspense>;
         case 'pricing': return <Suspense fallback={<PageSkeleton />}><Pricing onBack={() => handleBackNavigation('landing')} onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} /></Suspense>;
-        default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} onNavigate={navigate} />;
+        default: return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} onNavigate={navigate} onExploreGuest={handleStartGuestMode} />;
       }
     }
 
@@ -717,6 +823,8 @@ const App: React.FC = () => {
     }
   };
 
+  const showAppShell = Boolean((session && profile) || (isGuestMode && !['login', 'signup', 'reset-password'].includes(view)));
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 flex flex-col md:flex-row overflow-x-hidden">
@@ -726,19 +834,38 @@ const App: React.FC = () => {
             Offline Mode
           </div>
         )}
-        {session && profile && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
-            <aside className={`hidden md:flex flex-col w-72 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 p-6 bg-white dark:bg-gray-900 z-40 ${!isOnline ? 'pt-14' : ''}`}>
+        {!session && isGuestMode && !['login', 'signup', 'reset-password'].includes(view) && (
+          <div className="fixed top-0 left-0 right-0 z-[90] bg-gray-900 text-white py-2 px-4 text-[11px] font-bold flex justify-between items-center border-b border-brand/20 shadow-md">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-brand animate-pulse shrink-0"></span>
+              <span className="truncate">Browsing in <strong>Guest Mode</strong> — Log in or sign up to post tasks, apply, or hire</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => navigate('login')} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-all">
+                Log In
+              </button>
+              <button onClick={() => navigate('signup')} className="bg-brand text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm">
+                Sign Up
+              </button>
+              <button onClick={handleExitGuestMode} title="Exit Guest Mode" className="text-white/60 hover:text-white px-1.5 py-0.5 rounded text-xs ml-1">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+        )}
+        {showAppShell && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
+            <aside className={`hidden md:flex flex-col w-72 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 p-6 bg-white dark:bg-gray-900 z-40 ${!isOnline ? 'pt-14' : ''} ${!session && isGuestMode ? 'pt-14' : ''}`}>
                 <div className="mb-10 pl-2"><VelgoLogo /></div>
                 <nav className="space-y-3 flex-1">
                     <SidebarItem icon="fa-house-chimney" label="Marketplace" active={['home', 'worker-detail', 'task-detail', 'post-task'].includes(view)} onClick={() => navigate('home')} />
-                    <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => navigate('activity')} hasBadge={hasActivityBadge} />
-                    <SidebarItem icon="fa-compass" label="My Hub" active={view === 'overview'} onClick={() => navigate('overview')} />
-                    <SidebarItem icon="fa-user-ninja" label="Profile" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view)} onClick={() => navigate('profile')} />
+                    <SidebarItem icon="fa-bolt-lightning" label="My Activities" active={view === 'activity'} onClick={() => session ? navigate('activity') : triggerAuthGate("Sign in for My Activities", "Create an account or sign in to track your applications and bookings.")} hasBadge={hasActivityBadge} />
+                    <SidebarItem icon="fa-compass" label="My Hub" active={view === 'overview'} onClick={() => session ? navigate('overview') : triggerAuthGate("Sign in for My Hub", "Create an account or sign in to access your dashboard.")} />
+                    <SidebarItem icon="fa-user-ninja" label="Profile" active={['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view)} onClick={() => session ? navigate('profile') : triggerAuthGate("Sign in for Profile Settings", "Create an account or sign in to manage your profile and identity verification.")} />
                 </nav>
             </aside>
         )}
-        <main className={`flex-1 w-full relative ${session ? 'max-w-md mx-auto md:max-w-none md:mx-0' : 'w-full'} ${!isOnline ? 'pt-8' : ''}`}>
-          <div className={`${session ? 'md:max-w-6xl md:mx-auto md:p-6 md:pb-12' : 'w-full'}`}>
+        <main className={`flex-1 w-full relative ${showAppShell ? 'max-w-md mx-auto md:max-w-none md:mx-0' : 'w-full'} ${!isOnline ? 'pt-8' : ''} ${!session && isGuestMode && !['login', 'signup', 'reset-password'].includes(view) ? 'pt-10' : ''}`}>
+          <div className={`${showAppShell ? 'md:max-w-6xl md:mx-auto md:p-6 md:pb-12' : 'w-full'}`}>
             {/* Suspense Wrapper handles the loading state for lazy components */}
             <Suspense fallback={<PageSkeleton />}>
                 {renderContent()}
@@ -754,11 +881,20 @@ const App: React.FC = () => {
           onRefreshUnread={fetchUnreadCount}
         />
         <InstallPWA />
+        <AuthGateModal 
+          isOpen={authGate.isOpen} 
+          onClose={() => setAuthGate({ isOpen: false })} 
+          onSignUp={() => { setAuthGate({ isOpen: false }); navigate('signup'); }} 
+          onLogin={() => { setAuthGate({ isOpen: false }); navigate('login'); }} 
+          onLearnMore={() => { setAuthGate({ isOpen: false }); navigate('landing'); }}
+          title={authGate.title} 
+          message={authGate.message} 
+        />
         
         {/* Global Floating Action Button */}
-        {session && profile && !['admin', 'chat', 'post-task', 'reset-password', 'change-password'].includes(view) && (
+        {showAppShell && !['admin', 'chat', 'post-task', 'reset-password', 'change-password'].includes(view) && (
             <button 
-                onClick={() => navigate('post-task')}
+                onClick={() => session ? navigate('post-task') : triggerAuthGate("Sign in to Post Tasks", "Create a free account or log in to post jobs on Velgo.")}
                 className="fixed bottom-28 md:bottom-10 right-6 md:right-10 w-14 h-14 bg-brand text-white rounded-full shadow-2xl shadow-brand/40 flex items-center justify-center z-50 active:scale-90 transition-transform animate-fadeIn hover:scale-105"
                 title="Post a Job"
             >
@@ -766,26 +902,26 @@ const App: React.FC = () => {
             </button>
         )}
 
-        {session && profile && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
+        {showAppShell && !['admin', 'chat', 'reset-password', 'change-password'].includes(view) && (
           <nav className="md:hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 flex justify-around items-center h-20 safe-bottom z-50 shadow-lg transition-colors duration-200">
             <button onClick={() => navigate('home')} className={`flex flex-col items-center flex-1 ${['home', 'worker-detail', 'task-detail', 'post-task'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-house-chimney text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Market</span>
             </button>
-            <button onClick={() => navigate('activity')} className={`flex flex-col items-center flex-1 relative ${view === 'activity' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => session ? navigate('activity') : triggerAuthGate("Sign in for My Activities", "Create an account or sign in to track your applications and bookings.")} className={`flex flex-col items-center flex-1 relative ${view === 'activity' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <span className="relative inline-block">
                 <i className="fa-solid fa-bolt-lightning text-xl"></i>
                 {hasActivityBadge && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-white dark:border-gray-950"></span>
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-[#0f172a]"></span>
                 )}
               </span>
               <span className="text-[9px] font-black uppercase mt-1">Activities</span>
             </button>
-             <button onClick={() => navigate('overview')} className={`flex flex-col items-center flex-1 ${view === 'overview' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+             <button onClick={() => session ? navigate('overview') : triggerAuthGate("Sign in for My Hub", "Create an account or sign in to access your dashboard.")} className={`flex flex-col items-center flex-1 ${view === 'overview' ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-compass text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">My Hub</span>
             </button>
-            <button onClick={() => navigate('profile')} className={`flex flex-col items-center flex-1 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
+            <button onClick={() => session ? navigate('profile') : triggerAuthGate("Sign in for Profile Settings", "Create an account or sign in to manage your profile and verifications.")} className={`flex flex-col items-center flex-1 ${['profile', 'subscription', 'settings', 'legal', 'safety', 'about', 'change-password'].includes(view) ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>
               <i className="fa-solid fa-user-ninja text-xl"></i>
               <span className="text-[9px] font-black uppercase mt-1">Profile</span>
             </button>
