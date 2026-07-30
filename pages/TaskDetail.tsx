@@ -14,9 +14,10 @@ interface TaskDetailProps {
   taskId: string; 
   onBack: () => void; 
   onUpgrade: () => void;
+  onNavigate?: (view: string) => void;
 }
 
-const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgrade }) => {
+const TaskDetail: React.FC<TaskDetailProps> = ({ profile, taskId, onBack, onUpgrade, onNavigate }) => {
   const [task, setTask] = useState<PostedTask | null>(null);
   const [client, setClient] = useState<Profile | null>(null);
   const [clientRating, setClientRating] = useState<{avg: number, count: number} | null>(null);
@@ -566,6 +567,28 @@ UID: ${profile.id}
             {/* Action Area */}
             {!isOwner ? (
                 <div className="pt-4 space-y-4">
+                    {profile && (!profile.bank_name || !profile.account_number || !profile.account_name) && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-[24px] flex items-start gap-3.5 text-left">
+                            <div className="w-9 h-9 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center shrink-0 text-sm mt-0.5">
+                                <i className="fa-solid fa-building-columns"></i>
+                            </div>
+                            <div className="flex-1">
+                                <h5 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">Missing Payout Bank Details</h5>
+                                <p className="text-[10px] font-bold text-amber-800/90 dark:text-amber-300/90 leading-relaxed mt-0.5">
+                                    You haven't set up your payout bank account yet. Other users will pay directly to your account upon job completion.
+                                </p>
+                                {onNavigate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onNavigate('settings')}
+                                        className="mt-2 text-[10px] font-black uppercase tracking-wider underline text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 block"
+                                    >
+                                        👉 Click here to add Bank Details in Settings
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {profile && !profile.is_verified && (
                         <div className="bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/30 p-5 rounded-[24px] flex items-start gap-4">
                             <div className="w-10 h-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center shrink-0 text-lg">

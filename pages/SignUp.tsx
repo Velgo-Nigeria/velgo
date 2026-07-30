@@ -29,6 +29,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [referralCode, setReferralCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [consent, setConsent] = useState(false);
 
   useEffect(() => {
@@ -64,6 +67,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
       phone_number: cleanPhone,
       role: 'user',
       client_type: 'personal',
+      bank_name: bankName.trim() || undefined,
+      account_name: accountName.trim() || undefined,
+      account_number: accountNumber.trim() || undefined,
     };
 
     try {
@@ -84,7 +90,18 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
           setError(authError.message);
         }
       } else {
-        if (data.session) {
+        if (data.session && data.user) {
+             if (bankName.trim() || accountName.trim() || accountNumber.trim()) {
+               try {
+                 await supabase.from('profiles').update({
+                   bank_name: bankName.trim() || null,
+                   account_name: accountName.trim() || null,
+                   account_number: accountNumber.trim() || null,
+                 }).eq('id', data.user.id);
+               } catch (e) {
+                 console.warn("Could not write bank details directly to profile table:", e);
+               }
+             }
              // Successfully logged in immediately (if auto-confirm is enabled)
              setSuccess(true);
         } else if (data.user) {
@@ -276,6 +293,42 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
                 className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500 uppercase tracking-widest"
                 placeholder="Referral Code (Optional)"
               />
+            </div>
+
+            {/* Skippable Payout Bank Account Details */}
+            <div className="pt-3 border-t border-slate-800/80 space-y-3">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[11px] font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <i className="fa-solid fa-building-columns text-emerald-400"></i>
+                  <span>Payout Bank Account (Optional)</span>
+                </span>
+                <span className="text-[9px] font-bold text-emerald-400/80 uppercase bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  Optional / Skippable
+                </span>
+              </div>
+
+              <input 
+                type="text" value={bankName} onChange={(e) => setBankName(e.target.value)}
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-4 px-8 text-white font-bold text-xs outline-none transition-all placeholder-gray-500"
+                placeholder="Bank Name (e.g. GTBank, Kuda, FirstBank)"
+              />
+
+              <input 
+                type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)}
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-4 px-8 text-white font-bold text-xs outline-none transition-all placeholder-gray-500"
+                placeholder="Account Name (e.g. John Doe)"
+              />
+
+              <input 
+                type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)}
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-4 px-8 text-white font-bold text-xs outline-none transition-all placeholder-gray-500"
+                placeholder="Account Number (10 digits)"
+                maxLength={10}
+              />
+
+              <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider px-6 leading-relaxed">
+                * Optional. Other users will pay directly to these account details upon gig completion.
+              </p>
             </div>
           </div>
 
