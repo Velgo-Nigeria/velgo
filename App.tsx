@@ -742,6 +742,8 @@ const App: React.FC = () => {
             return <Login onToggle={() => navigate('signup')} />;
           case 'signup': 
             return <SignUp onToggle={() => navigate('login')} />;
+          case 'landing':
+            return <Landing onGetStarted={() => navigate('signup')} onLogin={() => navigate('login')} onViewLegal={(tab) => navigate('legal', tab)} onViewAbout={() => navigate('about')} onNavigate={navigate} onExploreGuest={handleStartGuestMode} />;
           default:
             return (
               <Home 

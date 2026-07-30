@@ -584,7 +584,10 @@ UID: ${profile.id}
                     )}
                     <button 
                         onClick={() => {
-                            if (!profile) return;
+                            if (!profile) {
+                                (window as any).triggerAuthGate?.("Sign in to Apply for Jobs", "Create an account or sign in to submit proposals and apply for tasks on Velgo.");
+                                return;
+                            }
                             if (!profile.is_verified) {
                                 alert("Verification Required: To secure our marketplace and eliminate fake applicants, Velgo requires you to verify your identity before applying. Please go to your Profile and upload your NIN.");
                                 return;
@@ -602,7 +605,7 @@ UID: ${profile.id}
                         className={`w-full py-5 rounded-[28px] font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95 ${
                             hasApplied 
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : !profile?.is_verified
+                            : (profile && !profile.is_verified)
                             ? 'bg-amber-600 text-white hover:bg-amber-700'
                             : 'bg-brand text-white hover:bg-brand-dark'
                         }`}
@@ -611,7 +614,7 @@ UID: ${profile.id}
                             ? 'Application Sent' 
                             : applying 
                             ? 'Sending...' 
-                            : !profile?.is_verified 
+                            : (profile && !profile.is_verified)
                             ? '🔒 Verify ID to Apply' 
                             : 'Apply Now'
                         }
