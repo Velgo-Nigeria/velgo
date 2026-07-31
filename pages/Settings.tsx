@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile, NotificationPreferences } from '../lib/types';
 import { subscribeToPush, unsubscribeFromPush, checkSubscriptionStatus } from '../lib/pushManager';
+import { RateAppModal } from '../components/RateAppModal';
 
 interface SettingsProps { 
   profile: Profile | null; 
@@ -616,58 +617,12 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
           </div>
       )}
 
-      {/* Review Modal */}
-      {showReviewModal && (
-          <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
-              <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-6">
-                  <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-black text-gray-900 dark:text-white">Review Velgo</h3>
-                      <button onClick={() => setShowReviewModal(false)} className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300"><i className="fa-solid fa-xmark"></i></button>
-                  </div>
-
-                  {!profile?.is_verified ? (
-                      <div className="text-center py-6 space-y-4">
-                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto text-gray-400 text-2xl">
-                              <i className="fa-solid fa-lock"></i>
-                          </div>
-                          <h4 className="font-bold text-gray-900 dark:text-white">Verification Required</h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">You must be a verified user to submit an app review. Please complete your profile verification first.</p>
-                      </div>
-                  ) : (
-                      <div className="space-y-4">
-                          <div className="flex justify-center gap-4 mb-4">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                  <button 
-                                      key={star} 
-                                      type="button"
-                                      onClick={() => setReviewRating(star)}
-                                      className={`text-4xl transition-all duration-200 active:scale-125 ${star <= reviewRating ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]' : 'text-gray-200 dark:text-gray-700'}`}
-                                  >
-                                      <i className="fa-solid fa-star"></i>
-                                  </button>
-                              ))}
-                          </div>
-                          
-                          <textarea 
-                              value={reviewText}
-                              onChange={(e) => setReviewText(e.target.value)}
-                              placeholder="What do you think about Velgo?"
-                              rows={4}
-                              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl p-4 text-sm font-medium outline-none dark:text-white dark:placeholder-gray-400 resize-none focus:ring-2 focus:ring-brand/20 transition-all"
-                          />
-
-                          <button 
-                              onClick={handleSubmitReview}
-                              disabled={submittingReview || !reviewText.trim()}
-                              className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest disabled:opacity-50 active:scale-95 transition-all shadow-xl shadow-brand/20"
-                          >
-                              {submittingReview ? 'Submitting...' : 'Post Review'}
-                          </button>
-                      </div>
-                  )}
-              </div>
-          </div>
-      )}
+      {/* Rate App Modal */}
+      <RateAppModal 
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        profile={profile}
+      />
     </div>
   );
 };

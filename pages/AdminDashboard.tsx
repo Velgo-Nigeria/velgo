@@ -13,6 +13,8 @@ import { UsersTab } from "./admin/tabs/UsersTab";
 import { SafetyTab } from "./admin/tabs/SafetyTab";
 import { SupportTab } from "./admin/tabs/SupportTab";
 import { ReviewsTab } from "./admin/tabs/ReviewsTab";
+import { AppRatingsTab } from "./admin/tabs/AppRatingsTab";
+import { fetchAllAppRatings } from "../lib/appRatings";
 import { StatsTab } from "./admin/tabs/StatsTab";
 import { ErrorsTab } from "./admin/tabs/ErrorsTab";
 import { AuditTab } from "./admin/tabs/AuditTab";
@@ -20,7 +22,7 @@ import { VerificationLightbox } from "./admin/VerificationLightbox";
 import { downloadUsersCSV, downloadUsersPDF, downloadStatsPDF } from "./admin/exportUtils";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'reviews' | 'stats' | 'errors' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'app_ratings' | 'reviews' | 'stats' | 'errors' | 'audit'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -434,10 +436,19 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             console.error("Failed auditing blocked matches:", bErr);
         }
 
+        let appRatingsPendingCount = 0;
+        try {
+            const allRatings = await fetchAllAppRatings();
+            appRatingsPendingCount = allRatings.filter((r: any) => !r.admin_reply).length;
+        } catch (arErr) {
+            console.warn("Failed fetching app ratings pending count:", arErr);
+        }
+
         setCounts({
             verify: vCount || 0,
             safety: sCount,
             support: supportPendingCount,
+            app_ratings: appRatingsPendingCount,
             reviews: rCount || 0
         });
     } catch (e) {
@@ -748,7 +759,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'reviews', 'stats', 'errors', 'audit'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'app_ratings', 'reviews', 'stats', 'errors', 'audit'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -756,7 +767,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
+                <span>{tab === 'app_ratings' ? '⭐ App Ratings' : tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -976,6 +987,8 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                         sendAdminReply={sendAdminReply}
                                         sortedSupportTickets={sortedSupportTickets}
                                       /> :
+
+          activeTab === 'app_ratings' ? <AppRatingsTab /> :
 
           activeTab === 'reviews' ? <ReviewsTab
                                             pendingReplies={pendingReplies}

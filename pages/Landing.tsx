@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { VelgoLogo } from '../components/Brand';
+import { fetchAllAppRatings, submitAppRating } from '../lib/appRatings';
+import { RateAppModal } from '../components/RateAppModal';
 
 interface LandingProps {
   onGetStarted: () => void;
@@ -23,6 +25,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
   const [reviewRating, setReviewRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
 
   // Auto-play timer ref
   const timerRef = useRef<any>(null);
@@ -32,21 +35,42 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
   }, []);
 
   const fetchReviews = async () => {
-    const { data } = await supabase.from('app_reviews').select('*, profiles:user_id(full_name, role)').order('created_at', { ascending: false }).limit(6);
-    
-    if (data && data.length > 0) {
-      setReviews(data.map(d => ({
-          id: d.id,
-          user_name: d.profiles?.full_name || 'Verified User',
-          comment: d.review_text,
-          rating: d.rating,
-          is_worker: d.profiles?.role === 'user'
-      })));
-    } else {
+    try {
+      const allAppRatings = await fetchAllAppRatings();
+      const featured = allAppRatings.filter(r => r.is_featured);
+      
+      if (featured.length > 0) {
+        setReviews(featured.map(r => ({
+          id: r.id,
+          user_name: r.user_name,
+          user_role: r.user_role,
+          comment: r.comment,
+          rating: r.rating,
+          admin_reply: r.admin_reply,
+          category: r.category
+        })));
+      } else if (allAppRatings.length > 0) {
+        setReviews(allAppRatings.slice(0, 6).map(r => ({
+          id: r.id,
+          user_name: r.user_name,
+          user_role: r.user_role,
+          comment: r.comment,
+          rating: r.rating,
+          admin_reply: r.admin_reply,
+          category: r.category
+        })));
+      } else {
+        setReviews([
+          { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5 },
+          { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5 },
+          { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5 }
+        ]);
+      }
+    } catch (e) {
       setReviews([
-        { id: 1, user_name: "Ose Architecture", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5, is_worker: true },
-        { id: 2, user_name: "Moriah Indo", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5, is_worker: true },
-        { id: 3, user_name: "Tega Design", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5, is_worker: true }
+        { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5 },
+        { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5 },
+        { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5 }
       ]);
     }
   };
@@ -390,70 +414,80 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
       </div>
 
       {/* 6. Rate Us Section */}
-      <div className="bg-gray-900 text-white py-12 px-6">
+      <div id="rate-section" className="bg-gray-900 text-white py-12 px-6">
         <div className="max-w-sm mx-auto space-y-8">
             <div className="text-center space-y-2">
-                <h3 className="text-3xl font-black tracking-tight">Share Your Love</h3>
-                <p className="text-xs text-gray-400 font-medium">Your feedback helps us grow the community.</p>
+                <span className="text-[10px] font-black uppercase tracking-[4px] text-brand">Rate Velgo App</span>
+                <h3 className="text-3xl font-black tracking-tight">Share Your Experience</h3>
+                <p className="text-xs text-gray-400 font-medium">Open for guests & members. Help us improve!</p>
             </div>
 
             {submitted ? (
-                <div className="bg-brand/10 p-10 rounded-[40px] text-center border border-brand/20 animate-fadeIn">
-                    <div className="w-20 h-20 bg-brand rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-xl shadow-brand/30">
-                        <i className="fa-solid fa-heart text-3xl"></i>
+                <div className="bg-brand/10 p-10 rounded-[40px] text-center border border-brand/20 animate-fadeIn space-y-3">
+                    <div className="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto text-white shadow-xl shadow-brand/30">
+                        <i className="fa-solid fa-heart text-2xl"></i>
                     </div>
-                    <p className="font-black text-brand-light uppercase tracking-widest text-sm">Review Submitted!</p>
+                    <h4 className="font-black text-white text-base">Thank You!</h4>
+                    <p className="text-xs text-gray-300 font-medium">Your rating has been submitted successfully.</p>
                 </div>
             ) : (
-                <div className="space-y-4 relative">
-                    {/* Locked Form overlay */}
-                    <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm rounded-[32px] flex items-center justify-center flex-col text-center p-6 border border-white/10">
-                        <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white text-xl mb-3">
-                            <i className="fa-solid fa-lock"></i>
-                        </div>
-                        <h4 className="text-white font-black text-lg mb-1">Members Only</h4>
-                        <p className="text-gray-300 text-xs font-medium mb-4">You must be logged in and verified to submit a review.</p>
-                        <button onClick={onLogin} className="bg-white text-gray-900 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-gray-100 transition-colors">
-                            Sign In to Write Review
-                        </button>
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!reviewComment.trim()) return;
+                    setSubmitting(true);
+                    await submitAppRating({
+                      user_name: reviewName.trim() || 'Guest Visitor',
+                      user_role: 'Guest',
+                      rating: reviewRating,
+                      comment: reviewComment.trim(),
+                      category: 'General Feedback'
+                    });
+                    setSubmitting(false);
+                    setSubmitted(true);
+                    fetchReviews();
+                  }}
+                  className="space-y-4"
+                >
+                    <div className="flex justify-center gap-3 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <button 
+                                key={star} 
+                                type="button"
+                                onClick={() => setReviewRating(star)}
+                                className="text-3xl transition-transform active:scale-125 focus:outline-none"
+                            >
+                                <i className={`fa-solid fa-star ${reviewRating >= star ? 'text-amber-400 drop-shadow-md' : 'text-gray-700'}`}></i>
+                            </button>
+                        ))}
                     </div>
-
-                    <div className="opacity-40 pointer-events-none p-2 space-y-4">
-                        <div className="flex justify-center gap-4 mb-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button 
-                                    key={star} 
-                                    type="button"
-                                    className="text-4xl text-gray-800"
-                                >
-                                    <i className="fa-solid fa-star"></i>
-                                </button>
-                            ))}
-                        </div>
+                    
+                    <div className="space-y-3">
+                        <input 
+                            value={reviewName}
+                            onChange={(e) => setReviewName(e.target.value)}
+                            placeholder="Your Name (e.g. Guest or your name)"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white placeholder-gray-500 outline-none focus:border-brand"
+                        />
                         
-                        <div className="space-y-4">
-                            <input 
-                                placeholder="Your Name"
-                                disabled
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white placeholder-gray-500 outline-none"
-                            />
-                            
-                            <textarea 
-                                placeholder="What do you think about Velgo?"
-                                rows={4}
-                                disabled
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-medium text-white placeholder-gray-500 outline-none resize-none"
-                            />
-                        </div>
-
-                        <button 
-                            disabled
-                            className="w-full bg-brand text-white py-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl opacity-50"
-                        >
-                            Post Review
-                        </button>
+                        <textarea 
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            placeholder="What do you think about Velgo?"
+                            rows={3}
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-medium text-white placeholder-gray-500 outline-none resize-none focus:border-brand"
+                        />
                     </div>
-                </div>
+
+                    <button 
+                        type="submit"
+                        disabled={submitting || !reviewComment.trim()}
+                        className="w-full bg-brand text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-brand-dark active:scale-98 transition-all disabled:opacity-40"
+                    >
+                        {submitting ? 'Submitting...' : 'Post Rating'}
+                    </button>
+                </form>
             )}
         </div>
       </div>
@@ -469,7 +503,8 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
              <a href="https://whatsapp.com" target="_blank" className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-600 hover:shadow-lg transition-all"><i className="fa-brands fa-whatsapp"></i></a>
           </div>
 
-          <div className="flex justify-center gap-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="flex justify-center gap-6 text-[10px] font-black text-gray-400 uppercase tracking-widest flex-wrap">
+              <button onClick={() => setIsRateModalOpen(true)} className="text-amber-500 hover:underline font-black">⭐ Rate Velgo</button>
               <a href="/pricing" onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('pricing'); }} className="hover:text-gray-900 font-bold">Pricing</a>
               <a href="/terms" onClick={(e) => { e.preventDefault(); onViewLegal('tos'); }} className="hover:text-gray-900">Terms</a>
               <a href="/privacy" onClick={(e) => { e.preventDefault(); onViewLegal('privacy'); }} className="hover:text-gray-900">Privacy</a>
@@ -480,6 +515,12 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
              <p className="text-[8px] text-gray-300 font-black uppercase tracking-[3px]">A Division of Universal Empire</p>
           </div>
       </div>
+
+      <RateAppModal
+        isOpen={isRateModalOpen}
+        onClose={() => setIsRateModalOpen(false)}
+        onSuccess={() => fetchReviews()}
+      />
     </div>
   );
 };

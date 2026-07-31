@@ -119,3 +119,17 @@ export interface Dispute {
   status: DisputeStatus;
   created_at: string;
 }
+
+export interface AppRating {
+  id: string;
+  user_id?: string;
+  user_name: string;
+  user_role?: 'Worker' | 'Client' | 'Guest' | string;
+  rating: number;
+  comment: string;
+  category?: 'Usability' | 'Gigs & Payments' | 'Customer Support' | 'General Feedback' | string;
+  is_featured?: boolean;
+  admin_reply?: string;
+  admin_replied_at?: string;
+  created_at: string;
+}
