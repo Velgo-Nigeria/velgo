@@ -342,29 +342,58 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                                         <div className="absolute -top-10 left-1/2 -translate-x-1/2">
                                             <div className="w-24 h-24 rounded-full border-[6px] border-[#fcfcfc] bg-white shadow-xl overflow-hidden">
                                                 <img 
-                                                    src={`https://ui-avatars.com/api/?name=${r.user_name}&background=008000&color=fff&size=200`} 
+                                                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(r.user_name)}&background=008000&color=fff&size=200`} 
                                                     className="w-full h-full object-cover" 
                                                     alt={r.user_name}
                                                 />
                                             </div>
-                                            <div className="absolute bottom-0 right-0 bg-yellow-400 text-white w-7 h-7 rounded-full border-[3px] border-white flex items-center justify-center text-[10px] shadow-lg">
-                                                <i className="fa-solid fa-star"></i>
+                                            <div className="absolute bottom-0 right-0 bg-yellow-400 text-gray-900 font-black px-2 py-0.5 rounded-full border-[3px] border-white flex items-center justify-center text-[10px] shadow-lg gap-0.5">
+                                                <i className="fa-solid fa-star text-[9px]"></i>
+                                                <span>{r.rating || 5}.0</span>
                                             </div>
                                         </div>
 
-                                        <div className="mt-10 text-center space-y-6 w-full">
+                                        <div className="mt-12 text-center space-y-5 w-full">
+                                            {/* Rating Stars & Category Pill */}
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <i 
+                                                            key={star} 
+                                                            className={`fa-solid fa-star text-base ${
+                                                                star <= (r.rating || 5) ? 'text-amber-400' : 'text-gray-200'
+                                                            }`}
+                                                        ></i>
+                                                    ))}
+                                                </div>
+                                                {r.category && (
+                                                    <span className="px-3 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider rounded-full border border-gray-200/60">
+                                                        {r.category}
+                                                    </span>
+                                                )}
+                                            </div>
+
                                             <p className="text-xl md:text-2xl font-medium text-gray-800 italic leading-snug tracking-tight">
                                                 "{r.comment}"
                                             </p>
                                             
-                                            <div className="space-y-2 pt-2">
+                                            <div className="space-y-2 pt-1">
                                                 <h4 className="font-black text-gray-900 text-lg uppercase tracking-tight">{r.user_name}</h4>
-                                                <div className="flex items-center justify-center gap-2">
+                                                <div className="flex items-center justify-center gap-2 flex-wrap">
                                                     <span className="px-3 py-1 bg-brand-light text-brand text-[9px] font-black uppercase tracking-[2px] rounded-full">
                                                         {r.user_role || 'Community Member'}
                                                     </span>
-                                                    <span className="text-xs text-gray-400 font-bold">•</span>
-                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified User</span>
+                                                    <span className="text-xs text-gray-300 font-bold">•</span>
+                                                    {r.user_role && r.user_role.toLowerCase() !== 'guest' ? (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-black uppercase tracking-widest bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                                                            <i className="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>
+                                                            Verified User
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                            Guest Feedback
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
