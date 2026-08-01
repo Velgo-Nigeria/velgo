@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { VelgoLogo } from '../components/Brand';
 import { fetchAllAppRatings, submitAppRating } from '../lib/appRatings';
 import { RateAppModal } from '../components/RateAppModal';
+import { AllReviewsModal } from '../components/AllReviewsModal';
 
 interface LandingProps {
   onGetStarted: () => void;
@@ -17,15 +18,17 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, onViewAbout, onNavigate, onExploreGuest }) => {
   const [reviews, setReviews] = useState<any[]>([]);
+  const [allRatingsList, setAllRatingsList] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Review Form State
+  // Review Form & Modal State
   const [reviewName, setReviewName] = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const [isAllReviewsModalOpen, setIsAllReviewsModalOpen] = useState(false);
 
   // Auto-play timer ref
   const timerRef = useRef<any>(null);
@@ -37,20 +40,14 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
   const fetchReviews = async () => {
     try {
       const allAppRatings = await fetchAllAppRatings();
-      const featured = allAppRatings.filter(r => r.is_featured);
+      setAllRatingsList(allAppRatings);
       
-      if (featured.length > 0) {
-        setReviews(featured.map(r => ({
-          id: r.id,
-          user_name: r.user_name,
-          user_role: r.user_role,
-          comment: r.comment,
-          rating: r.rating,
-          admin_reply: r.admin_reply,
-          category: r.category
-        })));
-      } else if (allAppRatings.length > 0) {
-        setReviews(allAppRatings.slice(0, 6).map(r => ({
+      const featured = allAppRatings.filter(r => r.is_featured);
+      // Cap carousel to top 8 featured (or top 8 newest ratings if no featured)
+      const carouselSource = featured.length > 0 ? featured : allAppRatings;
+      
+      if (carouselSource.length > 0) {
+        setReviews(carouselSource.slice(0, 8).map(r => ({
           id: r.id,
           user_name: r.user_name,
           user_role: r.user_role,
@@ -60,18 +57,22 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
           category: r.category
         })));
       } else {
-        setReviews([
-          { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5 },
-          { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5 },
-          { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5 }
-        ]);
+        const defaults = [
+          { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5, category: "Gigs & Payments", is_featured: true },
+          { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5, category: "Usability", is_featured: true },
+          { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5, category: "General Feedback", is_featured: true }
+        ];
+        setReviews(defaults);
+        setAllRatingsList(defaults);
       }
     } catch (e) {
-      setReviews([
-        { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5 },
-        { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5 },
-        { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5 }
-      ]);
+      const defaults = [
+        { id: '1', user_name: "Ose Architecture", user_role: "Client", comment: "Velgo has changed how I hire professionals. The zero-commission model means my money goes straight to the worker's family.", rating: 5, category: "Gigs & Payments", is_featured: true },
+        { id: '2', user_name: "Moriah Indo", user_role: "Worker", comment: "The best platform for Nigerian professionals to scale their business effortlessly. I got 3 bookings in my first week!", rating: 5, category: "Usability", is_featured: true },
+        { id: '3', user_name: "Tega Design", user_role: "Worker", comment: "Seamless payments and great interface. Highly recommended for every entrepreneur in Edo State.", rating: 5, category: "General Feedback", is_featured: true }
+      ];
+      setReviews(defaults);
+      setAllRatingsList(defaults);
     }
   };
 
@@ -325,6 +326,50 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                 <p className="text-[10px] font-black uppercase tracking-[5px] text-brand">Real Stories</p>
                 <h2 className="text-3xl font-black text-gray-900 tracking-tight">Voices of the Community</h2>
              </div>
+
+             {/* Google Play Style Aggregate Rating Header */}
+             {allRatingsList.length > 0 && (
+                <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-md border border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-5">
+                    <div className="flex items-center gap-4">
+                        <div className="text-center sm:text-left shrink-0">
+                            <div className="flex items-baseline gap-1.5 justify-center sm:justify-start">
+                                <span className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
+                                    {(allRatingsList.reduce((acc, r) => acc + (r.rating || 5), 0) / allRatingsList.length).toFixed(1)}
+                                </span>
+                                <span className="text-xs font-bold text-gray-400">/ 5.0</span>
+                            </div>
+                            <div className="flex items-center justify-center sm:justify-start gap-1 mt-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <i 
+                                        key={star} 
+                                        className={`fa-solid fa-star text-xs ${
+                                            star <= Math.round(allRatingsList.reduce((acc, r) => acc + (r.rating || 5), 0) / allRatingsList.length) 
+                                                ? 'text-amber-400' 
+                                                : 'text-gray-200'
+                                        }`}
+                                    ></i>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="text-left border-l border-gray-100 pl-4 space-y-0.5">
+                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight">
+                                {allRatingsList.length} Verified Reviews
+                            </p>
+                            <p className="text-[11px] text-gray-500 font-medium">
+                                Direct ratings from Velgo community
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => setIsAllReviewsModalOpen(true)}
+                        className="w-full sm:w-auto bg-brand-light hover:bg-brand/10 text-brand font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl border border-brand/20 transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95 shadow-sm"
+                    >
+                        <i className="fa-solid fa-comments text-sm"></i>
+                        Read All Reviews ({allRatingsList.length})
+                    </button>
+                </div>
+             )}
              
              {reviews.length > 0 ? (
                 <div className="relative">
@@ -566,6 +611,13 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
         isOpen={isRateModalOpen}
         onClose={() => setIsRateModalOpen(false)}
         onSuccess={() => fetchReviews()}
+      />
+
+      <AllReviewsModal
+        isOpen={isAllReviewsModalOpen}
+        onClose={() => setIsAllReviewsModalOpen(false)}
+        ratings={allRatingsList}
+        onOpenRateModal={() => setIsRateModalOpen(true)}
       />
     </div>
   );
