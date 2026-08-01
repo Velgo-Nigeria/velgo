@@ -66,10 +66,33 @@ export async function fetchAllAppRatings(): Promise<AppRating[]> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      // Merge remote data with local items to ensure offline submissions are preserved
+    if (!error && data) {
+      if (data.length === 0) {
+        // Table exists in Supabase but is empty. Auto-seed DEFAULT_APP_RATINGS to Supabase
+        try {
+          await supabase.from('app_ratings').insert(
+            DEFAULT_APP_RATINGS.map(r => ({
+              id: r.id,
+              user_id: r.user_id,
+              user_name: r.user_name,
+              user_role: r.user_role,
+              rating: r.rating,
+              comment: r.comment,
+              category: r.category,
+              is_featured: r.is_featured,
+              created_at: r.created_at
+            }))
+          );
+        } catch (seedErr) {
+          console.warn("Auto-seed default app ratings to Supabase notice:", seedErr);
+        }
+        return DEFAULT_APP_RATINGS;
+      }
+
+      // Merge remote data with local items to ensure offline submissions are preserved,
+      // excluding seed ratings if remote data exists (so deleted seed ratings don't resurrect).
       const remoteIds = new Set(data.map(d => d.id));
-      const unsyncedLocal = local.filter(l => !remoteIds.has(l.id));
+      const unsyncedLocal = local.filter(l => !remoteIds.has(l.id) && !l.id.startsWith('seed-'));
       const combined = [...data, ...unsyncedLocal].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
