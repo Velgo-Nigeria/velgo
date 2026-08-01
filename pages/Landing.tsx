@@ -352,7 +352,7 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                                             </div>
                                         </div>
 
-                                        <div className="mt-10 text-center space-y-6">
+                                        <div className="mt-10 text-center space-y-6 w-full">
                                             <p className="text-xl md:text-2xl font-medium text-gray-800 italic leading-snug tracking-tight">
                                                 "{r.comment}"
                                             </p>
@@ -361,12 +361,29 @@ const Landing: React.FC<LandingProps> = ({ onGetStarted, onLogin, onViewLegal, o
                                                 <h4 className="font-black text-gray-900 text-lg uppercase tracking-tight">{r.user_name}</h4>
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="px-3 py-1 bg-brand-light text-brand text-[9px] font-black uppercase tracking-[2px] rounded-full">
-                                                        Community Member
+                                                        {r.user_role || 'Community Member'}
                                                     </span>
                                                     <span className="text-xs text-gray-400 font-bold">•</span>
                                                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified User</span>
                                                 </div>
                                             </div>
+
+                                            {/* Official Admin Response (Play Store Style) */}
+                                            {r.admin_reply && (
+                                                <div className="w-full mt-4 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl p-4 md:p-5 text-left space-y-2 shadow-sm animate-fadeIn">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-[10px] shadow-sm">
+                                                            <i className="fa-solid fa-shield-halved"></i>
+                                                        </span>
+                                                        <span className="text-xs font-black text-brand uppercase tracking-wider">
+                                                            Response from Velgo Team
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs md:text-sm text-gray-700 font-medium leading-relaxed pl-8">
+                                                        "{r.admin_reply}"
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
