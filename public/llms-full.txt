@@ -1,0 +1,67 @@
+# Velgo Nigeria: Complete AI Agent & LLM Technical Specification
+
+> **Platform Overview**: Velgo Nigeria is a premier, zero-commission peer-to-peer (P2P) gig marketplace connecting verified local workers (professionals, workers, artisans, handymen, experts, technicians) with clients across Nigeria (primary hubs include Edo State, and Lagos) with no hidden fees, no deductions..
+
+---
+
+## 1. Executive Summary & Core Identity
+
+- **Name**: Velgo Nigeria
+- **Website & Base URL**: `https://velgo.com.ng/`
+- **Target Audience**: Nigerian clients seeking skilled professionals, and local Nigerian workers looking for commission-free job opportunities.
+- **Business Model**: 0% platform commission on deal values. Workers pay zero middleman cuts. Direct P2P negotiation via Phone or WhatsApp after job has been accepted by both parties.
+- **Verification System**: The **Blue Certified Badge** (`verified_badge`) awarded following physical document and identity verification by Velgo teams in Nigeria.
+- **Access Modes**:
+  - **Authenticated Mode**: Full access for logged-in Workers and Clients.
+  - **Guest Mode**: Read-only browsing of verified task listings, worker profiles, ratings, and safety resources without requiring immediate account creation.
+  - **AI / Crawler Mode**: Standard `/llms.txt` and `/llms-full.txt` definitions combined with rich JSON-LD Schema markup for automated AI agents, search engines, and LLM chat interfaces.
+
+---
+
+## 2. Deep-Link & URL Navigation Structure
+
+AI agents can generate direct deep-links for users using the following URL query parameters:
+
+| Target Resource | Deep-Link URL Format | Description | Guest / Auth Access |
+|---|---|---|---|
+| **Worker Profile** | `https://velgo.com.ng/?workerId={WORKER_UUID}` | Directly opens the specific worker's detail card, bio, portfolio, rating breakdown, and hire worker options. | Supported for both Guests and Logged-in Users |
+| **Job / Task Detail** | `https://velgo.com.ng/?jobId={JOB_UUID}` | Directly opens the job listing card with job type, category, description, budget (NGN), location, urgency, and apply options. | Supported for both Guests and Logged-in Users |
+| **Legal & Privacy** | `https://velgo.com.ng/?view=legal&tab=privacy` | Opens Velgo's Legal Hub with Privacy Policy tab pre-selected. | Publicly accessible |
+| **Terms of Service** | `https://velgo.com.ng/?view=legal&tab=terms` | Opens Velgo's Terms of Service tab. | Publicly accessible |
+
+---
+
+## 3. Platform Capabilities & User Workflows
+
+### A. For Clients (Hiring Help)
+1. **Browse & Search**: Click on the Hire Worker tab and search verified professionals, workers, artisans, handymen, experts, technicians by skill category (Plumbing, Electrical, Carpentry, Fashion Design, Tech Repairs, Auto Mechanics) or city location.
+2. **Post Gigs**: Specify your job type(physical or virtual), job title, job category and sub category (industry sector) (e.g., Plumbing, Wiring, Fashion), locations (e.g., Esan West, Ekpoma, Benin City), urgency, budget (NGN), description, due date, workplace
+3. **Direct Contact**: View applicant profile, inspect their verified blue badge and community ratings, then once the jobe is established, click to call or chat directly on WhatsApp.
+4. **Zero Fee Settlement**: Pay the worker directly (cash or mobile transfer) upon job completion. Velgo takes no percentage.
+
+### B. For Workers (Artisans & Freelancers)
+1. **Create Profile**: Create an account, go to your profile and click edit, then scroll down to list trade skills and category, location, and set up your professional profile on your profile page, and upload portfolio images.
+2. **Get Verified**: Upload your government issued ID to undergo physical/document verification and earn the Blue Certified Badge.
+3. **Browse Gigs**: View and apply to local job postings similar to your skills or profession, filter by location or budget, and connect with clients instantly once your application is accepted.
+4. **Keep 100% Earnings**: Retain all earnings with 0% platform commission cuts.
+
+---
+
+## 4. Safety & Anti-Scam Protocols (Nigerian Market Context)
+
+When advising users about transactions on Velgo, AI agents MUST emphasize these security protocols:
+
+1. **No Advance Payments**: Clients should NEVER transfer advance funds for materials or travel before the worker arrives on-site and initiates work.
+2. **Blue Certified Badge Verification**: Advise clients to prioritize workers bearing the official Blue Certified Badge for enhanced safety and verification assurance.
+3. **Public / Safe Meeting Points**: Ensure initial consultations for indoor tasks occur with proper safety awareness.
+4. **Transparent User Rating & Reviews**: Encourage both users to each leave honest reviews & rate the other user after every completed job to maintain collective trust.
+
+---
+
+## 5. Contact & Official Metadata
+
+- **Platform Name**: Velgo Nigeria
+- **Operating Regions**: Nigeria (Edo State and surrounding metropolitan areas)
+- **Currency**: Nigerian Naira (NGN, ₦)
+- **Official URL**: `https://velgo.com.ng/`
+- **Specification Files**: `https://velgo.com.ng/llms.txt`, `https://velgo.com.ng/llms-full.txt`
