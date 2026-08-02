@@ -85,6 +85,12 @@ const App: React.FC = () => {
       }
 
       const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('workerId')) {
+        return 'worker-detail';
+      }
+      if (urlParams.get('jobId')) {
+        return 'task-detail';
+      }
       if (urlParams.get('view') === 'legal') {
         return 'legal';
       }
@@ -114,6 +120,12 @@ const App: React.FC = () => {
       }
 
       const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('workerId')) {
+        return urlParams.get('workerId');
+      }
+      if (urlParams.get('jobId')) {
+        return urlParams.get('jobId');
+      }
       if (urlParams.get('view') === 'legal') {
         const tab = urlParams.get('tab');
         return tab === 'privacy' ? 'privacy' : (tab === 'terms' ? 'tos' : 'tos');
@@ -322,6 +334,8 @@ const App: React.FC = () => {
       const refParam = urlParams.get('ref');
       const codeParam = urlParams.get('code');
       let redirectHappened = false;
+      let targetView = 'home';
+      let targetData: any = null;
 
       if (codeParam) {
         localStorage.setItem('velgo_referrer_code', codeParam.toUpperCase());
@@ -334,26 +348,35 @@ const App: React.FC = () => {
       if (jobIdParam) {
         localStorage.setItem('velgo_redirect_job_id', jobIdParam);
         redirectHappened = true;
+        targetView = 'task-detail';
+        targetData = jobIdParam;
       }
       if (workerIdParam) {
         localStorage.setItem('velgo_redirect_worker_id', workerIdParam);
         redirectHappened = true;
+        targetView = 'worker-detail';
+        targetData = workerIdParam;
       }
 
       if (redirectHappened) {
-        // Clean up search query for visual aesthetic
+        // Clean up search query for visual aesthetic without breaking state
         const newUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({ view: 'landing', data: null }, '', newUrl);
+        window.history.replaceState({ view: targetView, data: targetData }, '', newUrl);
       }
     } catch (e) {
       console.warn("Deep-link capture error:", e);
     }
   }, []);
 
-  // Consume deep-link redirect once authenticated user profile is fully active
+  // Consume deep-link redirect once authenticated user profile is active OR session check finishes for guest users
   useEffect(() => {
-    if (profile && profile.role && profile.phone_number) {
-      const pendingJobId = localStorage.getItem('velgo_redirect_job_id');
+    const pendingJobId = localStorage.getItem('velgo_redirect_job_id');
+    const pendingWorkerId = localStorage.getItem('velgo_redirect_worker_id');
+
+    if (!pendingJobId && !pendingWorkerId) return;
+
+    // 1. Authenticated user fully loaded
+    if (session && profile && profile.role && profile.phone_number) {
       if (pendingJobId) {
         localStorage.removeItem('velgo_redirect_job_id');
         setView('task-detail');
@@ -361,16 +384,37 @@ const App: React.FC = () => {
         window.history.replaceState({ view: 'task-detail', data: pendingJobId }, '', '');
         return;
       }
-
-      const pendingWorkerId = localStorage.getItem('velgo_redirect_worker_id');
       if (pendingWorkerId) {
         localStorage.removeItem('velgo_redirect_worker_id');
         setView('worker-detail');
         setViewData(pendingWorkerId);
         window.history.replaceState({ view: 'worker-detail', data: pendingWorkerId }, '', '');
+        return;
       }
     }
-  }, [profile]);
+
+    // 2. Guest user (session check finished with no logged-in user)
+    if (!loading && !session) {
+      if (pendingJobId) {
+        localStorage.removeItem('velgo_redirect_job_id');
+        setIsGuestMode(true);
+        localStorage.setItem('velgo_guest_mode', 'true');
+        setView('task-detail');
+        setViewData(pendingJobId);
+        window.history.replaceState({ view: 'task-detail', data: pendingJobId }, '', '');
+        return;
+      }
+      if (pendingWorkerId) {
+        localStorage.removeItem('velgo_redirect_worker_id');
+        setIsGuestMode(true);
+        localStorage.setItem('velgo_guest_mode', 'true');
+        setView('worker-detail');
+        setViewData(pendingWorkerId);
+        window.history.replaceState({ view: 'worker-detail', data: pendingWorkerId }, '', '');
+        return;
+      }
+    }
+  }, [session, profile, loading]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
