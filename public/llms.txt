@@ -12,6 +12,7 @@
 * **Verification (Green Certified Badge)**: Workers undergo document and identity verification by Velgo teams to receive the blue verified badge.
 * **Zero Commission**: Velgo takes 0% commission on transactions.
 * **Guest & AI Access**: Users and AI search assistants can view public job listings, worker profiles, and community reviews without friction.
+* **Sanitized Public AI Feed**: Real-time active gigs and verified worker category summaries are available at `https://velgo.com.ng/api/ai-feed`.
 
 ---
 

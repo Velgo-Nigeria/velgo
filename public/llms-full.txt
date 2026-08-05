@@ -14,7 +14,7 @@
 - **Access Modes**:
   - **Authenticated Mode**: Full access for logged-in Workers and Clients.
   - **Guest Mode**: Read-only browsing of verified task listings, worker profiles, ratings, and safety resources without requiring immediate account creation.
-  - **AI / Crawler Mode**: Standard `/llms.txt` and `/llms-full.txt` definitions combined with rich JSON-LD Schema markup for automated AI agents, search engines, and LLM chat interfaces.
+  - **AI / Crawler Mode**: Standard `/llms.txt` and `/llms-full.txt` definitions combined with rich JSON-LD Schema markup and a dedicated sanitized JSON API feed at `https://velgo.com.ng/api/ai-feed` for automated AI agents, search engines, and LLM chat interfaces.
 
 ---
 
