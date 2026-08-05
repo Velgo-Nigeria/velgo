@@ -25,6 +25,7 @@ User-agent: Google-Extended
 Allow: /
 
 # Prevent search bots from attempting to crawl login, registration, or private dashboard callbacks
+Allow: /api/ai-feed
 Disallow: /api/
 Disallow: /admin/
 Disallow: /auth/
