@@ -7,6 +7,7 @@ import { TierBadge } from '../components/TierBadge';
 import { GamifiedTierUI } from '../components/GamifiedTierUI';
 import { VisualPortfolioGallery } from '../components/VisualPortfolioGallery';
 import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface ProfilePageProps {
   profile: Profile | null;
@@ -40,6 +41,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
   const [portfolio, setPortfolio] = useState(profile?.portfolio_url || '');
 
   const isWorker = true; // All users are essentially both workers and clients now
+  const isNameLocked = !!(profile?.is_verified || profile?.nin_image_url);
 
   // Celebrate Jobs Milestone State
   const [celebratedMilestone, setCelebratedMilestone] = useState<number | null>(null);
@@ -188,14 +190,29 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     if (!profile) return;
     setLoading(true);
 
+    const trimmedName = fullName.trim();
+    const nameChanged = profile.full_name !== trimmedName;
+    const isNameLocked = !!(profile.is_verified || profile.nin_image_url);
+
+    if (isNameLocked && nameChanged) {
+      alert("Your official profile name is locked because your account is verified or pending ID verification. Please contact the Velgo Verification Desk on WhatsApp to request an official name change.");
+      setLoading(false);
+      return;
+    }
+
     const updates: any = {
-      full_name: fullName,
+      full_name: trimmedName,
       phone_number: phone,
       address,
       state,
       lga,
       updated_at: new Date().toISOString(),
     };
+
+    // Re-verification trigger: If user is verified and changes their full_name, reset verification status
+    if (profile.is_verified && nameChanged) {
+      updates.is_verified = false;
+    }
 
     if (isWorker) {
         updates.bio = bio;
@@ -211,6 +228,17 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     if (error) {
       alert("Failed to update profile: " + error.message);
     } else {
+      // Sync Auth Metadata
+      try {
+        await supabase.auth.updateUser({ data: { full_name: trimmedName } });
+      } catch (authErr) {
+        console.warn("Auth user_metadata sync failed:", authErr);
+      }
+
+      if (profile.is_verified && nameChanged) {
+        alert("Name updated! Because your official profile name was changed, your ID verification status has been reset. Please re-upload your ID matching your new name.");
+      }
+
       setEditing(false);
       onRefreshProfile();
     }
@@ -471,13 +499,42 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Personal Details</h3>
             <div className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
                 <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Full Name</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">Full Name</label>
+                        {isNameLocked && (
+                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <i className="fa-solid fa-lock text-[9px]"></i> Locked
+                            </span>
+                        )}
+                    </div>
                     <input 
-                        disabled={!editing} 
+                        disabled={!editing || isNameLocked} 
                         value={fullName} 
                         onChange={e => setFullName(e.target.value)} 
                         className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white disabled:bg-transparent disabled:p-0 disabled:text-base transition-all" 
                     />
+                    {isNameLocked ? (
+                        <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl space-y-1.5">
+                            <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium leading-tight">
+                                Official name is locked for identity safety {profile?.is_verified ? '(Verified Account)' : '(ID Verification Pending)'}. To request an official name change, contact Velgo Desk on WhatsApp with legal ID proof.
+                            </p>
+                            <button 
+                                type="button"
+                                onClick={() => openWhatsAppHelper(
+                                  `Hello Velgo Verification Desk, I would like to request an official name change for my account.\nUser ID: ${profile?.id}\nCurrent Registered Name: ${profile?.full_name}`,
+                                  '2349167799600',
+                                  'Velgo Verification Desk'
+                                )}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-emerald-700 transition-colors mt-1 cursor-pointer"
+                            >
+                                <i className="fa-brands fa-whatsapp text-xs"></i> Request Official Change
+                            </button>
+                        </div>
+                    ) : editing ? (
+                        <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-1 px-1">
+                            * Must match your official government ID document name exactly.
+                        </p>
+                    ) : null}
                 </div>
                 <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase">WhatsApp Number (For Direct Chats)</label>

@@ -89,6 +89,12 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
         setLoading(false);
       }
     } else {
+      // Sync with Supabase Auth metadata
+      try {
+        await supabase.auth.updateUser({ data: { full_name: fullName.trim() } });
+      } catch (authErr) {
+        console.warn("Auth metadata sync warning:", authErr);
+      }
       // Success! Proceed to app
       onComplete();
     }

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Profile, NotificationPreferences } from '../lib/types';
 import { subscribeToPush, unsubscribeFromPush, checkSubscriptionStatus } from '../lib/pushManager';
 import { RateAppModal } from '../components/RateAppModal';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface SettingsProps { 
   profile: Profile | null; 
@@ -43,6 +44,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   const [hasPassword, setHasPassword] = useState<boolean>(true);
 
   // Editable Fields
+  const [settingFullName, setSettingFullName] = useState(profile?.full_name || '');
+  const [nameSaving, setNameSaving] = useState(false);
+
   const [newBankName, setNewBankName] = useState(profile?.bank_name || '');
   const [newAccountNum, setNewAccountNum] = useState(profile?.account_number || '');
   const [newAccountName, setNewAccountName] = useState(profile?.account_name || '');
@@ -268,6 +272,52 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
     }
   };
 
+  const saveFullName = async () => {
+    if (!profile?.id) return;
+    const trimmed = settingFullName.trim();
+    if (!trimmed) {
+      alert("Please enter a valid full name.");
+      return;
+    }
+    const nameChanged = profile.full_name !== trimmed;
+    const isNameLocked = !!(profile.is_verified || profile.nin_image_url);
+
+    if (isNameLocked) {
+      alert("Your official profile name is locked because your account is verified or pending ID verification. Please contact the Velgo Verification Desk on WhatsApp to request an official name change.");
+      return;
+    }
+
+    setNameSaving(true);
+
+    const updates: any = {
+      full_name: trimmed,
+      updated_at: new Date().toISOString()
+    };
+
+    if (profile.is_verified && nameChanged) {
+      updates.is_verified = false;
+    }
+
+    const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
+    if (error) {
+      alert("Failed to update name: " + error.message);
+    } else {
+      try {
+        await supabase.auth.updateUser({ data: { full_name: trimmed } });
+      } catch (authErr) {
+        console.warn("Auth user_metadata sync failed:", authErr);
+      }
+
+      if (profile.is_verified && nameChanged) {
+        alert("Name updated! Because your official profile name was changed, your ID verification status has been reset. Please re-upload your ID matching your new name.");
+      } else {
+        alert("Profile name updated successfully!");
+      }
+      await onRefreshProfile();
+    }
+    setNameSaving(false);
+  };
+
   const saveEmergencyContact = async () => {
       if (!profile?.id) return;
       setEmergencySaving(true);
@@ -324,6 +374,70 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
                 <i className="fa-solid fa-arrow-right"></i>
             </button>
         )}
+
+        <section>
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Personal Identity</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Official Profile Name</h4>
+                        <p className="text-[10px] text-gray-400 font-medium">Must match your government ID document.</p>
+                    </div>
+                    {profile?.is_verified ? (
+                        <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <i className="fa-solid fa-circle-check text-[10px]"></i> Verified
+                        </span>
+                    ) : profile?.nin_image_url ? (
+                        <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <i className="fa-solid fa-hourglass-half text-[10px]"></i> ID Pending
+                        </span>
+                    ) : (
+                        <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <i className="fa-solid fa-clock text-[10px]"></i> Unverified
+                        </span>
+                    )}
+                </div>
+                <div className="space-y-3">
+                    <input 
+                        disabled={!!(profile?.is_verified || profile?.nin_image_url)}
+                        value={settingFullName} 
+                        onChange={e => setSettingFullName(e.target.value)} 
+                        placeholder="Full Name" 
+                        className="w-full bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-xl text-xs font-bold outline-none dark:text-white disabled:opacity-60 disabled:cursor-not-allowed" 
+                    />
+                    {profile?.is_verified || profile?.nin_image_url ? (
+                        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl space-y-2">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                <i className="fa-solid fa-lock text-amber-600"></i>
+                                <span>Name Locked for Security</span>
+                            </div>
+                            <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium leading-relaxed">
+                                Profile names are locked once an ID is submitted or verified. To request an official name change, contact the Velgo Verification Desk with legal proof.
+                            </p>
+                            <button 
+                                type="button"
+                                onClick={() => openWhatsAppHelper(
+                                  `Hello Velgo Verification Desk, I would like to request an official name change for my account.\nUser ID: ${profile?.id}\nCurrent Registered Name: ${profile?.full_name}`,
+                                  '2349167799600',
+                                  'Velgo Verification Desk'
+                                )}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                            >
+                                <i className="fa-brands fa-whatsapp text-sm"></i> Request Change via WhatsApp
+                            </button>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={saveFullName} 
+                            disabled={nameSaving || !settingFullName.trim() || settingFullName.trim() === profile?.full_name} 
+                            className="w-full bg-brand text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest disabled:opacity-40 transition-opacity"
+                        >
+                            {nameSaving ? 'Saving...' : 'Update Official Name'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </section>
 
         <section>
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Account Security</h3>
