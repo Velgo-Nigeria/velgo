@@ -126,6 +126,38 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
       setIsDeleting(true);
 
       try {
+          // 1. Archive account details into deleted_accounts table for security audit & blacklist
+          if (profile) {
+              const archivePayload = {
+                  user_id: profile.id,
+                  full_name: profile.full_name || '',
+                  email: (profile.email || user?.email || '').trim().toLowerCase(),
+                  phone_number: (profile.phone_number || '').trim(),
+                  role: profile.role || 'user',
+                  reason: 'User self-requested account deletion via Settings',
+                  metadata: {
+                      is_verified: profile.is_verified || false,
+                      completed_jobs_count: profile.completed_jobs_count || 0,
+                      average_rating: profile.average_rating || 0,
+                      created_at: profile.created_at || new Date().toISOString()
+                  },
+                  deleted_at: new Date().toISOString()
+              };
+
+              try {
+                  const { error: archiveError } = await supabase
+                      .from('deleted_accounts')
+                      .insert([archivePayload]);
+                  
+                  if (archiveError) {
+                      console.warn("Client-side archive warning (SQL trigger may handle this):", archiveError.message);
+                  }
+              } catch (archCatch) {
+                  console.warn("Client-side archive catch:", archCatch);
+              }
+          }
+
+          // 2. Execute deletion RPC
           const { error } = await supabase.rpc('delete_own_account');
           
           if (error) {

@@ -509,6 +509,29 @@ const App: React.FC = () => {
   const fetchProfile = useCallback(async (uid: string, retries = 2, silent = false) => {
     if (!silent) setIsInitializingProfile(true);
     
+    // Check if user is in deleted_accounts blacklist
+    try {
+      const { data: blacklisted } = await supabase
+        .from('deleted_accounts')
+        .select('id')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      if (blacklisted) {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        alert("This account was permanently deleted and can no longer be accessed.");
+        setProfile(null);
+        setSession(null);
+        setIsInitializingProfile(false);
+        setView('landing');
+        return;
+      }
+    } catch (checkErr) {
+      console.warn("Deleted account check warning:", checkErr);
+    }
+
     const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
     
     if (data) {

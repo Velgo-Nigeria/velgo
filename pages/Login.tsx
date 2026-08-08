@@ -20,6 +20,24 @@ const Login: React.FC<LoginProps> = ({ onToggle }) => {
     setLoading(true);
     setError(null);
     try {
+      // Check if email address belongs to a deleted account
+      const cleanEmail = email.trim().toLowerCase();
+      try {
+        const { data: blacklisted } = await supabase
+          .from('deleted_accounts')
+          .select('id, email')
+          .ilike('email', cleanEmail)
+          .limit(1);
+
+        if (blacklisted && blacklisted.length > 0) {
+          setError('This account was permanently deleted and cannot be accessed. If you require assistance, please contact Velgo Support on WhatsApp (+2349167799600).');
+          setLoading(false);
+          return;
+        }
+      } catch (checkErr) {
+        console.warn("Deleted account check warning:", checkErr);
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,

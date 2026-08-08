@@ -62,6 +62,24 @@ const SignUp: React.FC<SignUpProps> = ({ onToggle, initialRole = 'user' }) => {
 
     setLoading(true);
 
+    // Check if email address or phone number is blacklisted in deleted_accounts
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { data: blacklisted } = await supabase
+        .from('deleted_accounts')
+        .select('id, email, phone_number')
+        .or(`email.ilike.${cleanEmail},phone_number.eq.${cleanPhone}`)
+        .limit(1);
+
+      if (blacklisted && blacklisted.length > 0) {
+        setError("This email address or phone number belongs to a permanently deleted account and cannot be re-registered on Velgo for platform safety and security. If you require assistance, please contact Velgo Support on WhatsApp (+2349167799600).");
+        setLoading(false);
+        return;
+      }
+    } catch (checkErr) {
+      console.warn("Blacklist check skipped (table may be pending migration):", checkErr);
+    }
+
     const metaData = {
       full_name: fullName.trim(),
       phone_number: cleanPhone,

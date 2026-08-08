@@ -18,14 +18,16 @@ import { fetchAllAppRatings } from "../lib/appRatings";
 import { StatsTab } from "./admin/tabs/StatsTab";
 import { ErrorsTab } from "./admin/tabs/ErrorsTab";
 import { AuditTab } from "./admin/tabs/AuditTab";
+import { DeletedAccountsTab, DeletedAccountRecord } from "./admin/tabs/DeletedAccountsTab";
 import { VerificationLightbox } from "./admin/VerificationLightbox";
 import { downloadUsersCSV, downloadUsersPDF, downloadStatsPDF } from "./admin/exportUtils";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'app_ratings' | 'reviews' | 'stats' | 'errors' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'app_ratings' | 'reviews' | 'stats' | 'deleted' | 'errors' | 'audit'>('users');
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
+  const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountRecord[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState<Profile[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [pendingReplies, setPendingReplies] = useState<any[]>([]);
@@ -53,7 +55,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       safety: number;
       support: number;
       reviews: number;
-  }>({ verify: 0, safety: 0, support: 0, reviews: 0 });
+      deleted: number;
+  }>({ verify: 0, safety: 0, support: 0, reviews: 0, deleted: 0 });
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -339,6 +342,11 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 .from('admin_audit_logs')
                 .select('*, admin_profile:admin_id(full_name, email, avatar_url, role)')
                 .order('created_at', { ascending: false }));
+        } else if (activeTab === 'deleted') {
+            result = await safeFetch(() => supabase
+                .from('deleted_accounts')
+                .select('*')
+                .order('deleted_at', { ascending: false }));
         } else {
             result = { data: [], error: null };
         }
@@ -348,6 +356,8 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 setErrorMsg("Database Schema Realignment Required: Please run the SQL migration script located in `/supabase/fix_support_messages_schema.sql` inside your Supabase SQL Editor to provision the Support Desk columns and resolve the connection crash.");
             } else if (result.error.message?.includes('app_errors')) {
                 setErrorMsg("Database Schema Required: The 'app_errors' table does not exist. Please run the SQL migration script to create it.");
+            } else if (result.error.message?.includes('deleted_accounts')) {
+                console.warn("deleted_accounts table not found in schema cache yet.");
             } else {
                 setErrorMsg(`Data Error: ${result.error.message}`);
             }
@@ -359,6 +369,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         else if (activeTab === 'broadcast') setBroadcasts(result.data || []);
         else if (activeTab === 'reviews') setPendingReplies(result.data || []);
         else if (activeTab === 'support') setSupportMessages(result.data || []);
+        else if (activeTab === 'deleted') setDeletedAccounts(result.data || []);
         else if (activeTab === 'errors') setAppErrors(result.data || []);
         else if (activeTab === 'audit') setAuditLogs(result.data || []);
 
@@ -444,15 +455,49 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             console.warn("Failed fetching app ratings pending count:", arErr);
         }
 
+        let deletedCount = 0;
+        try {
+            const { count: dCount } = await supabase
+                .from('deleted_accounts')
+                .select('*', { count: 'exact', head: true });
+            deletedCount = dCount || 0;
+        } catch (delErr) {
+            console.warn("Failed fetching deleted count:", delErr);
+        }
+
         setCounts({
             verify: vCount || 0,
             safety: sCount,
             support: supportPendingCount,
             app_ratings: appRatingsPendingCount,
-            reviews: rCount || 0
+            reviews: rCount || 0,
+            deleted: deletedCount
         });
     } catch (e) {
         console.error("Error fetching admin counts:", e);
+    }
+  };
+
+  const handleRestoreDeletedUser = async (record: DeletedAccountRecord) => {
+    try {
+      const { error } = await supabase
+        .from('deleted_accounts')
+        .delete()
+        .eq('id', record.id);
+
+      if (error) throw error;
+
+      await logAdminAction('unblacklist_account', record.id, {
+        email: record.email,
+        phone_number: record.phone_number,
+        name: record.full_name
+      });
+
+      alert(`Removed ${record.full_name || record.email || 'account'} from the blacklist. They can now re-register or access the platform.`);
+      fetchData();
+      fetchCounts();
+    } catch (err: any) {
+      alert("Failed to remove account from blacklist: " + err.message);
     }
   };
 
@@ -759,7 +804,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'app_ratings', 'reviews', 'stats', 'errors', 'audit'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'app_ratings', 'reviews', 'stats', 'deleted', 'errors', 'audit'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -767,7 +812,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'app_ratings' ? '⭐ App Ratings' : tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
+                <span>{tab === 'app_ratings' ? '⭐ App Ratings' : tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'deleted' ? '🗑️ Deleted Accounts' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -1002,7 +1047,13 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                                 stats={stats}
                                               />  
 
- : activeTab === 'errors' ? <ErrorsTab
+ : activeTab === 'deleted' ? <DeletedAccountsTab
+                                deletedAccounts={deletedAccounts}
+                                searchTerm={searchTerm}
+                                setSearchTerm={setSearchTerm}
+                                onRestoreUser={handleRestoreDeletedUser}
+                                loading={loading}
+                              /> : activeTab === 'errors' ? <ErrorsTab
                                                         appErrors={appErrors}
                                                       /> : activeTab === 'audit' ? <AuditTab
                                                             auditLogs={auditLogs}
