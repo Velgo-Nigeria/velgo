@@ -36,57 +36,137 @@ export const UserDossierModal: React.FC<UserDossierModalProps> = ({
           return;
         }
 
-        // Fetch user activity records in parallel
+        // Fetch user activity records safely in parallel
+        const bookingsPromise = supabase
+          .from('bookings')
+          .select('*')
+          .or(`client_id.eq.${userId},worker_id.eq.${userId}`)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const tasksPromise = supabase
+          .from('posted_tasks')
+          .select('*')
+          .or(`client_id.eq.${userId},assigned_worker_id.eq.${userId}`)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const userEmail = user.email || '';
+        const supportQueryFilter = userEmail
+          ? `user_id.eq.${userId},email.eq.${userEmail}`
+          : `user_id.eq.${userId}`;
+
+        const supportPromise = supabase
+          .from('support_messages')
+          .select('*')
+          .or(supportQueryFilter)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const safetyPromise = supabase
+          .from('safety_reports')
+          .select('*')
+          .or(`reporter_id.eq.${userId},reported_user_id.eq.${userId}`)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const ratingsPromise = supabase
+          .from('app_ratings')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const reviewsPromise = supabase
+          .from('app_reviews')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
+        const auditPromise = supabase
+          .from('admin_audit_logs')
+          .select('*')
+          .or(`target_id.eq.${userId},admin_id.eq.${userId}`)
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []);
+
         const [
-          bookingsRes,
-          reviewsRes,
-          supportRes,
-          safetyRes,
-          ratingsRes,
-          auditRes
+          bookingsList,
+          tasksList,
+          supportList,
+          safetyList,
+          ratingsList,
+          reviewsList,
+          auditList
         ] = await Promise.all([
-          supabase
-            .from('bookings')
-            .select('*')
-            .or(`client_id.eq.${userId},artisan_id.eq.${userId}`)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('reviews')
-            .select('*')
-            .or(`reviewer_id.eq.${userId},worker_id.eq.${userId}`)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('support_tickets')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('safety_incidents')
-            .select('*')
-            .or(`reporter_id.eq.${userId},reported_user_id.eq.${userId}`)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('app_ratings')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('admin_audit_logs')
-            .select('*')
-            .or(`target_id.eq.${userId},admin_id.eq.${userId}`)
-            .order('created_at', { ascending: false })
+          bookingsPromise,
+          tasksPromise,
+          supportPromise,
+          safetyPromise,
+          ratingsPromise,
+          reviewsPromise,
+          auditPromise
         ]);
+
+        // Merge bookings and posted_tasks
+        const combinedJobs = [
+          ...bookingsList,
+          ...tasksList.map((t: any) => ({
+            id: t.id,
+            service_title: t.title || t.category || 'Marketplace Task',
+            client_id: t.client_id,
+            worker_id: t.assigned_worker_id,
+            amount: t.budget || 0,
+            status: t.status || 'open',
+            created_at: t.created_at,
+            category: t.category,
+            is_posted_task: true
+          }))
+        ];
+
+        // Deduplicate jobs by ID if any overlap
+        const uniqueJobsMap = new Map();
+        combinedJobs.forEach((job: any) => {
+          if (job.id && !uniqueJobsMap.has(job.id)) {
+            uniqueJobsMap.set(job.id, job);
+          }
+        });
+        const finalJobsList = Array.from(uniqueJobsMap.values());
+
+        // Extract reviews from bookings and combine with app_ratings / app_reviews
+        const bookingReviews = bookingsList
+          .filter((b: any) => b.rating || b.review || b.client_rating)
+          .map((b: any) => ({
+            id: b.id,
+            rating: b.rating || b.client_rating || 5,
+            comment: b.review || b.comment || 'Job feedback',
+            created_at: b.created_at
+          }));
+
+        const combinedReviews = [
+          ...bookingReviews,
+          ...ratingsList,
+          ...reviewsList
+        ];
 
         if (isMounted) {
           setDossier({
             profile: user,
             isDeleted,
-            bookings: bookingsRes.data || [],
-            reviews: reviewsRes.data || [],
-            supportTickets: supportRes.data || [],
-            safetyIncidents: safetyRes.data || [],
-            appRatings: ratingsRes.data || [],
-            auditLogs: auditRes.data || [],
+            bookings: finalJobsList,
+            reviews: combinedReviews,
+            supportTickets: supportList,
+            safetyIncidents: safetyList,
+            appRatings: ratingsList,
+            auditLogs: auditList,
             fetchedAt: new Date().toISOString()
           });
         }

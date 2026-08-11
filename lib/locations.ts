@@ -42,3 +42,35 @@ export const NIGERIA_LGAS: Record<string, string[]> = {
   "Yobe": ["Bade", "Bursari", "Damaturu", "Fika", "Fune", "Geidam", "Gujba", "Gulani", "Jakusko", "Karasuwa", "Machina", "Nangere", "Nguru", "Potiskum", "Tarmuwa", "Yunusari", "Yusufari"],
   "Zamfara": ["Anka", "Bakura", "Birnin Magaji/Kiyaw", "Bukkuyum", "Bungudu", "Chafe", "Gummi", "Gusau", "Kaura Namoda", "Maradun", "Maru", "Shinkafi", "Talata Mafara", "Zurmi"]
 };
+
+export const POPULAR_AREAS: Record<string, Record<string, string[]>> = {
+  "Edo": {
+    "Esan West": ["Ihumudumu", "Emaudo", "Uhiele", "Royal Market Road", "Marketsquare", "Ukpenu", "Ujoelen", "GRA", "Town Center", "AAU Main Gate"],
+    "Oredo": ["Ring Road", "GRA", "Airport Road", "Uselu", "UNIBEN Main Gate", "Sapele Road", "Akpakpava", "New Benin", "Ekenwan Road", "Ibiwe"],
+    "Ikpoba Okha": ["Aduwawa", "Upper Mission", "Upper Sakponba", "Ikpoba Hill", "Ekae", "St. Saviour"],
+    "Egor": ["Uselu", "Siluko Road", "Ugbowo", "Textile Mill Road", "Evbuotubu"],
+    "Esan Central": ["Irrua", "Ewu", "Otoruwa", "Hospital Road"],
+    "Esan North-East": ["Uromi Market", "Amedokhian", "Eguare", "Ubiaja Road"]
+  },
+  "Lagos": {
+    "Ikeja": ["Allen Avenue", "Computer Village", "GRA Ikeja", "Toyin Street", "Oregun", "Alausa", "Agidingbi"],
+    "Alimosho": ["Ikotun", "Egbeda", "Iyana Ipaja", "Gowon Estate", "Command", "Ipaja"],
+    "Eti Osa": ["Lekki Phase 1", "Ikoyi", "Victoria Island", "Ajah", "Chevron", "Jakande", "VGC"],
+    "Lagos Mainland": ["Yaba", "Saboo", "Akoka", "Unilag Campus", "Ebute Metta", "Oyingbo"],
+    "Surulere": ["Adeniran Ogunsanya", "Bode Thomas", "Ojuelegba", "Aguda", "Ijesha"]
+  },
+  "Rivers": {
+    "Port Harcourt": ["Garrison", "Mile 1", "Mile 3", "GRA Phase 2", "Diobu", "Old Port Harcourt", "Borokiri"],
+    "Obio/Akpor": ["Rumuokoro", "Rumuola", "Choba", "Uniport Junction", "Elelenwo", "Eliozu", "Trans Amadi"]
+  },
+  "FCT - Abuja": {
+    "Municipal Area Council": ["Maitama", "Asokoro", "Wuse 2", "Garki", "Jabi", "Utako", "Gwarinpa", "Lugbe"],
+    "Bwari": ["Kubwa", "Dutse Alhaji", "Bwari Central", "Dawaki"]
+  }
+};
+
+export function getPopularAreas(state?: string, lga?: string): string[] {
+  if (!state || !lga) return [];
+  return POPULAR_AREAS[state]?.[lga] || [];
+}
+

@@ -7,8 +7,9 @@ import { GoogleGenAI } from "@google/genai";
 import { VelgoLogo } from '../components/Brand';
 import { CATEGORY_MAP, getTierLimit, getWorkerTier } from '../lib/constants';
 import { TierBadge } from '../components/TierBadge';
-import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
 import { VerificationBadge } from '../components/VerificationBadge';
+import { WaitlistModal } from '../components/WaitlistModal';
 
 const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void, onShowNotifications?: () => void, unreadCount?: number }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide, onShowNotifications, unreadCount }) => {
   const [items, setItems] = useState<any[]>([]); 
@@ -21,7 +22,13 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const [subcategory, setSubcategory] = useState('All');
   const [selectedState, setSelectedState] = useState('All');
   const [selectedLGA, setSelectedLGA] = useState('All');
+  const [selectedArea, setSelectedArea] = useState('All');
   const [jobsSort, setJobsSort] = useState<'latest' | 'urgency' | 'budget'>('latest');
+
+  // Expansion / Location Status States
+  const [locationSettings, setLocationSettings] = useState<Record<string, boolean>>({});
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+
   
   // viewMode: 'jobs' shows tasks, 'market' shows workers
   const [viewMode, setViewMode] = useState<'jobs' | 'market'>('jobs');
@@ -83,6 +90,36 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     }
   };
 
+  useEffect(() => {
+    const fetchLocationSettings = async () => {
+      try {
+        const { data } = await supabase.from('location_settings').select('*');
+        if (data) {
+          const map: Record<string, boolean> = {};
+          data.forEach((s: any) => {
+            const key = s.lga ? `${s.state}:${s.lga}` : s.state;
+            map[key] = s.is_active;
+          });
+          setLocationSettings(map);
+        }
+      } catch (e) {
+        console.warn("Location settings fetch warning:", e);
+      }
+    };
+    fetchLocationSettings();
+  }, []);
+
+  const isLocationInactive = (() => {
+    if (selectedLGA !== 'All') {
+      const key = `${selectedState}:${selectedLGA}`;
+      if (key in locationSettings) return !locationSettings[key];
+    }
+    if (selectedState !== 'All') {
+      if (selectedState in locationSettings) return !locationSettings[selectedState];
+    }
+    return false;
+  })();
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const isFetchingWorkers = viewMode === 'market';
@@ -99,6 +136,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
             if (selectedLGA !== 'All') query = query.eq('lga', selectedLGA);
+            if (selectedArea !== 'All') query = query.or(`area.ilike.%${selectedArea}%,address.ilike.%${selectedArea}%`);
             if (searchTerm) query = query.or(`full_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,subcategory.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
         } else {
             query = supabase.from('posted_tasks').select('*, profiles:client_id(full_name, avatar_url, is_verified)').eq('status', 'open');
@@ -117,8 +155,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (selectedLGA !== 'All') {
                 query = query.or(`location.ilike.%${selectedLGA}%,location.eq.Remote / Online`);
             }
+            if (selectedArea !== 'All') {
+                query = query.or(`area.ilike.%${selectedArea}%,location.ilike.%${selectedArea}%,location.eq.Remote / Online`);
+            }
             if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
         }
+
         
         const { data } = await safeFetch<any[]>(async () => await query.limit(50));
         let results = data || [];
@@ -156,7 +198,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     } finally { 
         setLoading(false); 
     }
-  }, [category, subcategory, selectedState, selectedLGA, profile, viewMode, searchTerm, jobsSort]);
+  }, [category, subcategory, selectedState, selectedLGA, selectedArea, profile, viewMode, searchTerm, jobsSort]);
 
   useEffect(() => { 
     fetchData(); 
@@ -178,6 +220,7 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     setSubcategory('All');
     setSelectedState('All');
     setSelectedLGA('All');
+    setSelectedArea('All');
     setSearchTerm('');
     setJobsSort('latest');
   };
@@ -185,7 +228,14 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
   const handleStateChange = (state: string) => {
     setSelectedState(state);
     setSelectedLGA('All');
+    setSelectedArea('All');
   };
+
+  const handleLgaChange = (lga: string) => {
+    setSelectedLGA(lga);
+    setSelectedArea('All');
+  };
+
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
@@ -397,12 +447,22 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                       </div>
                       <div>
                           <label className="text-[9px] font-black text-gray-400 uppercase ml-1">LGA</label>
-                          <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white" disabled={selectedState === 'All'}>
+                          <select value={selectedLGA} onChange={e => handleLgaChange(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white" disabled={selectedState === 'All'}>
                               <option value="All">All Areas</option>
                               {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
                           </select>
                       </div>
                   </div>
+
+                  {selectedLGA !== 'All' && getPopularAreas(selectedState, selectedLGA).length > 0 && (
+                      <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Area / Commercial Hub</label>
+                          <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)} className="w-full bg-white dark:bg-gray-900 p-2 rounded-xl text-xs font-bold border border-gray-100 dark:border-gray-700 outline-none dark:text-white">
+                              <option value="All">All {selectedLGA} Neighborhoods</option>
+                              {getPopularAreas(selectedState, selectedLGA).map(a => <option key={a} value={a}>{a}</option>)}
+                          </select>
+                      </div>
+                  )}
                   
                   {viewMode === 'jobs' && (
                       <div>
@@ -422,7 +482,42 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
 
       {/* List Content */}
       <div className="px-6 pb-24 space-y-4 min-h-[50vh]">
+          {/* Location Expansion "Coming Soon" Banner Card */}
+          {isLocationInactive && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 p-5 rounded-[28px] space-y-3 animate-fadeIn shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center text-lg shrink-0">
+                  <i className="fa-solid fa-clock font-bold"></i>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Territory Expansion</span>
+                  <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                    Velgo is Coming Soon to {selectedLGA !== 'All' ? `${selectedLGA}, ${selectedState}` : selectedState}!
+                  </h3>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                We are onboarding local artisans & verifying initial job posts before full public activation. Register below for launch alerts.
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowWaitlistModal(true)}
+                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-bell"></i> Notify Me When Launched
+                </button>
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-wider border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
+                >
+                  Browse All
+                </button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
+
               <div className="flex flex-col items-center justify-center py-20 text-gray-300 space-y-4">
                   <div className="w-10 h-10 border-4 border-gray-200 border-t-brand rounded-full animate-spin"></div>
                   <p className="text-[10px] font-black uppercase tracking-[3px]">Loading...</p>
@@ -508,8 +603,18 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
               ))
           )}
       </div>
+
+      {/* Location Pre-Launch Expansion Waitlist Modal */}
+      <WaitlistModal
+        isOpen={showWaitlistModal}
+        onClose={() => setShowWaitlistModal(false)}
+        state={selectedState}
+        lga={selectedLGA}
+        profile={profile}
+      />
     </div>
   );
 };
+
 
 export default Home;

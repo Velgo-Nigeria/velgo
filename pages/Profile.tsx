@@ -6,7 +6,8 @@ import { CATEGORY_MAP, getWorkerTier } from '../lib/constants';
 import { TierBadge } from '../components/TierBadge';
 import { GamifiedTierUI } from '../components/GamifiedTierUI';
 import { VisualPortfolioGallery } from '../components/VisualPortfolioGallery';
-import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
+
 import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface ProfilePageProps {
@@ -31,6 +32,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
   const [address, setAddress] = useState(profile?.address || '');
   const [state, setState] = useState(profile?.state || 'Lagos');
   const [lga, setLga] = useState(profile?.lga || '');
+  const [area, setArea] = useState(profile?.area || '');
+
   
   // Professional State (Workers Only)
   const [bio, setBio] = useState(profile?.bio || '');
@@ -206,8 +209,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
       address,
       state,
       lga,
+      area,
       updated_at: new Date().toISOString(),
     };
+
 
     // Re-verification trigger: If user is verified and changes their full_name, reset verification status
     if (profile.is_verified && nameChanged) {
@@ -564,7 +569,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase">State</label>
                         {editing ? (
-                             <select value={state} onChange={e => setState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
+                             <select value={state} onChange={e => { setState(e.target.value); setArea(''); }} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
                                 {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                              </select>
                         ) : (
@@ -574,7 +579,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase">LGA</label>
                         {editing ? (
-                             <select value={lga} onChange={e => setLga(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
+                             <select value={lga} onChange={e => { setLga(e.target.value); setArea(''); }} className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none">
                                 {NIGERIA_LGAS[state]?.map(l => <option key={l} value={l}>{l}</option>)}
                              </select>
                         ) : (
@@ -582,6 +587,33 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
                         )}
                     </div>
                 </div>
+
+                <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Specific Area / Commercial Hub</label>
+                    {editing ? (
+                      getPopularAreas(state, lga).length > 0 ? (
+                        <select
+                          value={area}
+                          onChange={e => setArea(e.target.value)}
+                          className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm font-bold dark:text-white outline-none mt-1"
+                        >
+                          <option value="">Select Popular Area in {lga} (Optional)</option>
+                          {getPopularAreas(state, lga).map(a => <option key={a} value={a}>{a}</option>)}
+                          <option value="other">Custom Neighborhood...</option>
+                        </select>
+                      ) : (
+                        <input
+                          value={area}
+                          onChange={e => setArea(e.target.value)}
+                          placeholder="e.g. Royal Market Road, Ihumudumu"
+                          className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white mt-1 placeholder-gray-300"
+                        />
+                      )
+                    ) : (
+                      <p className="font-bold text-gray-900 dark:text-white">{area || 'Not Specified'}</p>
+                    )}
+                </div>
+
             </div>
         </div>
 

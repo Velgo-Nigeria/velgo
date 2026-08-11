@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
 import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { GoogleGenAI, Type } from "@google/genai";
-import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
+
 
 interface PostTaskProps { profile: Profile | null; onBack: () => void; onUpgrade: () => void; onRefreshProfile: () => void; }
 
@@ -43,7 +44,11 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
   const [selectedState, setSelectedState] = useState('Lagos');
   const [selectedLGA, setSelectedLGA] = useState(NIGERIA_LGAS['Lagos']?.[0] || '');
+  const [selectedArea, setSelectedArea] = useState('');
   const [taskAddress, setTaskAddress] = useState('');
+
+  const popularAreas = getPopularAreas(selectedState, selectedLGA);
+
 
   const handleJobLocationTypeChange = (type: 'physical' | 'online') => {
     setJobLocationType(type);
@@ -248,7 +253,8 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         imageUrl = publicUrl;
       }
 
-      const fullLocation = jobLocationType === 'online' ? 'Remote / Online' : `${selectedLGA}, ${selectedState}`;
+      const locPrefix = selectedArea ? `${selectedArea}, ${selectedLGA}` : selectedLGA;
+      const fullLocation = jobLocationType === 'online' ? 'Remote / Online' : `${locPrefix}, ${selectedState}`;
 
       // Security check: No phone numbers or WhatsApp links in task address
       if (jobLocationType === 'physical' && taskAddress.trim()) {
@@ -269,12 +275,14 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
         budget_type: budgetType,
         location: fullLocation,
         address: jobLocationType === 'online' ? '' : taskAddress.trim(),
+        area: jobLocationType === 'online' ? '' : selectedArea.trim(),
         category,
         subcategory,
         urgency,
         due_date: dueDate ? dueDate : null,
         image_url: imageUrl
       }]);
+
 
       if (error) throw error;
 
@@ -558,17 +566,58 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">State</label>
-                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
+                <select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedArea(''); }} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none">
                     {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">LGA</label>
-                <select value={selectedLGA} onChange={e => setSelectedLGA(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
+                <select value={selectedLGA} onChange={e => { setSelectedLGA(e.target.value); setSelectedArea(''); }} className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none" disabled={!NIGERIA_LGAS[selectedState]}>
                     {NIGERIA_LGAS[selectedState]?.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
             </div>
+
+            {/* Sub-LGA Area / Hub Selector */}
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 flex justify-between items-center">
+                <span>Specific Area / Commercial Hub</span>
+                {popularAreas.length > 0 && <span className="text-[9px] text-brand font-bold">● {popularAreas.length} Known Hubs</span>}
+              </label>
+
+              {popularAreas.length > 0 ? (
+                <div className="space-y-2">
+                  <select
+                    value={selectedArea}
+                    onChange={e => setSelectedArea(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none appearance-none"
+                  >
+                    <option value="">Select Popular Area in {selectedLGA} (Optional)</option>
+                    {popularAreas.map(a => <option key={a} value={a}>{a}</option>)}
+                    <option value="other">Other / Specific Custom Neighborhood...</option>
+                  </select>
+
+                  {(selectedArea === 'other' || (!popularAreas.includes(selectedArea) && selectedArea !== '')) && (
+                    <input
+                      type="text"
+                      value={selectedArea === 'other' ? '' : selectedArea}
+                      onChange={e => setSelectedArea(e.target.value)}
+                      placeholder="Type custom neighborhood or market area..."
+                      className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20"
+                    />
+                  )}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={selectedArea}
+                  onChange={e => setSelectedArea(e.target.value)}
+                  placeholder="e.g. Royal Market Road, Ihumudumu, Allen Junction"
+                  className="w-full bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand/20"
+                />
+              )}
+            </div>
+
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Workplace Street Address / Landmark</label>
               <input 
@@ -585,6 +634,7 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
             </div>
           </div>
         ) : (
+
           <div className="bg-brand/5 border border-brand/10 p-5 rounded-2xl flex gap-3.5 items-start">
             <span className="text-brand text-base mt-0.5"><i className="fa-solid fa-earth-africa"></i></span>
             <div className="space-y-0.5 text-left">

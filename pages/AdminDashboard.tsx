@@ -19,12 +19,14 @@ import { StatsTab } from "./admin/tabs/StatsTab";
 import { ErrorsTab } from "./admin/tabs/ErrorsTab";
 import { AuditTab } from "./admin/tabs/AuditTab";
 import { DeletedAccountsTab, DeletedAccountRecord } from "./admin/tabs/DeletedAccountsTab";
+import { LocationsTab } from "./admin/tabs/LocationsTab";
 import { VerificationLightbox } from "./admin/VerificationLightbox";
 import { UserDossierModal } from "./admin/UserDossierModal";
 import { downloadUsersCSV, downloadUsersPDF, downloadStatsPDF } from "./admin/exportUtils";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'app_ratings' | 'reviews' | 'stats' | 'deleted' | 'errors' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'verify' | 'safety' | 'support' | 'broadcast' | 'app_ratings' | 'reviews' | 'stats' | 'locations' | 'deleted' | 'errors' | 'audit'>('users');
+
   const [safetyReports, setSafetyReports] = useState<any[]>([]);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -809,7 +811,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['users', 'verify', 'safety', 'support', 'broadcast', 'app_ratings', 'reviews', 'stats', 'deleted', 'errors', 'audit'].map(tab => {
+          {['users', 'verify', 'safety', 'support', 'broadcast', 'app_ratings', 'reviews', 'stats', 'locations', 'deleted', 'errors', 'audit'].map(tab => {
             const badgeCount = counts[tab as keyof typeof counts] || 0;
             return (
               <button 
@@ -817,7 +819,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => { setActiveTab(tab as any); setSelectedTicketUser(null); }} 
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all duration-150 ${activeTab === tab ? 'bg-brand text-white font-black' : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-white'}`}
               >
-                <span>{tab === 'app_ratings' ? '⭐ App Ratings' : tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'deleted' ? '🗑️ Deleted Accounts' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
+                <span>{tab === 'app_ratings' ? '⭐ App Ratings' : tab === 'reviews' ? 'Worker Replies' : tab === 'stats' ? 'Metrics & Stats' : tab === 'locations' ? '📍 Locations & Waitlist' : tab === 'deleted' ? '🗑️ Deleted Accounts' : tab === 'errors' ? 'Error Logs' : tab === 'audit' ? 'Audit Logs' : tab}</span>
                 {badgeCount > 0 && (
                   <span className={`px-1.5 py-0.5 text-[8px] font-extrabold rounded-full tracking-tight shrink-0 ${
                     activeTab === tab ? 'bg-white text-gray-950 font-black' : 'bg-red-50 text-white animate-pulse'
@@ -829,6 +831,7 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             );
           })}
         </div>
+
       </div>
 
        <div className="p-4 flex-1 overflow-y-auto">
@@ -1051,7 +1054,9 @@ GRANT ALL ON public.broadcasts TO service_role;`}
           activeTab === 'stats' && stats ? <StatsTab
                                                 handleDownloadPdf={handleDownloadPdf}
                                                 stats={stats}
-                                              />  
+                                              /> :
+
+          activeTab === 'locations' ? <LocationsTab />
 
  : activeTab === 'deleted' ? <DeletedAccountsTab
                                 deletedAccounts={deletedAccounts}
