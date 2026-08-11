@@ -20,6 +20,7 @@ import { ErrorsTab } from "./admin/tabs/ErrorsTab";
 import { AuditTab } from "./admin/tabs/AuditTab";
 import { DeletedAccountsTab, DeletedAccountRecord } from "./admin/tabs/DeletedAccountsTab";
 import { VerificationLightbox } from "./admin/VerificationLightbox";
+import { UserDossierModal } from "./admin/UserDossierModal";
 import { downloadUsersCSV, downloadUsersPDF, downloadStatsPDF } from "./admin/exportUtils";
 
 const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -69,6 +70,10 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [blockingUserId, setBlockingUserId] = useState<string | null>(null);
   const [blockReasonInput, setBlockReasonInput] = useState<string>('');
   const [unblockConfirmId, setUnblockConfirmId] = useState<string | null>(null);
+
+  // User Activity Dossier modal state
+  const [dossierUser, setDossierUser] = useState<any | null>(null);
+  const [isDossierDeleted, setIsDossierDeleted] = useState<boolean>(false);
 
   // Broadcast Form
   const [bTitle, setBTitle] = useState('');
@@ -1013,6 +1018,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                 setBlockReasonInput={setBlockReasonInput}
                                 handleBlockUser={handleBlockUser}
                                 setBlockingUserId={setBlockingUserId}
+                                onViewDossier={(u) => { setDossierUser(u); setIsDossierDeleted(false); }}
                               /> : 
          
          activeTab === 'safety' ? <SafetyTab
@@ -1052,6 +1058,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
                                 onRestoreUser={handleRestoreDeletedUser}
+                                onViewDossier={(rec) => { setDossierUser(rec); setIsDossierDeleted(true); }}
                                 loading={loading}
                               /> : activeTab === 'errors' ? <ErrorsTab
                                                         appErrors={appErrors}
@@ -1078,6 +1085,15 @@ GRANT ALL ON public.broadcasts TO service_role;`}
             handleVerificationDecision={handleVerificationDecision}
             processingId={processingId}
           />}
+
+      {/* User Activity Dossier & Audit Modal Workspace */}
+      {dossierUser && (
+        <UserDossierModal
+          user={dossierUser}
+          isDeleted={isDossierDeleted}
+          onClose={() => setDossierUser(null)}
+        />
+      )}
     </div>
   );
 };

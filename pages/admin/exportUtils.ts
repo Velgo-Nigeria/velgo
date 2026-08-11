@@ -414,3 +414,339 @@ export const downloadStatsPDF = (stats: any) => {
       };
       return handleDownloadPdfLogic();
     };
+
+export interface UserDossierData {
+  profile: any;
+  isDeleted: boolean;
+  bookings: any[];
+  reviews: any[];
+  supportTickets: any[];
+  safetyIncidents: any[];
+  appRatings: any[];
+  auditLogs: any[];
+  fetchedAt: string;
+}
+
+export const exportUserDossierJSON = (dossier: UserDossierData) => {
+  if (!dossier || !dossier.profile) {
+    alert("No dossier data available to export.");
+    return;
+  }
+  const u = dossier.profile;
+  const nameSlug = (u.full_name || 'user').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const filename = `velgo_dossier_${nameSlug}_${new Date().toISOString().split('T')[0]}.json`;
+
+  const jsonString = JSON.stringify(dossier, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const exportUserDossierCSV = (dossier: UserDossierData) => {
+  if (!dossier || !dossier.profile) {
+    alert("No dossier data available to export.");
+    return;
+  }
+  const u = dossier.profile;
+  const escapeVal = (val: any) => {
+    const stringified = String(val ?? '').replace(/"/g, '""');
+    if (stringified.includes(',') || stringified.includes('"') || stringified.includes('\n') || stringified.includes('\r')) {
+      return `"${stringified}"`;
+    }
+    return stringified;
+  };
+
+  const sections: string[] = [];
+
+  // Section 1: User Profile & Identity
+  sections.push("--- USER PROFILE & IDENTITY ---");
+  sections.push("ID,Full Name,Email,Phone Number,Role,Status,State,LGA,Created At");
+  sections.push([
+    u.id || u.user_id || '',
+    u.full_name || '',
+    u.email || '',
+    u.phone_number || '',
+    u.role || '',
+    dossier.isDeleted ? 'Deleted / Blacklisted' : (u.is_verified ? 'Verified' : 'Unverified'),
+    u.state || '',
+    u.lga || '',
+    u.created_at || u.deleted_at || ''
+  ].map(escapeVal).join(','));
+
+  // Section 2: Bookings History
+  sections.push("\n--- BOOKINGS & SERVICE JOBS HISTORY ---");
+  sections.push("Booking ID,Service Title,Role,Status,Amount (NGN),Created At");
+  if (dossier.bookings && dossier.bookings.length > 0) {
+    dossier.bookings.forEach((b: any) => {
+      const userRole = (b.client_id === (u.id || u.user_id)) ? 'Client' : 'Worker/Artisan';
+      sections.push([
+        b.id || '',
+        b.service_title || b.category || 'Job Booking',
+        userRole,
+        b.status || '',
+        b.amount || 0,
+        b.created_at || ''
+      ].map(escapeVal).join(','));
+    });
+  } else {
+    sections.push("No bookings recorded.");
+  }
+
+  // Section 3: Reviews
+  sections.push("\n--- REVIEWS & RATINGS ---");
+  sections.push("Review ID,Rating,Comment,Created At");
+  if (dossier.reviews && dossier.reviews.length > 0) {
+    dossier.reviews.forEach((r: any) => {
+      sections.push([
+        r.id || '',
+        r.rating || 5,
+        r.comment || r.review_text || '',
+        r.created_at || ''
+      ].map(escapeVal).join(','));
+    });
+  } else {
+    sections.push("No reviews recorded.");
+  }
+
+  // Section 4: Support Tickets
+  sections.push("\n--- SUPPORT TICKETS ---");
+  sections.push("Ticket ID,Subject,Status,Message,Created At");
+  if (dossier.supportTickets && dossier.supportTickets.length > 0) {
+    dossier.supportTickets.forEach((t: any) => {
+      sections.push([
+        t.id || '',
+        t.subject || t.category || '',
+        t.status || '',
+        t.message || t.description || '',
+        t.created_at || ''
+      ].map(escapeVal).join(','));
+    });
+  } else {
+    sections.push("No support tickets recorded.");
+  }
+
+  const csvContent = sections.join('\n');
+  const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const nameSlug = (u.full_name || 'user').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  link.setAttribute('download', `velgo_dossier_${nameSlug}_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const exportUserDossierPDF = (dossier: UserDossierData) => {
+  if (!dossier || !dossier.profile) {
+    alert("No dossier data available to export.");
+    return;
+  }
+
+  const u = dossier.profile;
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 15;
+  const contentWidth = pageWidth - (margin * 2);
+
+  let y = margin;
+
+  // Header Banner
+  doc.setFillColor(15, 23, 42); // Slate 900
+  doc.rect(margin, y, contentWidth, 22, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text("VELGO NIGERIA", margin + 6, y + 10);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text("CONFIDENTIAL USER ACTIVITY DOSSIER & AUDIT REPORT", margin + 6, y + 17);
+
+  doc.setFontSize(8);
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, margin + contentWidth - 6, y + 10, { align: 'right' });
+  doc.text(`NDPR Security Compliant`, margin + contentWidth - 6, y + 16, { align: 'right' });
+
+  y += 28;
+
+  // Section 1: Subject Identity Snapshot
+  doc.setFillColor(248, 250, 252); // Slate 50
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(margin, y, contentWidth, 38, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text("1. ACCOUNT & IDENTITY PROFILE", margin + 5, y + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+
+  const col1X = margin + 5;
+  const col2X = margin + 95;
+
+  doc.text(`Full Name: ${u.full_name || 'N/A'}`, col1X, y + 14);
+  doc.text(`User ID: ${u.id || u.user_id || 'N/A'}`, col2X, y + 14);
+
+  doc.text(`Email Address: ${u.email || 'N/A'}`, col1X, y + 20);
+  doc.text(`Phone Number: ${u.phone_number || 'N/A'}`, col2X, y + 20);
+
+  doc.text(`Account Role: ${(u.role || 'user').toUpperCase()}`, col1X, y + 26);
+  doc.text(`Status: ${dossier.isDeleted ? 'DELETED / BLACKLISTED' : (u.is_verified ? 'VERIFIED' : 'UNVERIFIED')}`, col2X, y + 26);
+
+  doc.text(`State & LGA: ${u.state || 'N/A'}, ${u.lga || 'N/A'}`, col1X, y + 32);
+  doc.text(`Subscription Tier: ${(u.subscription_tier || 'basic').toUpperCase()}`, col2X, y + 32);
+
+  y += 44;
+
+  // Section 2: Summary Metrics
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("2. ACTIVITY SUMMARY & METRICS", margin, y);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y + 2, margin + contentWidth, y + 2);
+
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+
+  doc.text(`• Total Bookings / Jobs Recorded: ${dossier.bookings.length}`, col1X, y);
+  doc.text(`• Reviews & Feedback Entries: ${dossier.reviews.length}`, col2X, y);
+  y += 6;
+  doc.text(`• Support Tickets Opened: ${dossier.supportTickets.length}`, col1X, y);
+  doc.text(`• Safety / Dispute Incidents: ${dossier.safetyIncidents.length}`, col2X, y);
+  y += 6;
+  doc.text(`• Admin Audit Actions Logged: ${dossier.auditLogs.length}`, col1X, y);
+
+  y += 12;
+
+  // Section 3: Bookings Table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("3. SERVICE BOOKINGS & TRANSACTIONS", margin, y);
+  doc.line(margin, y + 2, margin + contentWidth, y + 2);
+
+  y += 8;
+
+  if (dossier.bookings.length === 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("No bookings found for this user.", margin + 5, y);
+    y += 10;
+  } else {
+    // Table Header
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+
+    doc.text("S/N", margin + 3, y + 5);
+    doc.text("SERVICE / TITLE", margin + 18, y + 5);
+    doc.text("ROLE", margin + 105, y + 5);
+    doc.text("AMOUNT (NGN)", margin + 135, y + 5);
+    doc.text("STATUS", margin + 175, y + 5);
+
+    y += 9;
+
+    dossier.bookings.slice(0, 10).forEach((b: any, index: number) => {
+      if (y > pageHeight - 25) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+
+      const title = b.service_title || b.category || 'Job Booking';
+      const roleStr = (b.client_id === (u.id || u.user_id)) ? 'Client' : 'Worker';
+
+      doc.text(String(index + 1), margin + 3, y);
+      doc.text(title.length > 42 ? title.substring(0, 40) + '...' : title, margin + 18, y);
+      doc.text(roleStr, margin + 105, y);
+      doc.text(`NGN ${(b.amount || 0).toLocaleString()}`, margin + 135, y);
+      doc.text(String(b.status || 'pending').toUpperCase(), margin + 175, y);
+
+      y += 6;
+    });
+    if (dossier.bookings.length > 10) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`... and ${dossier.bookings.length - 10} additional booking records.`, margin + 3, y);
+      y += 8;
+    }
+  }
+
+  y += 6;
+
+  // Section 4: Reviews & Support Overview
+  if (y > pageHeight - 40) {
+    doc.addPage();
+    y = margin;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("4. REVIEWS & SUPPORT SUMMARY", margin, y);
+  doc.line(margin, y + 2, margin + contentWidth, y + 2);
+
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+
+  if (dossier.reviews.length > 0) {
+    const firstRev = dossier.reviews[0];
+    doc.text(`Latest Review (${firstRev.rating || 5}/5 stars): "${(firstRev.comment || firstRev.review_text || 'No comment').substring(0, 70)}"`, margin + 3, y);
+    y += 6;
+  } else {
+    doc.text("No reviews available.", margin + 3, y);
+    y += 6;
+  }
+
+  if (dossier.supportTickets.length > 0) {
+    const firstTicket = dossier.supportTickets[0];
+    doc.text(`Latest Support Ticket (${firstTicket.status || 'open'}): "${(firstTicket.subject || firstTicket.message || 'Ticket').substring(0, 70)}"`, margin + 3, y);
+    y += 6;
+  } else {
+    doc.text("No support tickets available.", margin + 3, y);
+    y += 6;
+  }
+
+  // Footer
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, pageHeight - 15, margin + contentWidth, pageHeight - 15);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text("Velgo Nigeria Corp • Official Administrative Activity Dossier", margin, pageHeight - 10);
+  doc.text("Page 1 of 1", margin + contentWidth - 15, pageHeight - 10);
+
+  const nameSlug = (u.full_name || 'user').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  doc.save(`velgo_dossier_${nameSlug}_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+

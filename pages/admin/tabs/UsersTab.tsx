@@ -17,6 +17,7 @@ export interface UsersTabProps {
   setBlockReasonInput: any;
   handleBlockUser: any;
   setBlockingUserId: any;
+  onViewDossier?: (user: any) => void;
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({
@@ -34,7 +35,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   blockReasonInput,
   setBlockReasonInput,
   handleBlockUser,
-  setBlockingUserId
+  setBlockingUserId,
+  onViewDossier
 }) => {
   return (
     (
@@ -90,7 +92,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-slate-700">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
+                                    {onViewDossier && (
+                                        <button
+                                            onClick={() => onViewDossier(user)}
+                                            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 shrink-0"
+                                            title="View and download full user activity dossier"
+                                        >
+                                            <i className="fa-solid fa-file-invoice text-[10px] text-brand"></i>
+                                            <span>Dossier & Audit</span>
+                                        </button>
+                                    )}
                                     <select value={user.subscription_tier || 'basic'} onChange={(e) => handleManualTierUpdate(user.id, e.target.value as SubscriptionTier)} className="bg-gray-100 dark:bg-slate-700 text-[10px] font-bold py-1 px-2 rounded-lg outline-none dark:text-white">
                                         {TIERS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>

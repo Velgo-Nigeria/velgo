@@ -18,6 +18,7 @@ export interface DeletedAccountsTabProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   onRestoreUser?: (record: DeletedAccountRecord) => void;
+  onViewDossier?: (record: DeletedAccountRecord) => void;
   loading?: boolean;
 }
 
@@ -26,6 +27,7 @@ export const DeletedAccountsTab: React.FC<DeletedAccountsTabProps> = ({
   searchTerm,
   setSearchTerm,
   onRestoreUser,
+  onViewDossier,
   loading = false,
 }) => {
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -188,19 +190,32 @@ export const DeletedAccountsTab: React.FC<DeletedAccountsTabProps> = ({
                     {record.reason || 'User self-requested account deletion'}
                   </div>
 
-                  {onRestoreUser && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Un-blacklist ${record.full_name || record.email}?\n\nThis will remove their email/phone from the registration blacklist and allow them to create a new account or log in if restored.`)) {
-                          onRestoreUser(record);
-                        }
-                      }}
-                      className="text-[10px] font-black uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ml-auto"
-                    >
-                      <i className="fa-solid fa-unlock text-[10px]"></i>
-                      Remove from Blacklist
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    {onViewDossier && (
+                      <button
+                        onClick={() => onViewDossier(record)}
+                        className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5"
+                        title="View complete activity dossier for this deleted account"
+                      >
+                        <i className="fa-solid fa-file-invoice text-brand"></i>
+                        <span>Dossier & Audit</span>
+                      </button>
+                    )}
+
+                    {onRestoreUser && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Un-blacklist ${record.full_name || record.email}?\n\nThis will remove their email/phone from the registration blacklist and allow them to create a new account or log in if restored.`)) {
+                            onRestoreUser(record);
+                          }
+                        }}
+                        className="text-[10px] font-black uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+                      >
+                        <i className="fa-solid fa-unlock text-[10px]"></i>
+                        Remove from Blacklist
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
