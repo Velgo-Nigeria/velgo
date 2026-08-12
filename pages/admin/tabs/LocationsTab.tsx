@@ -29,10 +29,16 @@ export const LocationsTab: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  // Guardrail modal state for turning OFF an area
+  // Guardrail modal state for turning OFF an area or entire state
   const [deactivateModal, setDeactivateModal] = useState<{
     state: string;
     lga: string;
+    workerCount: number;
+    jobCount: number;
+  } | null>(null);
+
+  const [deactivateStateModal, setDeactivateStateModal] = useState<{
+    state: string;
     workerCount: number;
     jobCount: number;
   } | null>(null);
@@ -80,6 +86,87 @@ export const LocationsTab: React.FC = () => {
     if (key in settings) return settings[key];
     if (state in settings) return settings[state];
     return true; // Default active
+  };
+
+  // Check if an entire State Master is active
+  const isStateMasterActive = (state: string) => {
+    if (state in settings) return settings[state];
+    return true; // Default active
+  };
+
+  // Master State Toggle Handler
+  const handleStateToggleClick = async (state: string) => {
+    const currentlyActive = isStateMasterActive(state);
+
+    // If state master is currently active and admin wants to PAUSE ENTIRE STATE, check impact across state!
+    if (currentlyActive) {
+      setSavingKey(`STATE:${state}`);
+      try {
+        const { count: workerCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('state', state);
+
+        const { count: jobCount } = await supabase
+          .from('posted_tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'open')
+          .ilike('location', `%${state}%`);
+
+        if ((workerCount && workerCount > 0) || (jobCount && jobCount > 0)) {
+          setDeactivateStateModal({
+            state,
+            workerCount: workerCount || 0,
+            jobCount: jobCount || 0,
+          });
+          setSavingKey(null);
+          return;
+        }
+      } catch (e) {
+        console.warn("State impact check error:", e);
+      }
+      setSavingKey(null);
+    }
+
+    await confirmToggleState(state, !currentlyActive);
+  };
+
+  const confirmToggleState = async (state: string, newStatus: boolean) => {
+    setSavingKey(`STATE:${state}`);
+    try {
+      // Find if state master record exists (where lga IS NULL)
+      const { data: existing } = await supabase
+        .from('location_settings')
+        .select('id')
+        .eq('state', state)
+        .is('lga', null)
+        .maybeSingle();
+
+      let error;
+      if (existing?.id) {
+        const res = await supabase
+          .from('location_settings')
+          .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from('location_settings')
+          .insert({ state, lga: null, is_active: newStatus, updated_at: new Date().toISOString() });
+        error = res.error;
+      }
+
+      if (error) {
+        alert("Failed to update State Master setting: " + error.message);
+      } else {
+        setSettings(prev => ({ ...prev, [state]: newStatus }));
+      }
+    } catch (e: any) {
+      alert("Error saving state setting: " + e.message);
+    } finally {
+      setSavingKey(null);
+      setDeactivateStateModal(null);
+    }
   };
 
   // Toggle handler
@@ -229,7 +316,7 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
               <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">Location Status Controls</h3>
-              <p className="text-[11px] text-slate-400 font-bold">Toggle LGAs ON (Live Marketplace) or OFF (Coming Soon Waitlist)</p>
+              <p className="text-[11px] text-slate-400 font-bold">Toggle State Master or individual LGAs ON (Live) / OFF (Coming Soon)</p>
             </div>
 
             <div className="flex gap-2">
@@ -244,6 +331,67 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
               </select>
             </div>
           </div>
+
+          {/* Master State Control Banner */}
+          {(() => {
+            const isStateActive = isStateMasterActive(selectedState);
+            const stateLgas = NIGERIA_LGAS[selectedState] || [];
+            const activeOverrides = stateLgas.filter(lga => settings[`${selectedState}:${lga}`] === true);
+            const pausedOverrides = stateLgas.filter(lga => settings[`${selectedState}:${lga}`] === false);
+
+            return (
+              <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
+                isStateActive
+                  ? 'bg-slate-900 text-white border-slate-800 shadow-md'
+                  : 'bg-amber-500/10 border-amber-500/30 text-slate-900 dark:text-white'
+              }`}>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider">{selectedState} State Master</span>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      isStateActive
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-amber-500/20 text-amber-500'
+                    }`}>
+                      {isStateActive ? '● Master Active' : '⌛ Master Paused'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium leading-normal">
+                    {isStateActive
+                      ? pausedOverrides.length > 0
+                        ? `${pausedOverrides.length} LGA(s) manually overridden PAUSED.`
+                        : 'All LGAs default to LIVE unless overridden below.'
+                      : activeOverrides.length > 0
+                        ? `${activeOverrides.length} LGA(s) manually overridden ACTIVE.`
+                        : 'All LGAs display "Coming Soon" waitlist unless overridden below.'
+                    }
+                  </p>
+                </div>
+
+                <button
+                  disabled={savingKey === `STATE:${selectedState}`}
+                  onClick={() => handleStateToggleClick(selectedState)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 shrink-0 ${
+                    isStateActive
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20'
+                  }`}
+                >
+                  {savingKey === `STATE:${selectedState}` ? (
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
+                  ) : isStateActive ? (
+                    <>
+                      <i className="fa-solid fa-pause"></i> Pause Entire {selectedState} State
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-rocket"></i> Launch Entire {selectedState} State
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })()}
 
           <div className="relative">
             <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
@@ -268,6 +416,7 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
                 filteredLgas.map(lga => {
                   const active = isLgaActive(selectedState, lga);
                   const key = `${selectedState}:${lga}`;
+                  const isExplicitOverride = key in settings;
                   const isSaving = savingKey === key;
                   const stats = waitlistStats[key];
 
@@ -281,7 +430,7 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
                       }`}
                     >
                       <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-black">{lga}</span>
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             active
@@ -290,9 +439,14 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
                           }`}>
                             {active ? '● Active Live' : '⌛ Coming Soon'}
                           </span>
+                          {isExplicitOverride && (
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20">
+                              ⚡ Custom Override
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium">
-                          State: {selectedState} {stats ? `• ${stats.total} Waitlisted (${stats.clients} Clients, ${stats.workers} Workers)` : ''}
+                          State: {selectedState} {isExplicitOverride ? '(LGA Override)' : '(State Master Inheritance)'} {stats ? `• ${stats.total} Waitlisted (${stats.clients} Clients, ${stats.workers} Workers)` : ''}
                         </p>
                       </div>
 
@@ -412,6 +566,50 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
                 className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-600/20 active:scale-95 transition-all"
               >
                 Confirm Pause
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safety Warning Modal for Deactivating Entire State */}
+      {deactivateStateModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-amber-500/30 max-w-md w-full rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center text-xl">
+              <i className="fa-solid fa-triangle-exclamation"></i>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                Pause Entire {deactivateStateModal.state} State?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                Our safety index detected existing records across <strong className="text-slate-900 dark:text-white">{deactivateStateModal.state} State</strong>:
+              </p>
+              
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-800 dark:text-amber-300 space-y-1">
+                <p>• {deactivateStateModal.workerCount} Verified Workers in {deactivateStateModal.state}</p>
+                <p>• {deactivateStateModal.jobCount} Open Job Postings in {deactivateStateModal.state}</p>
+              </div>
+
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed pt-1">
+                Pausing this state will display the "Coming Soon" waitlist banner to clients searching {deactivateStateModal.state} (except LGAs with explicit ACTIVE overrides).
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeactivateStateModal(null)}
+                className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3 rounded-2xl text-xs font-black uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmToggleState(deactivateStateModal.state, false)}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-600/20 active:scale-95 transition-all"
+              >
+                Confirm Pause State
               </button>
             </div>
           </div>
