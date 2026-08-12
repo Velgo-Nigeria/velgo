@@ -28,6 +28,7 @@ export const LocationsTab: React.FC = () => {
   const [waitlist, setWaitlist] = useState<WaitlistRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [showPausedList, setShowPausedList] = useState<boolean>(true);
 
   // Guardrail modal state for turning OFF an area or entire state
   const [deactivateModal, setDeactivateModal] = useState<{
@@ -131,6 +132,22 @@ export const LocationsTab: React.FC = () => {
     await confirmToggleState(state, !currentlyActive);
   };
 
+  const logLocationAuditAction = async (actionType: string, targetId: string, details: any = {}) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('admin_audit_logs').insert({
+          admin_id: user.id,
+          action_type: actionType,
+          target_id: targetId,
+          details: details
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to log location audit action:", err);
+    }
+  };
+
   const confirmToggleState = async (state: string, newStatus: boolean) => {
     setSavingKey(`STATE:${state}`);
     try {
@@ -160,6 +177,16 @@ export const LocationsTab: React.FC = () => {
         alert("Failed to update State Master setting: " + error.message);
       } else {
         setSettings(prev => ({ ...prev, [state]: newStatus }));
+        await logLocationAuditAction(
+          newStatus ? 'LOCATION_STATE_LAUNCH' : 'LOCATION_STATE_PAUSE',
+          state,
+          {
+            state,
+            action: newStatus ? 'Launched Entire State' : 'Paused Entire State',
+            worker_impact: deactivateStateModal?.workerCount || 0,
+            job_impact: deactivateStateModal?.jobCount || 0
+          }
+        );
       }
     } catch (e: any) {
       alert("Error saving state setting: " + e.message);
@@ -224,6 +251,17 @@ export const LocationsTab: React.FC = () => {
         alert("Failed to update setting: " + error.message);
       } else {
         setSettings(prev => ({ ...prev, [key]: newStatus }));
+        await logLocationAuditAction(
+          newStatus ? 'LOCATION_LGA_LAUNCH' : 'LOCATION_LGA_PAUSE',
+          key,
+          {
+            state,
+            lga,
+            action: newStatus ? 'Reactivated LGA' : 'Paused LGA',
+            worker_impact: deactivateModal?.workerCount || 0,
+            job_impact: deactivateModal?.jobCount || 0
+          }
+        );
       }
     } catch (e: any) {
       alert("Error saving setting: " + e.message);
@@ -247,6 +285,19 @@ export const LocationsTab: React.FC = () => {
     else acc[key].clients += 1;
     return acc;
   }, {} as Record<string, { clients: number; workers: number; total: number }>);
+
+  // Derive Paused States and LGAs across Nigeria
+  const pausedStates = NIGERIA_STATES.filter(st => settings[st] === false);
+
+  const pausedLgas: { state: string; lga: string }[] = [];
+  Object.keys(settings).forEach(key => {
+    if (key.includes(':') && settings[key] === false) {
+      const [st, lga] = key.split(':');
+      pausedLgas.push({ state: st, lga });
+    }
+  });
+
+  const totalPausedCount = pausedStates.length + pausedLgas.length;
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -306,6 +357,127 @@ GRANT ALL ON public.location_waitlist TO authenticated, service_role, anon;`;
         >
           <i className="fa-solid fa-code text-emerald-400"></i> Copy SQL Setup
         </button>
+      </div>
+
+      {/* Platform-Wide Paused Locations Summary Panel */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 ${
+              totalPausedCount > 0
+                ? 'bg-amber-500/10 text-amber-500'
+                : 'bg-emerald-500/10 text-emerald-500'
+            }`}>
+              <i className={`fa-solid ${totalPausedCount > 0 ? 'fa-circle-pause' : 'fa-circle-check'}`}></i>
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                Platform Paused Locations Overview
+                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                  totalPausedCount > 0 ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500'
+                }`}>
+                  {totalPausedCount > 0 ? `${totalPausedCount} Location(s) Paused` : 'All Regions Active'}
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                Summary of all currently paused States & LGAs across Nigeria. You can unpause them directly here without searching dropdowns.
+              </p>
+            </div>
+          </div>
+
+          {totalPausedCount > 0 && (
+            <button
+              onClick={() => setShowPausedList(!showPausedList)}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all flex items-center gap-2 self-start sm:self-auto shrink-0 active:scale-95"
+            >
+              <i className={`fa-solid fa-chevron-${showPausedList ? 'up' : 'down'}`}></i>
+              {showPausedList ? 'Hide Summary' : 'View Paused Summary'}
+            </button>
+          )}
+        </div>
+
+        {/* Expanded Paused List */}
+        {showPausedList && totalPausedCount > 0 && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
+              {/* Paused Master States */}
+              {pausedStates.map(state => (
+                <div key={`summary-state-${state}`} className="p-3.5 bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">{state} State</span>
+                      <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-amber-500/20 text-amber-500 rounded-full shrink-0">
+                        Master Paused
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">Entire state set to Coming Soon</p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      title="Jump to state view below"
+                      onClick={() => setSelectedState(state)}
+                      className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-xl text-[10px] font-bold transition-all"
+                    >
+                      <i className="fa-solid fa-eye"></i> Jump
+                    </button>
+                    <button
+                      disabled={savingKey === `STATE:${state}`}
+                      onClick={() => confirmToggleState(state, true)}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+                    >
+                      {savingKey === `STATE:${state}` ? (
+                        <i className="fa-solid fa-circle-notch animate-spin"></i>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-play"></i> Reactivate
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Explicitly Paused LGAs */}
+              {pausedLgas.map(({ state, lga }) => (
+                <div key={`summary-lga-${state}-${lga}`} className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">{lga}</span>
+                      <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-red-500/10 text-red-500 rounded-full shrink-0 border border-red-500/20">
+                        LGA Paused
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">State: {state}</p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      title="Jump to state view below"
+                      onClick={() => setSelectedState(state)}
+                      className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-xl text-[10px] font-bold transition-all"
+                    >
+                      <i className="fa-solid fa-eye"></i> Jump
+                    </button>
+                    <button
+                      disabled={savingKey === `${state}:${lga}`}
+                      onClick={() => confirmToggleLocation(state, lga, true)}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+                    >
+                      {savingKey === `${state}:${lga}` ? (
+                        <i className="fa-solid fa-circle-notch animate-spin"></i>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-play"></i> Reactivate
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grid: Left = LGA Active Toggles, Right = Pre-launch Waitlist */}
