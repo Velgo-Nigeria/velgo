@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TIERS } from '../../../lib/constants';
 import { openWhatsAppHelper } from '../../../lib/whatsapp';
+
 export interface UsersTabProps {
   searchTerm: any;
   setSearchTerm: any;
@@ -18,6 +19,7 @@ export interface UsersTabProps {
   handleBlockUser: any;
   setBlockingUserId: any;
   onViewDossier?: (user: any) => void;
+  onUpdateUserProfile?: (userId: string, newFullName: string, newPhoneNumber: string, reason: string) => Promise<void>;
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({
@@ -36,8 +38,41 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   setBlockReasonInput,
   handleBlockUser,
   setBlockingUserId,
-  onViewDossier
+  onViewDossier,
+  onUpdateUserProfile
 }) => {
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editFullName, setEditFullName] = useState<string>('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState<string>('');
+  const [editReason, setEditReason] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  const handleOpenEdit = (user: any) => {
+    setEditingUser(user);
+    setEditFullName(user.full_name || '');
+    setEditPhoneNumber(user.phone_number || '');
+    setEditReason('');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editingUser) return;
+    if (!editFullName.trim()) {
+      alert("Full Name cannot be empty.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (onUpdateUserProfile) {
+        await onUpdateUserProfile(editingUser.id, editFullName.trim(), editPhoneNumber.trim(), editReason.trim());
+      }
+      setEditingUser(null);
+    } catch (err) {
+      console.error("Save profile error:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   return (
     (
             <div className="space-y-4">
@@ -93,6 +128,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                             <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-slate-700">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>{user.role}</span>
                                 <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleOpenEdit(user)}
+                                        className="bg-brand/10 hover:bg-brand/20 text-brand text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 shrink-0"
+                                        title="Edit user profile details"
+                                    >
+                                        <i className="fa-solid fa-pen text-[10px]"></i>
+                                        <span>Edit Profile</span>
+                                    </button>
                                     {onViewDossier && (
                                         <button
                                             onClick={() => onViewDossier(user)}
@@ -232,6 +275,104 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         </div>
                     ))}
                 </div>
+
+                {/* Edit Profile Modal */}
+                {editingUser && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scaleUp">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center font-bold text-lg">
+                            <i className="fa-solid fa-user-pen"></i>
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Edit User Profile</h3>
+                            <p className="text-[11px] text-slate-400 font-medium">Update official full name & phone number</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setEditingUser(null)}
+                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-all"
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+
+                      <div className="space-y-4 text-xs">
+                        {/* User Info Badge */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 dark:text-white truncate">{editingUser.email}</p>
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">UUID: {editingUser.id}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${editingUser.is_verified ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-gray-400'}`}>
+                            {editingUser.is_verified ? 'Verified' : 'Unverified'}
+                          </span>
+                        </div>
+
+                        {/* Full Name Input */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Full Name *</label>
+                          <input
+                            type="text"
+                            value={editFullName}
+                            onChange={(e) => setEditFullName(e.target.value)}
+                            placeholder="Enter user's full name..."
+                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-brand"
+                          />
+                        </div>
+
+                        {/* Phone Number Input */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Phone Number</label>
+                          <input
+                            type="text"
+                            value={editPhoneNumber}
+                            onChange={(e) => setEditPhoneNumber(e.target.value)}
+                            placeholder="+234..."
+                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-brand"
+                          />
+                        </div>
+
+                        {/* Reason for change */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Audit Reason (Optional)</label>
+                          <input
+                            type="text"
+                            value={editReason}
+                            onChange={(e) => setEditReason(e.target.value)}
+                            placeholder="e.g. Name change per support request #402..."
+                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-brand"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                          disabled={isSaving}
+                          onClick={() => setEditingUser(null)}
+                          className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          disabled={isSaving}
+                          onClick={handleSaveProfile}
+                          className="flex-1 py-3 rounded-xl bg-brand hover:bg-brand/90 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md active:scale-95 disabled:opacity-50"
+                        >
+                          {isSaving ? (
+                            <i className="fa-solid fa-circle-notch animate-spin"></i>
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-floppy-disk"></i>
+                              <span>Save Changes</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
          )
   );

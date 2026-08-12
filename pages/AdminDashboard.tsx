@@ -669,6 +669,42 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       }
   };
 
+  const handleUpdateUserProfile = async (userId: string, newFullName: string, newPhoneNumber: string, reason: string) => {
+      setProcessingId(userId);
+      try {
+          const targetUser = users.find(u => u.id === userId);
+          const { error } = await supabase.from('profiles').update({
+              full_name: newFullName,
+              phone_number: newPhoneNumber,
+              updated_at: new Date().toISOString()
+          }).eq('id', userId);
+          
+          if (error) throw error;
+
+          await logAdminAction('ADMIN_UPDATE_USER_PROFILE', userId, {
+              old_name: targetUser?.full_name,
+              new_name: newFullName,
+              old_phone: targetUser?.phone_number,
+              new_phone: newPhoneNumber,
+              reason: reason || 'Admin manual profile edit'
+          });
+
+          setUsers(prev => prev.map(u => u.id === userId ? {
+              ...u,
+              full_name: newFullName,
+              phone_number: newPhoneNumber,
+              updated_at: new Date().toISOString()
+          } : u));
+
+          alert(`Successfully updated profile for ${newFullName}!`);
+      } catch (err: any) {
+          alert("Failed to update user profile: " + err.message);
+          throw err;
+      } finally {
+          setProcessingId(null);
+      }
+  };
+
   const handleReviewReplyApprove = async (bookingId: string) => {
       setProcessingId(bookingId);
       try {
@@ -1022,6 +1058,7 @@ GRANT ALL ON public.broadcasts TO service_role;`}
                                 handleBlockUser={handleBlockUser}
                                 setBlockingUserId={setBlockingUserId}
                                 onViewDossier={(u) => { setDossierUser(u); setIsDossierDeleted(false); }}
+                                onUpdateUserProfile={handleUpdateUserProfile}
                               /> : 
          
          activeTab === 'safety' ? <SafetyTab
