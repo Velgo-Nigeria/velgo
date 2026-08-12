@@ -681,6 +681,22 @@ const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           
           if (error) throw error;
 
+          // Sync auth user metadata if updating current logged in user
+          try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser && currentUser.id === userId) {
+                  await supabase.auth.updateUser({
+                      data: {
+                          full_name: newFullName,
+                          display_name: newFullName,
+                          name: newFullName
+                      }
+                  });
+              }
+          } catch (authErr) {
+              console.warn("Could not sync auth metadata:", authErr);
+          }
+
           await logAdminAction('ADMIN_UPDATE_USER_PROFILE', userId, {
               old_name: targetUser?.full_name,
               new_name: newFullName,

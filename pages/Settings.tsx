@@ -61,7 +61,31 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   // Delete Account State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+  const [customDeleteReason, setCustomDeleteReason] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const DELETE_REASONS = [
+    'Found another service',
+    'Privacy concerns',
+    'App / Technical issues',
+    'High data cost / network problems',
+    'No longer need it',
+    'Other'
+  ];
+
+  const resetDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteConfirmation('');
+    setDeleteReason('');
+    setCustomDeleteReason('');
+    setDeletePassword('');
+    setShowDeletePassword(false);
+    setDeleteError(null);
+  };
 
   // Review Modal State
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -122,19 +146,61 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
   };
 
   const handleDeleteAccount = async () => {
-      if (deleteConfirmation !== 'DELETE') return;
+      setDeleteError(null);
+
+      if (!deleteReason) {
+          setDeleteError('Please select a reason for leaving.');
+          return;
+      }
+
+      if (hasPassword) {
+          if (!deletePassword) {
+              setDeleteError('Please enter your account password.');
+              return;
+          }
+      } else {
+          if (deleteConfirmation !== 'DELETE') {
+              setDeleteError('Please type "DELETE" to confirm.');
+              return;
+          }
+      }
+
       setIsDeleting(true);
 
       try {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          const userEmail = (profile?.email || authUser?.email || '').trim();
+
+          // Verify password if account uses password authentication
+          if (hasPassword) {
+              if (!userEmail) {
+                  setDeleteError('Could not verify account email for password validation.');
+                  setIsDeleting(false);
+                  return;
+              }
+
+              const { error: signInError } = await supabase.auth.signInWithPassword({
+                  email: userEmail,
+                  password: deletePassword,
+              });
+
+              if (signInError) {
+                  setDeleteError('Incorrect password. Please verify your current password.');
+                  setIsDeleting(false);
+                  return;
+              }
+          }
+
           // 1. Archive account details into deleted_accounts table for security audit & blacklist
           if (profile) {
+              const fullReason = `[${deleteReason}]${customDeleteReason.trim() ? ` - ${customDeleteReason.trim()}` : ''}`;
               const archivePayload = {
                   user_id: profile.id,
                   full_name: profile.full_name || '',
-                  email: (profile.email || user?.email || '').trim().toLowerCase(),
+                  email: userEmail.toLowerCase(),
                   phone_number: (profile.phone_number || '').trim(),
                   role: profile.role || 'user',
-                  reason: 'User self-requested account deletion via Settings',
+                  reason: fullReason,
                   metadata: {
                       is_verified: profile.is_verified || false,
                       completed_jobs_count: profile.completed_jobs_count || 0,
@@ -167,14 +233,14 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
 
           localStorage.clear();
           sessionStorage.clear();
-           if ('caches' in window) {
+          if ('caches' in window) {
               const keys = await caches.keys();
               await Promise.all(keys.map(key => caches.delete(key)));
           }
           await supabase.auth.signOut();
           window.location.href = '/'; 
       } catch (err: any) {
-          alert(`Failed to delete account.\n\nReason: ${err.message || 'Unknown Error'}`);
+          setDeleteError(`Failed to delete account: ${err.message || 'Unknown Error'}`);
           setIsDeleting(false);
       }
   };
@@ -647,42 +713,140 @@ const Settings: React.FC<SettingsProps> = ({ profile, onBack, onNavigate, onRefr
 
       {/* DELETE MODAL */}
       {showDeleteModal && (
-          <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-md animate-fadeIn">
-              <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-sm space-y-6 text-center border-2 border-red-100 dark:border-red-900/30">
-                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto text-red-600 dark:text-red-400 text-2xl animate-pulse">
-                      <i className="fa-solid fa-triangle-exclamation"></i>
+          <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
+              <div className="bg-white dark:bg-gray-800 rounded-[32px] p-6 w-full max-w-md space-y-5 text-left border-2 border-red-100 dark:border-red-900/30 max-h-[90vh] overflow-y-auto shadow-2xl">
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center text-red-600 dark:text-red-400 text-lg">
+                              <i className="fa-solid fa-triangle-exclamation"></i>
+                          </div>
+                          <div>
+                              <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-wider">Delete Account</h3>
+                              <p className="text-[10px] text-red-500 font-bold">Irreversible Action</p>
+                          </div>
+                      </div>
+                      <button 
+                          onClick={resetDeleteModal} 
+                          className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-gray-200"
+                      >
+                          <i className="fa-solid fa-xmark text-sm"></i>
+                      </button>
                   </div>
 
-                  <div>
-                      <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase">Final Warning</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-                          This will <b>permanently erase</b> your profile, booking history, and messages. This action cannot be undone.
-                      </p>
-                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                      This will <b>permanently erase</b> your profile, booking history, ratings, and active listings from Velgo.
+                  </p>
 
+                  {deleteError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 text-xs font-bold rounded-2xl flex items-start gap-2">
+                          <i className="fa-solid fa-circle-exclamation mt-0.5 shrink-0"></i>
+                          <span>{deleteError}</span>
+                      </div>
+                  )}
+
+                  {/* 1. Reason Selection */}
                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Type "DELETE" to confirm</label>
-                      <input
-                          value={deleteConfirmation}
-                          onChange={(e) => setDeleteConfirmation(e.target.value)}
-                          placeholder="DELETE"
-                          className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl text-center text-sm font-black outline-none text-red-600 placeholder-red-200 focus:ring-2 focus:ring-red-500/20 transition-all uppercase"
-                      />
+                      <label className="text-[11px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-wider block">
+                          1. Reason for leaving <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                          value={deleteReason}
+                          onChange={(e) => {
+                              setDeleteReason(e.target.value);
+                              setDeleteError(null);
+                          }}
+                          className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-3.5 rounded-2xl text-xs font-bold outline-none text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500/20"
+                      >
+                          <option value="">-- Select Reason --</option>
+                          {DELETE_REASONS.map((r) => (
+                              <option key={r} value={r}>
+                                  {r}
+                              </option>
+                          ))}
+                      </select>
+
+                      {deleteReason !== '' && (
+                          <textarea
+                              value={customDeleteReason}
+                              onChange={(e) => setCustomDeleteReason(e.target.value)}
+                              placeholder="Additional details or feedback (optional)..."
+                              rows={2}
+                              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-3 rounded-2xl text-xs font-medium outline-none text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500/20 resize-none mt-2"
+                          />
+                      )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* 2. Security Verification */}
+                  <div className="space-y-2 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                      <label className="text-[11px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-wider block">
+                          2. Security Verification <span className="text-red-500">*</span>
+                      </label>
+
+                      {hasPassword ? (
+                          <div>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+                                  Enter your current password to authorize account erasure:
+                              </p>
+                              <div className="relative">
+                                  <input
+                                      type={showDeletePassword ? 'text' : 'password'}
+                                      value={deletePassword}
+                                      onChange={(e) => {
+                                          setDeletePassword(e.target.value);
+                                          setDeleteError(null);
+                                      }}
+                                      placeholder="Account Password"
+                                      className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-3.5 rounded-2xl text-xs font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 pr-12 focus:ring-2 focus:ring-red-500/20"
+                                  />
+                                  <button
+                                      type="button"
+                                      onClick={() => setShowDeletePassword(!showDeletePassword)}
+                                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                  >
+                                      <i className={`fa-solid ${showDeletePassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                  </button>
+                              </div>
+                          </div>
+                      ) : (
+                          <div className="space-y-2">
+                              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl text-[11px] text-blue-700 dark:text-blue-300 font-medium flex items-center gap-2">
+                                  <i className="fa-brands fa-google text-blue-500 shrink-0"></i>
+                                  <span>Google Account. Type <b>DELETE</b> below to confirm.</span>
+                              </div>
+                              <input
+                                  value={deleteConfirmation}
+                                  onChange={(e) => {
+                                      setDeleteConfirmation(e.target.value);
+                                      setDeleteError(null);
+                                  }}
+                                  placeholder="Type DELETE"
+                                  className="w-full bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 p-3.5 rounded-2xl text-center text-xs font-black outline-none text-red-600 placeholder-red-300 focus:ring-2 focus:ring-red-500/20 uppercase"
+                              />
+                          </div>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                       <button
-                          onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
-                          className="py-4 rounded-2xl text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300"
+                          onClick={resetDeleteModal}
+                          disabled={isDeleting}
+                          className="py-3.5 rounded-2xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-all"
                       >
                           Cancel
                       </button>
                       <button
                           onClick={handleDeleteAccount}
-                          disabled={deleteConfirmation !== 'DELETE' || isDeleting}
-                          className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-red-600 text-white shadow-xl shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={isDeleting || !deleteReason || (hasPassword ? !deletePassword : deleteConfirmation !== 'DELETE')}
+                          className="py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                          {isDeleting ? 'Erasing...' : 'Delete Forever'}
+                          {isDeleting ? (
+                              <>
+                                  <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                  <span>Erasing...</span>
+                              </>
+                          ) : (
+                              'Delete Forever'
+                          )}
                       </button>
                   </div>
               </div>
