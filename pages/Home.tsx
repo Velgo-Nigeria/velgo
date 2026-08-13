@@ -10,6 +10,7 @@ import { TierBadge } from '../components/TierBadge';
 import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { WaitlistModal } from '../components/WaitlistModal';
+import { CategoryAvatar } from '../components/CategoryAvatar';
 
 const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => void, onViewTask: (id: string) => void, onRefreshProfile: () => void, onUpgrade: () => void, onPostTask: () => void, onShowGuide: () => void, onShowNotifications?: () => void, unreadCount?: number }> = ({ profile, onViewWorker, onViewTask, onRefreshProfile, onUpgrade, onPostTask, onShowGuide, onShowNotifications, unreadCount }) => {
   const [items, setItems] = useState<any[]>([]); 
@@ -127,11 +128,13 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
     try {
         let query;
         if (isFetchingWorkers) {
+            // Two-Tiered Search Hierarchy:
+            // Fetch workers with registered category, phone_number, and location
             query = supabase.from('profiles').select('*')
                 .eq('role', 'user')
-                .eq('is_verified', true)
                 .not('category', 'is', null)
-                .order('profile_score', { ascending: false, nullsFirst: false });
+                .not('phone_number', 'is', null);
+
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
             if (selectedState !== 'All') query = query.eq('state', selectedState);
@@ -161,11 +164,35 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
             if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
         }
 
-        
-        const { data } = await safeFetch<any[]>(async () => await query.limit(50));
+        const { data } = await safeFetch<any[]>(async () => await query.limit(60));
         let results = data || [];
         
-        if (!isFetchingWorkers) {
+        if (isFetchingWorkers) {
+            results = results.sort((a, b) => {
+                // Tier 1 Priority: ID-Verified Workers ALWAYS first
+                const vA = a.is_verified ? 1 : 0;
+                const vB = b.is_verified ? 1 : 0;
+                if (vA !== vB) return vB - vA;
+
+                // Secondary Priority: Tier level ranking
+                const tierRank = (p: any) => {
+                    const t = getWorkerTier(p);
+                    if (t === 'Top Artisan') return 3;
+                    if (t === 'Master Artisan') return 2;
+                    if (t === 'Verified Artisan') return 1;
+                    return 0;
+                };
+                const tDiff = tierRank(b) - tierRank(a);
+                if (tDiff !== 0) return tDiff;
+
+                // Tertiary Priority: Profile score / complete details
+                const sA = a.profile_score || 0;
+                const sB = b.profile_score || 0;
+                if (sA !== sB) return sB - sA;
+
+                return (b.rating || 0) - (a.rating || 0);
+            });
+        } else {
             results = results.sort((a, b) => {
                 // Hardcoded Primary Sort: Verified clients first
                 const vA = a.profiles?.is_verified ? 1 : 0;
@@ -517,48 +544,83 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
           )}
 
           {loading ? (
-
               <div className="flex flex-col items-center justify-center py-20 text-gray-300 space-y-4">
                   <div className="w-10 h-10 border-4 border-gray-200 border-t-brand rounded-full animate-spin"></div>
                   <p className="text-[10px] font-black uppercase tracking-[3px]">Loading...</p>
               </div>
           ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 px-6 text-gray-400 space-y-4 text-center">
-                  <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-2">
-                      <i className="fa-solid fa-wind text-2xl"></i>
+              viewMode === 'market' ? (
+                /* Can't Find a Worker Fallback Banner */
+                <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-2 border-emerald-500/20 p-6 rounded-[32px] text-center space-y-4 animate-fadeIn">
+                  <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+                    <i className="fa-solid fa-bolt-lightning"></i>
                   </div>
-                  <p className="text-xs font-bold text-gray-600 dark:text-gray-300">No {viewMode === 'market' ? 'workers' : 'jobs'} found here.</p>
-                  
-                  {selectedLGA !== 'All' ? (
-                      <div className="space-y-3 flex flex-col items-center">
-                          <p className="text-[11px] max-w-[200px] leading-relaxed">There are currently no matches in <b>{selectedLGA}</b>.</p>
-                          <button onClick={() => setSelectedLGA('All')} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
-                              Broaden to whole {selectedState}
-                          </button>
-                      </div>
-                  ) : (
-                      <div className="space-y-3 flex flex-col items-center">
-                          <p className="text-[11px] max-w-[200px] leading-relaxed">Check back later or adjust your filters.</p>
-                          <button onClick={clearFilters} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
-                              Clear Filters
-                          </button>
-                      </div>
-                  )}
-              </div>
+                  <div className="space-y-1.5 max-w-sm mx-auto">
+                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full">
+                      Direct Artisan Dispatch
+                    </span>
+                    <h3 className="text-base font-black text-gray-900 dark:text-white">
+                      Can't find a worker in {selectedLGA !== 'All' ? selectedLGA : selectedState !== 'All' ? selectedState : 'this category'}?
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
+                      Post your job details right now. Available artisans and technicians in your area will be alerted directly to send proposals!
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                    <button
+                      onClick={onPostTask}
+                      className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <i className="fa-solid fa-plus text-xs"></i>
+                      <span>Post a Job Request</span>
+                    </button>
+                    <button
+                      onClick={clearFilters}
+                      className="w-full sm:w-auto px-4 py-3.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-xs font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-gray-400 space-y-4 text-center">
+                    <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-2">
+                        <i className="fa-solid fa-wind text-2xl"></i>
+                    </div>
+                    <p className="text-xs font-bold text-gray-600 dark:text-gray-300">No jobs found here.</p>
+                    
+                    {selectedLGA !== 'All' ? (
+                        <div className="space-y-3 flex flex-col items-center">
+                            <p className="text-[11px] max-w-[200px] leading-relaxed">There are currently no open jobs in <b>{selectedLGA}</b>.</p>
+                            <button onClick={() => setSelectedLGA('All')} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                                Broaden to whole {selectedState}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 flex flex-col items-center">
+                            <p className="text-[11px] max-w-[200px] leading-relaxed">Check back later or adjust your filters.</p>
+                            <button onClick={clearFilters} className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                                Clear Filters
+                            </button>
+                        </div>
+                    )}
+                </div>
+              )
           ) : (
               items.map((item) => (
                   <div 
                     key={item.id} 
                     onClick={() => viewMode === 'market' ? onViewWorker(item.id) : onViewTask(item.id)}
-                    className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm flex items-start gap-4 active:scale-[0.98] transition-all cursor-pointer group"
+                    className="bg-white dark:bg-gray-800 p-5 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm flex items-start gap-4 active:scale-[0.98] transition-all cursor-pointer group hover:border-brand/30"
                   >
                       <div className="relative shrink-0">
                           {viewMode === 'market' ? (
-                              <img 
-                                src={item.avatar_url || `https://ui-avatars.com/api/?name=${item.full_name}`} 
-                                className="w-14 h-14 rounded-2xl object-cover bg-gray-100 dark:bg-gray-700" 
-                                loading="lazy" 
-                                decoding="async"
+                              <CategoryAvatar 
+                                avatarUrl={item.avatar_url}
+                                category={item.category}
+                                fullName={item.full_name}
+                                className="w-14 h-14 rounded-2xl"
                               />
                           ) : (
                               <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl text-gray-400">
@@ -569,17 +631,33 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
                                   )}
                               </div>
                           )}
-                          {viewMode === 'market' && item.is_verified && <div className="absolute -bottom-1 -right-1 z-10 bg-white dark:bg-gray-800 rounded-full"><TierBadge tier={getWorkerTier(item)} className="border-2 border-white dark:border-gray-800 rounded-full" /></div>}
+                          {viewMode === 'market' && item.is_verified && (
+                            <div className="absolute -bottom-1 -right-1 z-10 bg-white dark:bg-gray-800 rounded-full">
+                              <TierBadge tier={getWorkerTier(item)} className="border-2 border-white dark:border-gray-800 rounded-full" />
+                            </div>
+                          )}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start">
-                              <h3 className="font-black text-sm text-gray-900 dark:text-white truncate pr-2">{viewMode === 'market' ? item.full_name : item.title}</h3>
-                              {viewMode === 'jobs' && <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg ${item.urgency === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{item.urgency}</span>}
+                          <div className="flex justify-between items-start gap-2">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <h3 className="font-black text-sm text-gray-900 dark:text-white truncate">{viewMode === 'market' ? item.full_name : item.title}</h3>
+                                {viewMode === 'market' && item.is_verified && (
+                                  <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1">
+                                    <i className="fa-solid fa-shield-check text-[9px]"></i> Verified
+                                  </span>
+                                )}
+                                {viewMode === 'market' && !item.is_verified && (
+                                  <span className="text-[7px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded-md shrink-0">
+                                    Registered
+                                  </span>
+                                )}
+                              </div>
+                              {viewMode === 'jobs' && <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg shrink-0 ${item.urgency === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{item.urgency}</span>}
                           </div>
                           
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5">
-                              {viewMode === 'market' ? (item.subcategory || item.category || 'General Worker') : (
+                              {viewMode === 'market' ? (item.subcategory || item.category || 'General Artisan') : (
                                 item.budget_type === 'negotiable' ? 'Negotiable Budget' :
                                 `Budget: ₦${(item.budget || 0).toLocaleString()}${item.budget_type && item.budget_type !== 'fixed' ? '/' + (item.budget_type === 'daily' ? 'day' : item.budget_type === 'weekly' ? 'wk' : 'mo') : ''}`
                               )}

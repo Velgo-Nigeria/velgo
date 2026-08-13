@@ -9,6 +9,7 @@ import { getWorkerTier } from '../lib/constants';
 import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 import { openWhatsAppHelper } from '../lib/whatsapp';
 import { ShareModal } from '../components/ShareModal';
+import { CategoryAvatar } from '../components/CategoryAvatar';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -324,7 +325,13 @@ UID: ${profile.id}
         <img src={worker?.avatar_url || `https://picsum.photos/seed/${workerId}/1200/1000`} className="w-full h-full object-cover opacity-80 relative z-10" />
       </div>
       <div className="px-6 -mt-24 relative z-10">
-        <img src={worker?.avatar_url} className="w-32 h-32 rounded-[44px] border-[6px] border-white dark:border-gray-900 shadow-2xl object-cover bg-white dark:bg-gray-900" />
+        <CategoryAvatar
+          avatarUrl={worker?.avatar_url}
+          category={worker?.category}
+          fullName={worker?.full_name}
+          className="w-32 h-32 rounded-[44px] border-[6px] border-white dark:border-gray-900 shadow-2xl"
+          iconClassName="text-5xl"
+        />
         <div className="mt-6 space-y-8">
           <div>
               <div className="flex items-center gap-2 mb-1">

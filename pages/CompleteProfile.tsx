@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole, ClientType } from '../types';
 import { VelgoLogo } from '../components/Brand';
+import { NIGERIA_STATES, NIGERIA_LGAS } from '../lib/locations';
+import { CATEGORY_MAP } from '../constants';
+import { openWhatsAppHelper } from '../lib/whatsapp';
 
 interface CompleteProfileProps {
   session: any;
@@ -10,13 +13,19 @@ interface CompleteProfileProps {
 }
 
 const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }) => {
-  const metadata = session.user.user_metadata || {};
+  const metadata = session?.user?.user_metadata || {};
 
   // Initialize state from session metadata if available
   const [role, setRole] = useState<UserRole>(metadata.role || 'user');
   const [clientType, setClientType] = useState<ClientType>(metadata.client_type || 'personal');
   const [fullName, setFullName] = useState(metadata.full_name || metadata.name || '');
   const [phone, setPhone] = useState(metadata.phone_number || '');
+  
+  // Optional artisan profile fields
+  const [state, setState] = useState(metadata.state || 'Lagos');
+  const [lga, setLga] = useState(metadata.lga || '');
+  const [category, setCategory] = useState(metadata.category || '');
+  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +63,18 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
     const updates: any = {
       full_name: fullName.trim(),
       phone_number: cleanPhone,
-      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.trim())}&background=10b981&color=fff`
+      avatar_url: metadata.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.trim())}&background=10b981&color=fff`
     };
+
+    if (state.trim()) updates.state = state.trim();
+    if (lga.trim()) updates.lga = lga.trim();
+    if (category.trim()) updates.category = category.trim();
 
     // First check if profile exists to decide between update or insert
     const { data: existingProfile } = await supabase.from('profiles').select('id, role').eq('id', session.user.id).maybeSingle();
     
     let dbError;
     if (existingProfile) {
-       // If the existing user somehow doesn't have a role, enforce 'user'
        if (!existingProfile.role) {
          updates.role = 'user';
        }
@@ -80,22 +92,18 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
 
     if (dbError) {
       console.error("Profile Sync Error:", dbError);
-      // If auto-complete fails, fall back to manual form so user isn't stuck
       if (isAuto) {
         setIsAutoCompleting(false);
-        // We don't show an error immediately, we just let them see the form to confirm details
       } else {
         setError("Sync failed. Please check your connection and try again.");
         setLoading(false);
       }
     } else {
-      // Sync with Supabase Auth metadata
       try {
-        await supabase.auth.updateUser({ data: { full_name: fullName.trim() } });
+        await supabase.auth.updateUser({ data: { full_name: fullName.trim(), phone_number: cleanPhone } });
       } catch (authErr) {
         console.warn("Auth metadata sync warning:", authErr);
       }
-      // Success! Proceed to app
       onComplete();
     }
   };
@@ -115,42 +123,118 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
     );
   }
 
-  // 2. Manual Fallback Form (Only shown if data is missing or auto-sync failed)
+  // 2. Manual Form
   return (
     <div className="min-h-screen w-full bg-[#0f172a] auth-gradient flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm space-y-10 animate-fadeIn">
+      <div className="w-full max-w-sm space-y-8 animate-fadeIn">
         <div className="text-center">
-          <VelgoLogo variant="light" className="h-12 mx-auto mb-8" />
-          <h2 className="text-4xl font-black text-white uppercase tracking-tighter italic leading-none">Complete</h2>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[3px] mt-3">Confirm your details</p>
+          <VelgoLogo variant="light" className="h-12 mx-auto mb-6" />
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic leading-none">Welcome</h2>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[3px] mt-2">Finish quick setup</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-4 bg-red-500/10 text-red-400 text-xs font-bold rounded-2xl border border-red-500/20">{error}</div>}
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <input 
               required value={fullName} onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
+              className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-4 px-6 text-white font-bold outline-none transition-all placeholder-gray-500 text-sm"
               placeholder="Full Name"
             />
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <input 
                 required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-5 px-8 text-white font-bold outline-none transition-all placeholder-gray-500"
+                className="w-full bg-slate-800/50 border-2 border-transparent focus:border-emerald-500 focus:bg-slate-900 rounded-[28px] py-4 px-6 text-white font-bold outline-none transition-all placeholder-gray-500 text-sm"
                 placeholder="WhatsApp Number (e.g. 080...)"
               />
-              <p className="text-[8px] text-gray-500 font-extrabold uppercase tracking-wider px-6 leading-relaxed">
-                * Required. Other users will message you here directly to close deals.
+              <p className="text-[8px] text-gray-500 font-extrabold uppercase tracking-wider px-4 leading-relaxed">
+                * Required. Connect directly with clients and service pros.
               </p>
+            </div>
+
+            {/* Optional work profile toggle */}
+            <div className="pt-2">
+              <button 
+                type="button" 
+                onClick={() => setShowOptionalDetails(!showOptionalDetails)}
+                className="w-full py-2.5 px-4 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 rounded-2xl flex items-center justify-between text-left text-slate-300 text-xs font-bold transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <i className="fa-solid fa-briefcase text-emerald-400"></i>
+                  <span>Artisan / Location Setup (Optional)</span>
+                </span>
+                <i className={`fa-solid fa-chevron-${showOptionalDetails ? 'up' : 'down'} text-[10px] text-gray-500`}></i>
+              </button>
+
+              {showOptionalDetails && (
+                <div className="mt-3 p-4 bg-slate-800/30 rounded-2xl border border-slate-700/40 space-y-3 animate-fadeIn">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] font-bold text-gray-400 uppercase block mb-1">State</label>
+                      <select 
+                        value={state} 
+                        onChange={e => { setState(e.target.value); setLga(''); }}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-bold text-white outline-none"
+                      >
+                        {NIGERIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-bold text-gray-400 uppercase block mb-1">LGA</label>
+                      <select 
+                        value={lga} 
+                        onChange={e => setLga(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-bold text-white outline-none"
+                      >
+                        <option value="">Select LGA</option>
+                        {NIGERIA_LGAS[state]?.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[8px] font-bold text-gray-400 uppercase block mb-1">Trade Category</label>
+                    <select 
+                      value={category} 
+                      onChange={e => setCategory(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-bold text-white outline-none"
+                    >
+                      <option value="">Select Trade Category (Optional)</option>
+                      {Object.keys(CATEGORY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all active:scale-95">
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-5 rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl transition-all active:scale-95 mt-4 cursor-pointer"
+          >
             {loading ? 'Finalizing...' : 'Enter App'}
           </button>
           
-          <button type="button" onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} className="w-full text-center text-gray-500 font-black text-[10px] uppercase tracking-widest mt-6 opacity-40 hover:opacity-100 transition-opacity">Cancel & Sign Out</button>
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <button 
+              type="button" 
+              onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} 
+              className="w-full text-center text-gray-500 font-black text-[10px] uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
+            >
+              Cancel & Sign Out
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openWhatsAppHelper("Hello Velgo Support, I need assistance setting up my account details.")}
+              className="flex items-center gap-2 text-emerald-400/80 hover:text-emerald-400 text-[11px] font-bold py-1 px-3 rounded-full hover:bg-emerald-500/10 transition-all cursor-pointer"
+            >
+              <i className="fa-brands fa-whatsapp text-sm text-[#25D366]"></i>
+              <span>Need Help? Chat on WhatsApp</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -158,3 +242,4 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ session, onComplete }
 };
 
 export default CompleteProfile;
+
