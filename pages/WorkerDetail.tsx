@@ -10,6 +10,7 @@ import { isBookmarked, toggleBookmark } from '../lib/bookmarkService';
 import { openWhatsAppHelper } from '../lib/whatsapp';
 import { ShareModal } from '../components/ShareModal';
 import { CategoryAvatar } from '../components/CategoryAvatar';
+import { DirectHireModal } from '../components/DirectHireModal';
 
 interface WorkerDetailProps { profile: Profile | null; workerId: string; onBack: () => void; onBook: (workerId: string) => void; onRefreshProfile?: () => void; onUpgrade: () => void; }
 
@@ -27,6 +28,7 @@ const WorkerDetail: React.FC<WorkerDetailProps> = ({ profile, workerId, onBack, 
   const [showShareToast, setShowShareToast] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [showHireModal, setShowHireModal] = useState(false);
 
   // Profile Reporting Subsystem States
   const [showReportModal, setShowReportModal] = useState(false);
@@ -209,7 +211,7 @@ UID: ${profile.id}
       setPage(prev => prev + 1);
   };
 
-  const handleBooking = async () => {
+  const handleBooking = () => {
     if (!profile) {
       if ((window as any).triggerAuthGate) {
         (window as any).triggerAuthGate("Sign in to Hire", "Create an account or sign in to contact or book professionals on Velgo.");
@@ -225,18 +227,7 @@ UID: ${profile.id}
       return;
     }
 
-    setRequesting(true);
-    const { error } = await safeFetch(async () => await supabase.from('bookings').insert([{ client_id: profile.id, worker_id: workerId, status: 'pending' }]));
-    setRequesting(false);
-    
-    if (!error) { 
-      if (onRefreshProfile) onRefreshProfile();
-
-      setHasRequested(true);
-      alert("Request Sent!"); 
-    } else {
-      alert("Failed to initiate booking: " + error.message);
-    }
+    setShowHireModal(true);
   };
 
   const handleShare = () => {
@@ -648,6 +639,21 @@ UID: ${profile.id}
         type="worker" 
         data={worker} 
       />
+
+      {/* Direct In-App Work Request Modal (Zero WhatsApp) */}
+      {worker && (
+        <DirectHireModal 
+          isOpen={showHireModal}
+          onClose={() => setShowHireModal(false)}
+          worker={worker}
+          clientProfile={profile}
+          onSuccess={() => {
+            setHasRequested(true);
+            if (onRefreshProfile) onRefreshProfile();
+          }}
+          onUpgrade={onUpgrade}
+        />
+      )}
     </div>
   );
 };

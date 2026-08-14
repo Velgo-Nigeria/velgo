@@ -110,7 +110,9 @@ export const ActivityItemCard: React.FC<ActivityItemCardProps> = ({
                           )}
                       </div>
                       <div className="flex-1 min-w-0">
-                          <h3 className="font-black text-gray-900 dark:text-white text-[15px] truncate tracking-tight">{item.title || item.posted_tasks?.title || 'Direct Request'}</h3>
+                          <h3 className="font-black text-gray-900 dark:text-white text-[15px] truncate tracking-tight">
+                            {item.title || item.posted_tasks?.title || (item.quote_notes ? item.quote_notes.split('\n')[0] : 'Direct Request')}
+                          </h3>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                              {renderItemTypeLabel()}
                              {!isOpenTask && <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{item.profiles?.full_name || 'User'}</span>}
