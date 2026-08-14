@@ -5,6 +5,8 @@ import { Profile } from '../lib/types';
 import { CATEGORY_MAP, getTierLimit } from '../lib/constants';
 import { GoogleGenAI, Type } from "@google/genai";
 import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
+import { uploadOptimizedImage } from '../lib/storageUtils';
+import { logErrorToSupabase } from '../lib/errorLogger';
 
 
 interface PostTaskProps { profile: Profile | null; onBack: () => void; onUpgrade: () => void; onRefreshProfile: () => void; }
@@ -237,19 +239,20 @@ const PostTask: React.FC<PostTaskProps> = ({ profile, onBack, onUpgrade, onRefre
 
     try {
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `task-${profile.id}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('task-images')
-          .upload(fileName, imageFile);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('task-images')
-          .getPublicUrl(fileName);
-          
+        const { publicUrl, error: uploadErr } = await uploadOptimizedImage(
+          imageFile,
+          'task-images',
+          `task_${profile.id}`,
+          { maxSizeMB: 0.15, maxWidthOrHeight: 1200 }
+        );
+
+        if (uploadErr || !publicUrl) {
+          logErrorToSupabase(`Task Image Upload Failed: ${uploadErr?.message || 'Storage error'}`, 'PostTask.tsx', undefined, undefined, uploadErr);
+          alert("Failed to upload attached job image. Please try again or submit without image.");
+          setLoading(false);
+          return;
+        }
+
         imageUrl = publicUrl;
       }
 

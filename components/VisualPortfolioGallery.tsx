@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import imageCompression from 'browser-image-compression';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../lib/types';
+import { uploadOptimizedImage } from '../lib/storageUtils';
+import { logErrorToSupabase } from '../lib/errorLogger';
 
 interface VisualPortfolioGalleryProps {
   profile: Profile;
@@ -27,25 +28,17 @@ export const VisualPortfolioGallery: React.FC<VisualPortfolioGalleryProps> = ({ 
     setUploading(true);
     
     try {
-        const options = {
-            maxSizeMB: 0.1, // 100kb
-            maxWidthOrHeight: 800,
-            useWebWorker: true
-        };
-        const compressedFile = await imageCompression(file, options);
+        // Upload with aggressive mobile compression and automatic multi-bucket failover
+        const { publicUrl, error: uploadErr } = await uploadOptimizedImage(
+          file,
+          'avatars', // Use reliable avatars bucket first, auto-fails over to task-images
+          `portfolio_${profile.id}`,
+          { maxSizeMB: 0.12, maxWidthOrHeight: 1080 }
+        );
         
-        const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-        const fileName = `portfolio-${profile.id}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('task-images') // Reusing the same public bucket for simplicity
-            .upload(fileName, compressedFile);
-            
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-            .from('task-images')
-            .getPublicUrl(fileName);
+        if (uploadErr || !publicUrl) {
+          throw uploadErr || new Error("Failed to upload image. Please try again.");
+        }
             
         const newImages = [...images, publicUrl];
         
@@ -53,11 +46,21 @@ export const VisualPortfolioGallery: React.FC<VisualPortfolioGalleryProps> = ({ 
             .update({ portfolio_images: newImages })
             .eq('id', profile.id);
             
-        if (updateError) throw updateError;
+        if (updateError) {
+          logErrorToSupabase(
+            `Profile Portfolio Update DB Error: ${updateError.message}`,
+            'VisualPortfolioGallery.tsx',
+            undefined,
+            undefined,
+            updateError
+          );
+          throw updateError;
+        }
         
         onRefreshProfile();
     } catch (err: any) {
         console.error("Upload error:", err);
+        // User always sees clean friendly message (no technical jargon or Supabase errors)
         alert("Failed to upload image. Please try again.");
     } finally {
         setUploading(false);

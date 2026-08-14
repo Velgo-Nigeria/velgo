@@ -7,6 +7,8 @@ import { TierBadge } from '../components/TierBadge';
 import { GamifiedTierUI } from '../components/GamifiedTierUI';
 import { VisualPortfolioGallery } from '../components/VisualPortfolioGallery';
 import { NIGERIA_STATES, NIGERIA_LGAS, getPopularAreas } from '../lib/locations';
+import { uploadOptimizedImage } from '../lib/storageUtils';
+import { logErrorToSupabase } from '../lib/errorLogger';
 
 import { openWhatsAppHelper } from '../lib/whatsapp';
 
@@ -138,23 +140,28 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     if (!e.target.files || e.target.files.length === 0 || !profile) return;
     
     const file = e.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
-
     setLoading(true);
-    const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
 
-    if (uploadError) {
-      alert("Error uploading image: " + uploadError.message);
+    const { publicUrl, error: uploadErr } = await uploadOptimizedImage(
+      file,
+      'avatars',
+      `avatar_${profile.id}`,
+      { maxSizeMB: 0.1, maxWidthOrHeight: 800 }
+    );
+
+    if (uploadErr || !publicUrl) {
+      alert("Failed to upload profile picture. Please try again.");
       setLoading(false);
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
-    onRefreshProfile();
+    const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
+    if (updateErr) {
+      logErrorToSupabase(`Avatar Profile DB Update Error: ${updateErr.message}`, 'Profile.tsx', undefined, undefined, updateErr);
+      alert("Failed to update profile picture. Please try again.");
+    } else {
+      onRefreshProfile();
+    }
     setLoading(false);
   };
 
@@ -162,26 +169,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefreshProfile, on
     if (!e.target.files || e.target.files.length === 0 || !profile) return;
     
     const file = e.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `id_${profile.id}_${Date.now()}.${fileExt}`;
-
     setIdLoading(true);
     
-    // Upload to 'verifications' bucket
-    const { error: uploadError } = await supabase.storage.from('verifications').upload(fileName, file);
+    // Upload to 'verifications' bucket with failover and compression (sharp, readable resolution for NIN)
+    const { publicUrl, error: uploadErr } = await uploadOptimizedImage(
+      file,
+      'verifications',
+      `id_${profile.id}`,
+      { maxSizeMB: 0.25, maxWidthOrHeight: 1600 }
+    );
 
-    if (uploadError) {
-      alert("Error uploading ID: " + uploadError.message);
+    if (uploadErr || !publicUrl) {
+      alert("Failed to upload ID document. Please try again.");
       setIdLoading(false);
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('verifications').getPublicUrl(fileName);
-
     const { error: updateError } = await supabase.from('profiles').update({ nin_image_url: publicUrl, id_rejection_reason: null }).eq('id', profile.id);
 
     if (updateError) {
-      alert("Failed to update profile: " + updateError.message);
+      logErrorToSupabase(`NIN Verification DB Update Error: ${updateError.message}`, 'Profile.tsx', undefined, undefined, updateError);
+      alert("Failed to update verification status. Please try again.");
     } else {
       alert("ID Uploaded! Your verification is now pending.");
       onRefreshProfile();
