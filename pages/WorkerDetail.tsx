@@ -134,7 +134,12 @@ UID: ${profile.id}
     setLoading(true);
     safeFetch<Profile>(async () => await supabase.from('profiles').select('*').eq('id', workerId).single() as any)
       .then(({data}) => {
-         setWorker(data);
+         // If worker was emergency blocked/banned, do not render their active profile
+         if (data && data.is_blocked) {
+           setWorker(null);
+         } else {
+           setWorker(data);
+         }
          setLoading(false);
       });
 

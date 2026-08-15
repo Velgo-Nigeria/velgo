@@ -129,11 +129,12 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         let query;
         if (isFetchingWorkers) {
             // Two-Tiered Search Hierarchy:
-            // Fetch workers with registered category, phone_number, and location
+            // Fetch workers with registered category, phone_number, and location (excluding blocked/banned workers)
             query = supabase.from('profiles').select('*')
                 .eq('role', 'user')
                 .not('category', 'is', null)
-                .not('phone_number', 'is', null);
+                .not('phone_number', 'is', null)
+                .or('is_blocked.is.null,is_blocked.eq.false');
 
             if (category !== 'All') query = query.eq('category', category);
             if (subcategory !== 'All') query = query.eq('subcategory', subcategory);
@@ -168,6 +169,9 @@ const Home: React.FC<{ profile: Profile | null, onViewWorker: (id: string) => vo
         let results = data || [];
         
         if (isFetchingWorkers) {
+            // Defense-in-depth: exclude any blocked/banned profiles
+            results = results.filter((w: any) => !w.is_blocked);
+
             results = results.sort((a, b) => {
                 // Tier 1 Priority: ID-Verified Workers ALWAYS first
                 const vA = a.is_verified ? 1 : 0;
